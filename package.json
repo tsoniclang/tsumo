@@ -1,0 +1,26 @@
+{
+  "name": "tsumo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli build",
+    "typecheck": "npm run -w @tsumo/engine typecheck && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli typecheck"
+  },
+  "devDependencies": {
+    "@tsonic/backend": "file:../tsonic/packages/backend",
+    "@tsonic/cli": "file:../tsonic/packages/cli",
+    "@tsonic/core": "file:../tsonic/node_modules/@tsonic/core",
+    "@tsonic/dotnet": "file:../tsonic/node_modules/@tsonic/dotnet",
+    "@tsonic/emitter": "file:../tsonic/packages/emitter",
+    "@tsonic/frontend": "file:../tsonic/packages/frontend",
+    "@tsonic/globals": "file:../tsonic/node_modules/@tsonic/globals",
+    "@tsonic/tsbindgen": "file:../tsbindgen",
+    "typescript": "file:../tsonic/node_modules/typescript"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

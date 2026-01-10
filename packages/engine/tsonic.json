@@ -1,0 +1,22 @@
+{
+  "$schema": "https://tsonic.dev/schema/v1.json",
+  "rootNamespace": "Tsumo.Engine",
+  "entryPoint": "src/index.ts",
+  "sourceRoot": "src",
+  "outputDirectory": "generated",
+  "outputName": "Tsumo.Engine",
+  "output": {
+    "type": "library",
+    "targetFrameworks": ["net10.0"],
+    "generateDocumentation": false,
+    "includeSymbols": false,
+    "packable": false
+  },
+  "buildOptions": {
+    "stripSymbols": true,
+    "invariantGlobalization": true
+  },
+  "dotnet": {
+    "typeRoots": ["../../node_modules/@tsonic/globals"]
+  }
+}
