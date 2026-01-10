@@ -1,0 +1,22 @@
+{
+  "$schema": "https://tsonic.dev/schema/v1.json",
+  "rootNamespace": "Tsumo.Cli",
+  "entryPoint": "src/App.ts",
+  "sourceRoot": "src",
+  "outputDirectory": "generated",
+  "outputName": "tsumo-aot",
+  "output": {
+    "nativeAot": true,
+    "trimmed": true,
+    "singleFile": true
+  },
+  "buildOptions": {
+    "stripSymbols": true,
+    "invariantGlobalization": true
+  },
+  "dotnet": {
+    "typeRoots": ["../../node_modules/@tsonic/globals"],
+    "libraries": ["../engine/dist/net10.0/Tsumo.Engine.dll", "../markdig/vendor/net10.0/Markdig.dll"]
+  }
+}
+

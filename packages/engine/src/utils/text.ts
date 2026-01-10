@@ -17,12 +17,12 @@ const isWordSeparator = (ch: char): boolean =>
 
 export const slugify = (input: string): string => {
   const lower = input.trim().toLowerInvariant();
-  const chars = lower.toCharArray();
+  const chars: char[] = lower.toCharArray();
   const sb = new StringBuilder();
   let wroteDash = false;
 
   for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i]!;
+    const ch: char = chars[i]!;
     if (Char.isLetterOrDigit(ch)) {
       sb.append(ch);
       wroteDash = false;

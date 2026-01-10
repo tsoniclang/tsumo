@@ -11,6 +11,14 @@ import { ServeRequest } from "./models.ts";
 import { contentTypeForPath } from "./utils/mime.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
 
+const logLine = (message: string): void => {
+  Console.writeLine("{0}", message);
+};
+
+const logErrorLine = (message: string): void => {
+  Console.error.writeLine("{0}", message);
+};
+
 const sendText = (response: HttpListenerResponse, statusCode: int, contentType: string, body: string): void => {
   response.statusCode = statusCode;
   response.contentType = contentType;
@@ -124,9 +132,9 @@ const watchLoop = (req: ServeRequest, outDir: string): void => {
 
     try {
       buildSite(req);
-      Console.writeLine(`[tsumo] rebuilt → ${outDir}`);
+      logLine(`[tsumo] rebuilt → ${outDir}`);
     } catch {
-      Console.error.writeLine("[tsumo] rebuild failed");
+      logErrorLine("[tsumo] rebuild failed");
     }
   }
 };
@@ -146,14 +154,14 @@ export const serveSite = (req: ServeRequest): void => {
   listener.prefixes.add(prefix);
   listener.start();
 
-  Console.writeLine("");
-  Console.writeLine("=================================");
-  Console.writeLine("  tsumo server");
-  Console.writeLine(`  Serving: ${result.outputDir}`);
-  Console.writeLine(`  URL: ${prefix}`);
-  Console.writeLine("=================================");
-  Console.writeLine("");
-  Console.writeLine("Press Ctrl+C to stop");
+  logLine("");
+  logLine("=================================");
+  logLine("  tsumo server");
+  logLine(`  Serving: ${result.outputDir}`);
+  logLine(`  URL: ${prefix}`);
+  logLine("=================================");
+  logLine("");
+  logLine("Press Ctrl+C to stop");
 
   if (req.watch) {
     Task.run(() => watchLoop(req, result.outputDir));

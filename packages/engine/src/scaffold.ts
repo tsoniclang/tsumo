@@ -2,6 +2,7 @@ import { Char, DateTime, Exception } from "@tsonic/dotnet/System.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import type { char } from "@tsonic/core/types.js";
 import { ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.ts";
+import { replaceText } from "./utils/strings.ts";
 import { humanizeSlug, slugify } from "./utils/text.ts";
 
 const ensureEmptyDir = (path: string): void => {
@@ -24,7 +25,9 @@ const defaultArchetype = (): string => `---
 title: "{{ .Title }}"
 date: "{{ .Date }}"
 draft: true
+description: ""
 tags: []
+categories: []
 ---
 
 Write your post here.
@@ -36,7 +39,9 @@ const baseofHtml = (): string => `<!doctype html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ .Title }} | {{ .Site.Title }}</title>
+    <meta name="description" content="{{ default .Site.Title .Description }}" />
     <link rel="stylesheet" href="{{ relURL "style.css" }}" />
+    <link rel="alternate" type="application/rss+xml" href="{{ relURL "/index.xml" }}" title="{{ .Site.Title }}" />
   </head>
   <body>
     {{ partial "header.html" . }}
@@ -52,6 +57,9 @@ const partialHeader = (): string => `<header class="container">
   <h1><a href="{{ relURL "/" }}">{{ .Site.Title }}</a></h1>
   <nav>
     <a href="{{ relURL "/" }}">Home</a>
+    <a href="{{ relURL "/posts/" }}">Posts</a>
+    <a href="{{ relURL "/tags/" }}">Tags</a>
+    <a href="{{ relURL "/categories/" }}">Categories</a>
   </nav>
 </header>
 `;
@@ -64,7 +72,21 @@ const partialFooter = (): string => `<footer class="container">
 const singleHtml = (): string => `{{ define "main" }}
 <article>
   <h2>{{ .Title }}</h2>
-  <p class="muted">{{ .Date }}</p>
+  <p class="muted">
+    {{ dateFormat "Jan 2, 2006" .Date }}
+    {{ with .Categories }}
+      · Categories:
+      {{ range . }}
+        <a href="{{ . | urlize | printf "/categories/%s/" | relURL }}">{{ . }}</a>
+      {{ end }}
+    {{ end }}
+    {{ with .Tags }}
+      · Tags:
+      {{ range . }}
+        <a href="{{ . | urlize | printf "/tags/%s/" | relURL }}">{{ . }}</a>
+      {{ end }}
+    {{ end }}
+  </p>
   <div class="content">
     {{ .Content }}
   </div>
@@ -79,8 +101,41 @@ const listHtml = (): string => `{{ define "main" }}
   <ul class="post-list">
     {{ range .Pages }}
       <li>
+        <div>
+          <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+          {{ with .Summary }}<div class="summary">{{ . }}</div>{{ end }}
+        </div>
+        <span class="muted">{{ dateFormat "Jan 2, 2006" .Date }}</span>
+      </li>
+    {{ end }}
+  </ul>
+</section>
+{{ end }}
+`;
+
+const termsHtml = (): string => `{{ define "main" }}
+<section>
+  <h2>{{ .Title }}</h2>
+  <ul class="post-list">
+    {{ range .Pages }}
+      <li>
         <a href="{{ .RelPermalink }}">{{ .Title }}</a>
-        <span class="muted">{{ .Date }}</span>
+        <span class="muted">{{ len .Pages }}</span>
+      </li>
+    {{ end }}
+  </ul>
+</section>
+{{ end }}
+`;
+
+const taxonomyHtml = (): string => `{{ define "main" }}
+<section>
+  <h2>{{ .Title }}</h2>
+  <ul class="post-list">
+    {{ range .Pages }}
+      <li>
+        <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+        <span class="muted">{{ dateFormat "Jan 2, 2006" .Date }}</span>
       </li>
     {{ end }}
   </ul>
@@ -90,6 +145,7 @@ const listHtml = (): string => `{{ define "main" }}
 
 const indexMd = (): string => `---
 title: "Home"
+description: "Example site for tsumo."
 ---
 
 Welcome to your new site.
@@ -99,10 +155,14 @@ const helloWorldMd = (): string => `---
 title: "Hello World"
 date: "${DateTime.utcNow.toString("O")}"
 draft: false
-tags: ["hello", "tsumo"]
+description: "An end-to-end demo of tsumo with GFM markdown."
+tags: ["hello", "tsumo", "gfm"]
+categories: ["meta"]
 ---
 
 This is your first post.
+
+<!--more-->
 
 \`\`\`
 tsumo build
@@ -115,8 +175,11 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; marg
 a { color: inherit; }
 .container { max-width: 860px; margin: 0 auto; padding: 1.25rem; }
 .muted { color: #777; }
+nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 .post-list { list-style: none; padding: 0; }
 .post-list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.25rem 0; }
+.summary { margin-top: 0.25rem; }
+.summary p { margin: 0; }
 .content pre { padding: 0.75rem 1rem; background: rgba(127,127,127,0.15); overflow: auto; border-radius: 10px; }
 `;
 
@@ -138,6 +201,8 @@ export const initSite = (targetDir: string): void => {
   writeTextFile(Path.combine(dir, "layouts", "_default", "baseof.html"), baseofHtml());
   writeTextFile(Path.combine(dir, "layouts", "_default", "single.html"), singleHtml());
   writeTextFile(Path.combine(dir, "layouts", "_default", "list.html"), listHtml());
+  writeTextFile(Path.combine(dir, "layouts", "_default", "terms.html"), termsHtml());
+  writeTextFile(Path.combine(dir, "layouts", "_default", "taxonomy.html"), taxonomyHtml());
   writeTextFile(Path.combine(dir, "layouts", "partials", "header.html"), partialHeader());
   writeTextFile(Path.combine(dir, "layouts", "partials", "footer.html"), partialFooter());
   writeTextFile(Path.combine(dir, "static", "style.css"), styleCss());
@@ -165,8 +230,8 @@ export const newContent = (siteDir: string, contentPathRaw: string): string => {
   const date = DateTime.utcNow.toString("O");
 
   let content = template;
-  content = content.replace("{{ .Title }}", title);
-  content = content.replace("{{ .Date }}", date);
+  content = replaceText(content, "{{ .Title }}", title);
+  content = replaceText(content, "{{ .Date }}", date);
 
   writeTextFile(dest, content);
   return dest;

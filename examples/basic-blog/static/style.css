@@ -3,6 +3,9 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; marg
 a { color: inherit; }
 .container { max-width: 860px; margin: 0 auto; padding: 1.25rem; }
 .muted { color: #777; }
+nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 .post-list { list-style: none; padding: 0; }
 .post-list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.25rem 0; }
+.summary { margin-top: 0.25rem; }
+.summary p { margin: 0; }
 .content pre { padding: 0.75rem 1rem; background: rgba(127,127,127,0.15); overflow: auto; border-radius: 10px; }

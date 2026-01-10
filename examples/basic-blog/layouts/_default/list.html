@@ -5,8 +5,11 @@
   <ul class="post-list">
     {{ range .Pages }}
       <li>
-        <a href="{{ .RelPermalink }}">{{ .Title }}</a>
-        <span class="muted">{{ .Date }}</span>
+        <div>
+          <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+          {{ with .Summary }}<div class="summary">{{ . }}</div>{{ end }}
+        </div>
+        <span class="muted">{{ dateFormat "Jan 2, 2006" .Date }}</span>
       </li>
     {{ end }}
   </ul>

@@ -16,6 +16,6 @@
   },
   "dotnet": {
     "typeRoots": ["../../node_modules/@tsonic/globals"],
-    "libraries": ["../engine/dist/net10.0/Tsumo.Engine.dll"]
+    "libraries": ["../engine/dist/net10.0/Tsumo.Engine.dll", "../markdig/vendor/net10.0/Markdig.dll"]
   }
 }

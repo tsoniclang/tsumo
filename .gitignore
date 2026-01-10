@@ -49,6 +49,13 @@ dist/
 # Site output
 public/
 
+# Vendored build outputs
+packages/markdig/vendor/
+
+# .NET build outputs
+**/bin/
+**/obj/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

@@ -56,6 +56,8 @@ const dotnetLib = resolvePkgRoot("@tsonic/dotnet");
 const coreLib = resolvePkgRoot("@tsonic/core");
 const tsbindgenLib = resolvePkgRoot("@tsonic/tsbindgen");
 const tsbindgenDll = join(tsbindgenLib, "lib", "tsbindgen.dll");
+const markdigLib = resolvePkgRoot("@tsumo/markdig");
+const markdigDllDir = join(markdigLib, "vendor", "net10.0");
 
 if (!existsSync(tsbindgenDll)) {
   console.error(`Missing tsbindgen DLL: ${tsbindgenDll}`);
@@ -132,6 +134,7 @@ const args = [
 
 for (const rt of runtimes) args.push("--ref-dir", rt.dir);
 args.push("--ref-dir", join(projectRoot, "dist", targetFramework));
+args.push("--ref-dir", markdigDllDir);
 
 const gen = spawnSync("dotnet", [tsbindgenDll, ...args], { stdio: "inherit" });
 process.exit(gen.status ?? 1);

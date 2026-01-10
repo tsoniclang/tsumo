@@ -3,7 +3,8 @@ import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { int } from "@tsonic/core/types.js";
 import { HtmlString, escapeHtml } from "./utils/html.ts";
-import { ensureTrailingSlash, slugify } from "./utils/text.ts";
+import { indexOfTextFrom, replaceText } from "./utils/strings.ts";
+import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
 import { PageContext, SiteContext } from "./models.ts";
 
 export class TemplateValue {}
@@ -227,6 +228,29 @@ export class RangeNode extends TemplateNode {
   }
 }
 
+export class WithNode extends TemplateNode {
+  readonly expr: Pipeline;
+  readonly body: TemplateNode[];
+  readonly elseBody: TemplateNode[];
+
+  constructor(expr: Pipeline, body: TemplateNode[], elseBody: TemplateNode[]) {
+    super();
+    this.expr = expr;
+    this.body = body;
+    this.elseBody = elseBody;
+  }
+
+  override render(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>): void {
+    const value = this.expr.eval(scope);
+    if (TemplateRuntime.isTruthy(value)) {
+      const nextScope = new RenderScope(scope.root, value, scope.site);
+      for (let i: int = 0; i < this.body.length; i++) this.body[i]!.render(sb, nextScope, env, overrides);
+      return;
+    }
+    for (let i: int = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
+  }
+}
+
 export class BlockNode extends TemplateNode {
   readonly name: string;
   readonly context: Pipeline;
@@ -422,7 +446,9 @@ class TemplateRuntime {
         else if (k === "summary") cur = new HtmlValue(page.summary);
         else if (k === "date") cur = new StringValue(page.date);
         else if (k === "draft") cur = new BoolValue(page.draft);
+        else if (k === "kind") cur = new StringValue(page.kind);
         else if (k === "section") cur = new StringValue(page.section);
+        else if (k === "type") cur = new StringValue(page.type);
         else if (k === "slug") cur = new StringValue(page.slug);
         else if (k === "relpermalink") cur = new StringValue(page.relPermalink);
         else if (k === "permalink") {
@@ -430,9 +456,16 @@ class TemplateRuntime {
           cur = new StringValue(ensureTrailingSlash(scope.site.baseURL) + rel);
         } else if (k === "site") cur = new SiteValue(page.site);
         else if (k === "pages") cur = new PageArrayValue(page.pages);
+        else if (k === "description") cur = new StringValue(page.description);
         else if (k === "tags") cur = new StringArrayValue(page.tags);
         else if (k === "categories") cur = new StringArrayValue(page.categories);
         else if (k === "params") cur = new DictValue(page.Params);
+        else if (k === "ishome") cur = new BoolValue(page.kind === "home");
+        else if (k === "ispage") cur = new BoolValue(page.kind === "page");
+        else if (k === "issection") cur = new BoolValue(page.kind === "section");
+        else if (k === "istaxonomy") cur = new BoolValue(page.kind === "taxonomy");
+        else if (k === "isterm") cur = new BoolValue(page.kind === "term");
+        else if (k === "isnode") cur = new BoolValue(page.kind !== "page");
         else cur = TemplateRuntime.nil;
         continue;
       }
@@ -495,22 +528,22 @@ class TemplateRuntime {
   static convertGoDateLayoutToDotNet(layout: string): string {
     // Best-effort mapping for common Hugo layouts.
     let f = layout;
-    f = f.replace("Monday", "dddd");
-    f = f.replace("Mon", "ddd");
-    f = f.replace("January", "MMMM");
-    f = f.replace("Jan", "MMM");
-    f = f.replace("2006", "yyyy");
-    f = f.replace("06", "yy");
-    f = f.replace("02", "dd");
-    f = f.replace("2", "d");
-    f = f.replace("01", "MM");
-    f = f.replace("1", "M");
-    f = f.replace("15", "HH");
-    f = f.replace("03", "hh");
-    f = f.replace("3", "h");
-    f = f.replace("04", "mm");
-    f = f.replace("05", "ss");
-    f = f.replace("PM", "tt");
+    f = replaceText(f, "Monday", "dddd");
+    f = replaceText(f, "Mon", "ddd");
+    f = replaceText(f, "January", "MMMM");
+    f = replaceText(f, "Jan", "MMM");
+    f = replaceText(f, "2006", "yyyy");
+    f = replaceText(f, "06", "yy");
+    f = replaceText(f, "02", "dd");
+    f = replaceText(f, "2", "d");
+    f = replaceText(f, "01", "MM");
+    f = replaceText(f, "1", "M");
+    f = replaceText(f, "15", "HH");
+    f = replaceText(f, "03", "hh");
+    f = replaceText(f, "3", "h");
+    f = replaceText(f, "04", "mm");
+    f = replaceText(f, "05", "ss");
+    f = replaceText(f, "PM", "tt");
     return f;
   }
 
@@ -526,6 +559,11 @@ class TemplateRuntime {
     if (name === "urlize" && args.length >= 1) {
       const v = args[0]!;
       return new StringValue(slugify(TemplateRuntime.toPlainString(v)));
+    }
+
+    if (name === "humanize" && args.length >= 1) {
+      const v = args[0]!;
+      return new StringValue(humanizeSlug(TemplateRuntime.toPlainString(v)));
     }
 
     if (name === "lower" && args.length >= 1) {
@@ -596,6 +634,99 @@ class TemplateRuntime {
       return new StringValue(parsed.toString(fmt));
     }
 
+    if (name === "print" && args.length >= 1) {
+      const sb = new StringBuilder();
+      for (let i: int = 0; i < args.length; i++) sb.append(TemplateRuntime.toPlainString(args[i]!));
+      return new StringValue(sb.toString());
+    }
+
+    if (name === "printf" && args.length >= 1) {
+      const fmt = TemplateRuntime.toPlainString(args[0]!);
+      const vals = new List<string>();
+      for (let argIndex: int = 1; argIndex < args.length; argIndex++) vals.add(TemplateRuntime.toPlainString(args[argIndex]!));
+      const values = vals.toArray();
+
+      const sb = new StringBuilder();
+      let pos: int = 0;
+      let valueIndex: int = 0;
+      while (pos < fmt.length) {
+        const ch = fmt.substring(pos, 1);
+        if (ch === "%" && pos + 1 < fmt.length) {
+          const next = fmt.substring(pos + 1, 1);
+          if (next === "%") {
+            sb.append("%");
+            pos += 2;
+            continue;
+          }
+          if (next === "s") {
+            if (valueIndex < values.length) sb.append(values[valueIndex]!);
+            valueIndex++;
+            pos += 2;
+            continue;
+          }
+          if (next === "d") {
+            if (valueIndex < values.length) sb.append(values[valueIndex]!);
+            valueIndex++;
+            pos += 2;
+            continue;
+          }
+        }
+        sb.append(ch);
+        pos++;
+      }
+
+      return new StringValue(sb.toString());
+    }
+
+    if (args.length >= 2) {
+      const isCompare = name === "eq" || name === "ne" || name === "lt" || name === "le" || name === "gt" || name === "ge";
+      if (isCompare) {
+        const a = args[0]!;
+        const b = args[1]!;
+
+        let cmp = 0;
+        if (a instanceof NumberValue && b instanceof NumberValue) {
+          const aNum = a as NumberValue;
+          const bNum = b as NumberValue;
+          const av = aNum.value;
+          const bv = bNum.value;
+          cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        } else {
+          const av = TemplateRuntime.toPlainString(a);
+          const bv = TemplateRuntime.toPlainString(b);
+          cmp = av.compareTo(bv);
+        }
+
+        if (name === "eq") return new BoolValue(cmp === 0);
+        if (name === "ne") return new BoolValue(cmp !== 0);
+        if (name === "lt") return new BoolValue(cmp < 0);
+        if (name === "le") return new BoolValue(cmp <= 0);
+        if (name === "gt") return new BoolValue(cmp > 0);
+        return new BoolValue(cmp >= 0);
+      }
+    }
+
+    if (name === "not" && args.length >= 1) {
+      return new BoolValue(!TemplateRuntime.isTruthy(args[0]!));
+    }
+
+    if (name === "and" && args.length >= 1) {
+      let cur = args[0]!;
+      for (let i: int = 0; i < args.length; i++) {
+        cur = args[i]!;
+        if (!TemplateRuntime.isTruthy(cur)) return cur;
+      }
+      return cur;
+    }
+
+    if (name === "or" && args.length >= 1) {
+      for (let i: int = 0; i < args.length; i++) {
+        const cur = args[i]!;
+        if (TemplateRuntime.isTruthy(cur)) return cur;
+      }
+      return args[args.length - 1]!;
+    }
+
     return new StringValue("");
   }
 
@@ -633,7 +764,7 @@ class TemplateRuntime {
     let lastSegment: Segment | undefined = undefined;
 
     while (i < template.length) {
-      const start = template.indexOf("{{", i);
+      const start = indexOfTextFrom(template, "{{", i);
       if (start < 0) {
         const textSegment = new Segment(false, template.substring(i));
         segs.add(textSegment);
@@ -647,7 +778,7 @@ class TemplateRuntime {
         lastSegment = textSegment;
       }
 
-      const end = template.indexOf("}}", start + 2);
+      const end = indexOfTextFrom(template, "}}", start + 2);
       if (end < 0) {
         const textSegment = new Segment(false, template.substring(start));
         segs.add(textSegment);
@@ -771,18 +902,55 @@ class Segment {
   }
 }
 
+class ParseNodesResult {
+  readonly nodes: TemplateNode[];
+  readonly endedWithElse: boolean;
+
+  constructor(nodes: TemplateNode[], endedWithElse: boolean) {
+    this.nodes = nodes;
+    this.endedWithElse = endedWithElse;
+  }
+}
+
 class Parser {
   readonly segs: Segment[];
   idx: int;
   readonly defines: Dictionary<string, TemplateNode[]>;
+  private lastElseTokens: string[] | undefined;
 
   constructor(segs: Segment[]) {
     this.segs = segs;
     this.idx = 0;
     this.defines = new Dictionary<string, TemplateNode[]>();
+    this.lastElseTokens = undefined;
   }
 
-  parseNodes(stopOnElse: boolean): { nodes: TemplateNode[]; endedWithElse: boolean } {
+  private takeElseTokens(): string[] {
+    const empty: string[] = [];
+    const t = this.lastElseTokens ?? empty;
+    this.lastElseTokens = undefined;
+    return t;
+  }
+
+  private parseIfFrom(cond: Pipeline): IfNode {
+    const thenBody = this.parseNodes(true);
+    let elseNodes: TemplateNode[] = [];
+    if (thenBody.endedWithElse) {
+      const elseTokens = this.takeElseTokens();
+      const isElseIf = elseTokens.length >= 2 && elseTokens[1] === "if";
+      if (isElseIf) {
+        const elseCond = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(elseTokens, 2));
+        const nested = this.parseIfFrom(elseCond);
+        elseNodes = [nested];
+      } else {
+        const elseBody = this.parseNodes(false);
+        elseNodes = elseBody.nodes;
+      }
+    }
+    return new IfNode(cond, thenBody.nodes, elseNodes);
+  }
+
+  parseNodes(stopOnElse: boolean): ParseNodesResult {
     const nodes = new List<TemplateNode>();
 
     while (this.idx < this.segs.length) {
@@ -802,8 +970,14 @@ class Parser {
       if (tokens.length === 0) continue;
 
       const head = tokens[0]!;
-      if (head === "end") return { nodes: nodes.toArray(), endedWithElse: false };
-      if (head === "else") return { nodes: nodes.toArray(), endedWithElse: true };
+      if (head === "end") return new ParseNodesResult(nodes.toArray(), false);
+      if (head === "else") {
+        if (stopOnElse) {
+          this.lastElseTokens = tokens;
+          return new ParseNodesResult(nodes.toArray(), true);
+        }
+        continue;
+      }
 
       if (head === "define" && tokens.length >= 2) {
         const name = TemplateRuntime.parseStringLiteral(tokens[1]!) ?? tokens[1]!;
@@ -824,13 +998,20 @@ class Parser {
 
       if (head === "if") {
         const cond = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(tokens, 1));
-        const thenBody = this.parseNodes(true);
+        nodes.add(this.parseIfFrom(cond));
+        continue;
+      }
+
+      if (head === "with") {
+        const expr = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(tokens, 1));
+        const body = this.parseNodes(true);
         let elseNodes: TemplateNode[] = [];
-        if (thenBody.endedWithElse) {
+        if (body.endedWithElse) {
+          this.takeElseTokens();
           const elseBody = this.parseNodes(false);
           elseNodes = elseBody.nodes;
         }
-        nodes.add(new IfNode(cond, thenBody.nodes, elseNodes));
+        nodes.add(new WithNode(expr, body.nodes, elseNodes));
         continue;
       }
 
@@ -839,6 +1020,7 @@ class Parser {
         const body = this.parseNodes(true);
         let elseNodes: TemplateNode[] = [];
         if (body.endedWithElse) {
+          this.takeElseTokens();
           const elseBody = this.parseNodes(false);
           elseNodes = elseBody.nodes;
         }
@@ -856,7 +1038,7 @@ class Parser {
       nodes.add(new OutputNode(TemplateRuntime.parsePipeline(tokens), true));
     }
 
-    return { nodes: nodes.toArray(), endedWithElse: false };
+    return new ParseNodesResult(nodes.toArray(), false);
   }
 }
 

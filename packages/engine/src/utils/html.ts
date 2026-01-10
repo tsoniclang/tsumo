@@ -1,10 +1,12 @@
+import { replaceText } from "./strings.ts";
+
 export const escapeHtml = (input: string): string => {
   let s = input;
-  s = s.replace("&", "&amp;");
-  s = s.replace("<", "&lt;");
-  s = s.replace(">", "&gt;");
-  s = s.replace("\"", "&quot;");
-  s = s.replace("'", "&#39;");
+  s = replaceText(s, "&", "&amp;");
+  s = replaceText(s, "<", "&lt;");
+  s = replaceText(s, ">", "&gt;");
+  s = replaceText(s, "\"", "&quot;");
+  s = replaceText(s, "'", "&#39;");
   return s;
 };
 
@@ -15,4 +17,3 @@ export class HtmlString {
     this.value = value;
   }
 }
-
