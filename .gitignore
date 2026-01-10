@@ -41,6 +41,14 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Tsonic outputs
+generated/
+out/
+dist/
+
+# Site output
+public/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
