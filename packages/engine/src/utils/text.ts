@@ -2,11 +2,11 @@ import { Char } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { char } from "@tsonic/core/types.js";
 
-const wordSeparatorSpace: char = Char.parse(" ");
-const wordSeparatorDash: char = Char.parse("-");
-const wordSeparatorUnderscore: char = Char.parse("_");
-const wordSeparatorDot: char = Char.parse(".");
-const wordSeparatorSlash: char = Char.parse("/");
+const wordSeparatorSpace: char = " ";
+const wordSeparatorDash: char = "-";
+const wordSeparatorUnderscore: char = "_";
+const wordSeparatorDot: char = ".";
+const wordSeparatorSlash: char = "/";
 
 const isWordSeparator = (ch: char): boolean =>
   ch === wordSeparatorSpace ||
@@ -22,7 +22,7 @@ export const slugify = (input: string): string => {
   let wroteDash = false;
 
   for (let i = 0; i < chars.length; i++) {
-    const ch: char = chars[i]!;
+    const ch = chars[i]!;
     if (Char.isLetterOrDigit(ch)) {
       sb.append(ch);
       wroteDash = false;

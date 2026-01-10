@@ -1,4 +1,4 @@
-import { Char, DateTime } from "@tsonic/dotnet/System.js";
+import { DateTime } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import type { char, int } from "@tsonic/core/types.js";
@@ -158,7 +158,7 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
 };
 
 const combineUrl = (parts: string[]): string => {
-  const slash: char = Char.parse("/");
+  const slash: char = "/";
   const sb = new List<string>();
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]!.trim();
@@ -372,7 +372,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const singleTpl = selectTemplate(env, singleCandidates) ?? singleCandidates[0]!;
   const baseTpl = selectTemplate(env, baseCandidates);
 
-  let pagesBuilt: int = 0;
+  let pagesBuilt = 0;
   const sitemapUrlSet = new Dictionary<string, boolean>();
 
   let homeTitle = config.title;
@@ -575,7 +575,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     sitemapUrlSet.add(ctx.relPermalink, true);
 
     if (listSourceDir !== undefined) {
-      const slash: char = Char.parse("/");
+      const slash: char = "/";
       const destDir = Path.combine(outDir, dirKey.replace(slash, Path.directorySeparatorChar));
       copyBundleResources(listSourceDir, destDir);
     }

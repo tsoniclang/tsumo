@@ -1,4 +1,4 @@
-import { Char, Console } from "@tsonic/dotnet/System.js";
+import { Console } from "@tsonic/dotnet/System.js";
 import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { HttpListener, HttpListenerContext, HttpListenerResponse } from "@tsonic/dotnet/System.Net.js";
 import { FileSystemWatcher, WatcherChangeTypes } from "@tsonic/dotnet/System.IO.js";
@@ -46,7 +46,7 @@ const sendBytes = (response: HttpListenerResponse, statusCode: int, contentType:
 const resolveRequestPath = (outDir: string, requestPath: string): string | undefined => {
   const outFull = Path.getFullPath(outDir);
   const outPrefix = outFull.endsWith(Path.directorySeparatorChar) ? outFull : outFull + Path.directorySeparatorChar;
-  const slash: char = Char.parse("/");
+  const slash: char = "/";
   const rel = requestPath.trimStart(slash).replace(slash, Path.directorySeparatorChar);
 
   if (rel === "" || requestPath.endsWith("/")) {

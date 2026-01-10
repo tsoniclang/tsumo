@@ -174,10 +174,10 @@ export class IfNode extends TemplateNode {
   override render(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>): void {
     const value = this.condition.eval(scope);
     if (TemplateRuntime.isTruthy(value)) {
-      for (let i: int = 0; i < this.thenNodes.length; i++) this.thenNodes[i]!.render(sb, scope, env, overrides);
+      for (let i = 0; i < this.thenNodes.length; i++) this.thenNodes[i]!.render(sb, scope, env, overrides);
       return;
     }
-    for (let i: int = 0; i < this.elseNodes.length; i++) this.elseNodes[i]!.render(sb, scope, env, overrides);
+    for (let i = 0; i < this.elseNodes.length; i++) this.elseNodes[i]!.render(sb, scope, env, overrides);
   }
 }
 
@@ -200,12 +200,12 @@ export class RangeNode extends TemplateNode {
       const pageArray = value as PageArrayValue;
       const pages = pageArray.value;
       if (pages.length === 0) {
-        for (let i: int = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
         return;
       }
-      for (let i: int = 0; i < pages.length; i++) {
+      for (let i = 0; i < pages.length; i++) {
         const nextScope = new RenderScope(scope.root, new PageValue(pages[i]!), scope.site);
-        for (let j: int = 0; j < this.body.length; j++) this.body[j]!.render(sb, nextScope, env, overrides);
+        for (let j = 0; j < this.body.length; j++) this.body[j]!.render(sb, nextScope, env, overrides);
       }
       return;
     }
@@ -214,17 +214,17 @@ export class RangeNode extends TemplateNode {
       const stringArray = value as StringArrayValue;
       const items = stringArray.value;
       if (items.length === 0) {
-        for (let i: int = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
         return;
       }
-      for (let i: int = 0; i < items.length; i++) {
+      for (let i = 0; i < items.length; i++) {
         const nextScope = new RenderScope(scope.root, new StringValue(items[i]!), scope.site);
-        for (let j: int = 0; j < this.body.length; j++) this.body[j]!.render(sb, nextScope, env, overrides);
+        for (let j = 0; j < this.body.length; j++) this.body[j]!.render(sb, nextScope, env, overrides);
       }
       return;
     }
 
-    for (let i: int = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
+    for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
   }
 }
 
@@ -244,10 +244,10 @@ export class WithNode extends TemplateNode {
     const value = this.expr.eval(scope);
     if (TemplateRuntime.isTruthy(value)) {
       const nextScope = new RenderScope(scope.root, value, scope.site);
-      for (let i: int = 0; i < this.body.length; i++) this.body[i]!.render(sb, nextScope, env, overrides);
+      for (let i = 0; i < this.body.length; i++) this.body[i]!.render(sb, nextScope, env, overrides);
       return;
     }
-    for (let i: int = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
+    for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
   }
 }
 
@@ -271,11 +271,11 @@ export class BlockNode extends TemplateNode {
     const nextScope = new RenderScope(scope.root, dot, scope.site);
 
     if (hasOverride) {
-      for (let i: int = 0; i < overrideNodes.length; i++) overrideNodes[i]!.render(sb, nextScope, env, overrides);
+      for (let i = 0; i < overrideNodes.length; i++) overrideNodes[i]!.render(sb, nextScope, env, overrides);
       return;
     }
 
-    for (let i: int = 0; i < this.fallback.length; i++) this.fallback[i]!.render(sb, nextScope, env, overrides);
+    for (let i = 0; i < this.fallback.length; i++) this.fallback[i]!.render(sb, nextScope, env, overrides);
   }
 }
 
@@ -433,7 +433,7 @@ class TemplateRuntime {
 
   static resolvePath(value: TemplateValue, segments: string[], scope: RenderScope): TemplateValue {
     let cur: TemplateValue = value;
-    for (let i: int = 0; i < segments.length; i++) {
+    for (let i = 0; i < segments.length; i++) {
       const seg = segments[i]!;
       if (cur instanceof NilValue) return TemplateRuntime.nil;
 
@@ -636,19 +636,19 @@ class TemplateRuntime {
 
     if (name === "print" && args.length >= 1) {
       const sb = new StringBuilder();
-      for (let i: int = 0; i < args.length; i++) sb.append(TemplateRuntime.toPlainString(args[i]!));
+      for (let i = 0; i < args.length; i++) sb.append(TemplateRuntime.toPlainString(args[i]!));
       return new StringValue(sb.toString());
     }
 
     if (name === "printf" && args.length >= 1) {
       const fmt = TemplateRuntime.toPlainString(args[0]!);
       const vals = new List<string>();
-      for (let argIndex: int = 1; argIndex < args.length; argIndex++) vals.add(TemplateRuntime.toPlainString(args[argIndex]!));
+      for (let argIndex = 1; argIndex < args.length; argIndex++) vals.add(TemplateRuntime.toPlainString(args[argIndex]!));
       const values = vals.toArray();
 
       const sb = new StringBuilder();
-      let pos: int = 0;
-      let valueIndex: int = 0;
+      let pos = 0;
+      let valueIndex = 0;
       while (pos < fmt.length) {
         const ch = fmt.substring(pos, 1);
         if (ch === "%" && pos + 1 < fmt.length) {
@@ -712,7 +712,7 @@ class TemplateRuntime {
 
     if (name === "and" && args.length >= 1) {
       let cur = args[0]!;
-      for (let i: int = 0; i < args.length; i++) {
+      for (let i = 0; i < args.length; i++) {
         cur = args[i]!;
         if (!TemplateRuntime.isTruthy(cur)) return cur;
       }
@@ -720,7 +720,7 @@ class TemplateRuntime {
     }
 
     if (name === "or" && args.length >= 1) {
-      for (let i: int = 0; i < args.length; i++) {
+      for (let i = 0; i < args.length; i++) {
         const cur = args[i]!;
         if (TemplateRuntime.isTruthy(cur)) return cur;
       }
@@ -749,7 +749,7 @@ class TemplateRuntime {
     }
 
     const args = new List<TemplateValue>();
-    for (let i: int = 1; i < tokens.length; i++) args.add(TemplateRuntime.evalToken(tokens[i]!, scope));
+    for (let i = 1; i < tokens.length; i++) args.add(TemplateRuntime.evalToken(tokens[i]!, scope));
     if (piped !== undefined) args.add(piped);
     return TemplateRuntime.callFunction(head, args.toArray(), scope);
   }
@@ -760,7 +760,7 @@ class TemplateRuntime {
 
   static scanSegments(template: string): Segment[] {
     const segs = new List<Segment>();
-    let i: int = 0;
+    let i = 0;
     let lastSegment: Segment | undefined = undefined;
 
     while (i < template.length) {
@@ -828,7 +828,7 @@ class TemplateRuntime {
 
   static tokenizeAction(action: string): string[] {
     const tokens = new List<string>();
-    let i: int = 0;
+    let i = 0;
 
     const push = (t: string): void => {
       if (t !== "") tokens.add(t);
@@ -872,7 +872,7 @@ class TemplateRuntime {
     const stages = new List<string[]>();
     let current = new List<string>();
 
-    for (let i: int = 0; i < tokens.length; i++) {
+    for (let i = 0; i < tokens.length; i++) {
       const t = tokens[i]!;
       if (t === "|") {
         stages.add(current.toArray());
@@ -887,7 +887,7 @@ class TemplateRuntime {
 
   static sliceTokens(tokens: string[], startIndex: int): string[] {
     const out = new List<string>();
-    for (let i: int = startIndex; i < tokens.length; i++) out.add(tokens[i]!);
+    for (let i = startIndex; i < tokens.length; i++) out.add(tokens[i]!);
     return out.toArray();
   }
 }

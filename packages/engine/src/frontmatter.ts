@@ -350,8 +350,8 @@ const parseJson = (json: string): FrontMatter => {
 };
 
 const tryParseJsonFrontMatter = (text: string): ParsedContent | undefined => {
-  const openBrace: char = Char.parse("{");
-  const closeBrace: char = Char.parse("}");
+  const openBrace: char = "{";
+  const closeBrace: char = "}";
 
   const chars = text.toCharArray();
   let start = 0;
