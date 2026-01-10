@@ -14,5 +14,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "build": "tsonic build",
     "bindings": "node ./scripts/generate-bindings.mjs"
+  },
+  "dependencies": {
+    "@tsumo/markdig": "file:../markdig"
   }
 }

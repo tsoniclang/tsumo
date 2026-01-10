@@ -1,0 +1,2 @@
+tsumo leaf bundle resource: cover.txt
+

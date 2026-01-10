@@ -38,7 +38,7 @@ const parseTomlConfig = (text: string): SiteConfig => {
   let theme: string | undefined = undefined;
   const params = new Dictionary<string, string>();
 
-  const lines = text.replace("\r\n", "\n").split("\n");
+  const lines = text.replaceLineEndings("\n").split("\n");
 
   let table = "";
   for (let i = 0; i < lines.length; i++) {
@@ -82,7 +82,7 @@ const parseYamlConfig = (text: string): SiteConfig => {
   let theme: string | undefined = undefined;
   const params = new Dictionary<string, string>();
 
-  const lines = text.replace("\r\n", "\n").split("\n");
+  const lines = text.replaceLineEndings("\n").split("\n");
 
   let inParams = false;
   for (let i = 0; i < lines.length; i++) {

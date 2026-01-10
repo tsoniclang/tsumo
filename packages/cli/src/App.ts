@@ -5,29 +5,37 @@ import type { int } from "@tsonic/core/types.js";
 
 const VERSION = "0.0.0";
 
+const logLine = (message: string): void => {
+  Console.writeLine("{0}", message);
+};
+
+const logErrorLine = (message: string): void => {
+  Console.error.writeLine("{0}", message);
+};
+
 const usage = (): void => {
-  Console.writeLine("tsumo - Hugo-inspired blog engine (Tsonic)");
-  Console.writeLine("");
-  Console.writeLine("USAGE:");
-  Console.writeLine("  tsumo [build] [options]");
-  Console.writeLine("  tsumo server [options]");
-  Console.writeLine("  tsumo new site <dir>");
-  Console.writeLine("  tsumo new <path.md> [--source <dir>]");
-  Console.writeLine("  tsumo version");
-  Console.writeLine("");
-  Console.writeLine("BUILD OPTIONS:");
-  Console.writeLine("  -s, --source <dir>         Site directory (default: cwd)");
-  Console.writeLine("  -d, --destination <dir>    Output directory (default: public)");
-  Console.writeLine("  -D, --buildDrafts          Include drafts");
-  Console.writeLine("  --baseURL <url>            Override baseURL");
-  Console.writeLine("  --no-clean                 Do not wipe destination dir");
-  Console.writeLine("");
-  Console.writeLine("SERVER OPTIONS:");
-  Console.writeLine("  -s, --source <dir>         Site directory (default: cwd)");
-  Console.writeLine("  -p, --port <port>          Port (default: 1313)");
-  Console.writeLine("  --host <host>              Host (default: localhost)");
-  Console.writeLine("  --watch / --no-watch       Watch and rebuild (default: on)");
-  Console.writeLine("  -D, --buildDrafts          Include drafts");
+  logLine("tsumo - Hugo-inspired blog engine (Tsonic)");
+  logLine("");
+  logLine("USAGE:");
+  logLine("  tsumo [build] [options]");
+  logLine("  tsumo server [options]");
+  logLine("  tsumo new site <dir>");
+  logLine("  tsumo new <path.md> [--source <dir>]");
+  logLine("  tsumo version");
+  logLine("");
+  logLine("BUILD OPTIONS:");
+  logLine("  -s, --source <dir>         Site directory (default: cwd)");
+  logLine("  -d, --destination <dir>    Output directory (default: public)");
+  logLine("  -D, --buildDrafts          Include drafts");
+  logLine("  --baseURL <url>            Override baseURL");
+  logLine("  --no-clean                 Do not wipe destination dir");
+  logLine("");
+  logLine("SERVER OPTIONS:");
+  logLine("  -s, --source <dir>         Site directory (default: cwd)");
+  logLine("  -p, --port <port>          Port (default: 1313)");
+  logLine("  --host <host>              Host (default: localhost)");
+  logLine("  --watch / --no-watch       Watch and rebuild (default: on)");
+  logLine("  -D, --buildDrafts          Include drafts");
 };
 
 const parseInt = (value: string): int | undefined => {
@@ -49,7 +57,7 @@ export function main(): void {
   }
 
   if (first === "-v" || first === "--version" || first === "version") {
-    Console.writeLine(VERSION);
+    logLine(VERSION);
     return;
   }
 
@@ -58,18 +66,18 @@ export function main(): void {
   if (cmd === "new") {
     if (args.length >= 2 && args[1] === "site") {
       if (args.length < 3) {
-        Console.error.writeLine("Missing <dir> for `tsumo new site`");
+        logErrorLine("Missing <dir> for `tsumo new site`");
         Environment.exitCode = 2;
         return;
       }
       const dir = args[2]!;
       Tsumo.initSite(dir);
-      Console.writeLine(`Created site: ${dir}`);
+      logLine(`Created site: ${dir}`);
       return;
     }
 
     if (args.length < 2) {
-      Console.error.writeLine("Missing <path.md> for `tsumo new`");
+      logErrorLine("Missing <path.md> for `tsumo new`");
       Environment.exitCode = 2;
       return;
     }
@@ -84,7 +92,7 @@ export function main(): void {
     }
 
     const created = Tsumo.newContent(contentSourceDir, args[1]!);
-    Console.writeLine(`Created content: ${created}`);
+    logLine(`Created content: ${created}`);
     return;
   }
 
@@ -116,7 +124,7 @@ export function main(): void {
         const portText = args[i + 1]!;
         const p = parseInt(portText);
         if (p === undefined) {
-          Console.error.writeLine(`Invalid port: ${portText}`);
+          logErrorLine(`Invalid port: ${portText}`);
           Environment.exitCode = 2;
           return;
         }
@@ -151,7 +159,7 @@ export function main(): void {
   if (cmd === "build" || cmd === "gen" || cmd === "generate") {
     // fall through to build handler
   } else {
-    Console.error.writeLine(`Unknown command: ${cmd}`);
+    logErrorLine(`Unknown command: ${cmd}`);
     usage();
     Environment.exitCode = 2;
     return;
@@ -191,5 +199,5 @@ export function main(): void {
   buildReq.cleanDestinationDir = cleanDestinationDir;
 
   const result = Tsumo.build(buildReq);
-  Console.writeLine(`Built → ${result.outputDir} (${result.pagesBuilt} pages)`);
+  logLine(`Built → ${result.outputDir} (${result.pagesBuilt} pages)`);
 }

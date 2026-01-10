@@ -1,7 +1,21 @@
 {{ define "main" }}
 <article>
   <h2>{{ .Title }}</h2>
-  <p class="muted">{{ .Date }}</p>
+  <p class="muted">
+    {{ dateFormat "Jan 2, 2006" .Date }}
+    {{ with .Categories }}
+      · Categories:
+      {{ range . }}
+        <a href="{{ . | urlize | printf "/categories/%s/" | relURL }}">{{ . }}</a>
+      {{ end }}
+    {{ end }}
+    {{ with .Tags }}
+      · Tags:
+      {{ range . }}
+        <a href="{{ . | urlize | printf "/tags/%s/" | relURL }}">{{ . }}</a>
+      {{ end }}
+    {{ end }}
+  </p>
   <div class="content">
     {{ .Content }}
   </div>

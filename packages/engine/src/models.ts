@@ -38,11 +38,14 @@ export class PageContext {
   readonly title: string;
   readonly date: string;
   readonly draft: boolean;
+  readonly kind: string;
   readonly section: string;
+  readonly type: string;
   readonly slug: string;
   readonly relPermalink: string;
   readonly content: HtmlString;
   readonly summary: HtmlString;
+  readonly description: string;
   readonly tags: string[];
   readonly categories: string[];
   readonly Params: Dictionary<string, string>;
@@ -53,11 +56,14 @@ export class PageContext {
     title: string,
     date: string,
     draft: boolean,
+    kind: string,
     section: string,
+    type: string,
     slug: string,
     relPermalink: string,
     content: HtmlString,
     summary: HtmlString,
+    description: string,
     tags: string[],
     categories: string[],
     Params: Dictionary<string, string>,
@@ -67,11 +73,14 @@ export class PageContext {
     this.title = title;
     this.date = date;
     this.draft = draft;
+    this.kind = kind;
     this.section = section;
+    this.type = type;
     this.slug = slug;
     this.relPermalink = relPermalink;
     this.content = content;
     this.summary = summary;
+    this.description = description;
     this.tags = tags;
     this.categories = categories;
     this.Params = Params;
