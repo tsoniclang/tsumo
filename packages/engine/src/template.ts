@@ -197,8 +197,7 @@ export class RangeNode extends TemplateNode {
     const value = this.expr.eval(scope);
 
     if (value instanceof PageArrayValue) {
-      const pageArray = value as PageArrayValue;
-      const pages = pageArray.value;
+      const pages: PageContext[] = value.value;
       if (pages.length === 0) {
         for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
         return;
@@ -211,8 +210,7 @@ export class RangeNode extends TemplateNode {
     }
 
     if (value instanceof StringArrayValue) {
-      const stringArray = value as StringArrayValue;
-      const items = stringArray.value;
+      const items: string[] = value.value;
       if (items.length === 0) {
         for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides);
         return;
@@ -334,38 +332,31 @@ class TemplateRuntime {
     if (value instanceof NilValue) return false;
 
     if (value instanceof BoolValue) {
-      const boolValue = value as BoolValue;
-      return boolValue.value;
+      return value.value;
     }
 
     if (value instanceof NumberValue) {
-      const numberValue = value as NumberValue;
-      return numberValue.value !== 0;
+      return value.value !== 0;
     }
 
     if (value instanceof StringValue) {
-      const stringValue = value as StringValue;
-      return stringValue.value !== "";
+      return value.value !== "";
     }
 
     if (value instanceof HtmlValue) {
-      const htmlValue = value as HtmlValue;
-      return htmlValue.value.value !== "";
+      return value.value.value !== "";
     }
 
     if (value instanceof DictValue) {
-      const dictValue = value as DictValue;
-      return dictValue.value.count > 0;
+      return value.value.count > 0;
     }
 
     if (value instanceof PageArrayValue) {
-      const pageArrayValue = value as PageArrayValue;
-      return pageArrayValue.value.length > 0;
+      return value.value.length > 0;
     }
 
     if (value instanceof StringArrayValue) {
-      const stringArrayValue = value as StringArrayValue;
-      return stringArrayValue.value.length > 0;
+      return value.value.length > 0;
     }
 
     return true;
@@ -373,23 +364,19 @@ class TemplateRuntime {
 
   static toPlainString(value: TemplateValue): string {
     if (value instanceof StringValue) {
-      const stringValue = value as StringValue;
-      return stringValue.value;
+      return value.value;
     }
 
     if (value instanceof HtmlValue) {
-      const htmlValue = value as HtmlValue;
-      return htmlValue.value.value;
+      return value.value.value;
     }
 
     if (value instanceof BoolValue) {
-      const boolValue = value as BoolValue;
-      return boolValue.value ? "true" : "false";
+      return value.value ? "true" : "false";
     }
 
     if (value instanceof NumberValue) {
-      const numberValue = value as NumberValue;
-      return numberValue.value.toString();
+      return value.value.toString();
     }
 
     return "";
@@ -398,21 +385,17 @@ class TemplateRuntime {
   static stringify(value: TemplateValue, escape: boolean): string {
     if (value instanceof NilValue) return "";
     if (value instanceof HtmlValue) {
-      const htmlValue = value as HtmlValue;
-      return htmlValue.value.value;
+      return value.value.value;
     }
     if (value instanceof StringValue) {
-      const stringValue = value as StringValue;
-      const s = stringValue.value;
+      const s = value.value;
       return escape ? escapeHtml(s) : s;
     }
     if (value instanceof BoolValue) {
-      const boolValue = value as BoolValue;
-      return boolValue.value ? "true" : "false";
+      return value.value ? "true" : "false";
     }
     if (value instanceof NumberValue) {
-      const numberValue = value as NumberValue;
-      return numberValue.value.toString();
+      return value.value.toString();
     }
     return "";
   }
@@ -438,8 +421,7 @@ class TemplateRuntime {
       if (cur instanceof NilValue) return TemplateRuntime.nil;
 
       if (cur instanceof PageValue) {
-        const pageValue = cur as PageValue;
-        const page = pageValue.value;
+        const page = cur.value;
         const k = seg.toLowerInvariant();
         if (k === "title") cur = new StringValue(page.title);
         else if (k === "content") cur = new HtmlValue(page.content);
@@ -471,8 +453,7 @@ class TemplateRuntime {
       }
 
       if (cur instanceof SiteValue) {
-        const siteValue = cur as SiteValue;
-        const site = siteValue.value;
+        const site = cur.value;
         const k = seg.toLowerInvariant();
         if (k === "title") cur = new StringValue(site.title);
         else if (k === "baseurl") cur = new StringValue(site.baseURL);
@@ -484,8 +465,7 @@ class TemplateRuntime {
       }
 
       if (cur instanceof DictValue) {
-        const dictValue = cur as DictValue;
-        const dict = dictValue.value;
+        const dict = cur.value;
         let v = "";
         if (dict.tryGetValue(seg, v)) {
           cur = new StringValue(v);
@@ -598,28 +578,23 @@ class TemplateRuntime {
     if (name === "len" && args.length >= 1) {
       const v = args[0]!;
       if (v instanceof StringValue) {
-        const stringValue = v as StringValue;
-        const l: int = stringValue.value.length;
+        const l: int = v.value.length;
         return new NumberValue(l);
       }
       if (v instanceof HtmlValue) {
-        const htmlValue = v as HtmlValue;
-        const l: int = htmlValue.value.value.length;
+        const l: int = v.value.value.length;
         return new NumberValue(l);
       }
       if (v instanceof PageArrayValue) {
-        const pageArrayValue = v as PageArrayValue;
-        const l: int = pageArrayValue.value.length;
+        const l: int = v.value.length;
         return new NumberValue(l);
       }
       if (v instanceof StringArrayValue) {
-        const stringArrayValue = v as StringArrayValue;
-        const l: int = stringArrayValue.value.length;
+        const l: int = v.value.length;
         return new NumberValue(l);
       }
       if (v instanceof DictValue) {
-        const dictValue = v as DictValue;
-        return new NumberValue(dictValue.value.count);
+        return new NumberValue(v.value.count);
       }
       return new NumberValue(0);
     }
@@ -685,12 +660,16 @@ class TemplateRuntime {
         const b = args[1]!;
 
         let cmp = 0;
-        if (a instanceof NumberValue && b instanceof NumberValue) {
-          const aNum = a as NumberValue;
-          const bNum = b as NumberValue;
-          const av = aNum.value;
-          const bv = bNum.value;
-          cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        if (a instanceof NumberValue) {
+          if (b instanceof NumberValue) {
+            const av = a.value;
+            const bv = b.value;
+            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          } else {
+            const av = TemplateRuntime.toPlainString(a);
+            const bv = TemplateRuntime.toPlainString(b);
+            cmp = av.compareTo(bv);
+          }
         } else {
           const av = TemplateRuntime.toPlainString(a);
           const bv = TemplateRuntime.toPlainString(b);
