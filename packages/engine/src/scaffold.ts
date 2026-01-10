@@ -1,4 +1,4 @@
-import { Char, DateTime, Exception } from "@tsonic/dotnet/System.js";
+import { DateTime, Exception } from "@tsonic/dotnet/System.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import type { char } from "@tsonic/core/types.js";
 import { ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.ts";
@@ -214,7 +214,7 @@ export const newContent = (siteDir: string, contentPathRaw: string): string => {
   const dir = Path.getFullPath(siteDir);
   const contentDir = Path.combine(dir, "content");
 
-  const slash: char = Char.parse("/");
+  const slash: char = "/";
   const rel = contentPathRaw.trimStart(slash).trim();
   const withExt = rel.toLowerInvariant().endsWith(".md") ? rel : rel + ".md";
   const dest = Path.combine(contentDir, withExt.replace(slash, Path.directorySeparatorChar));

@@ -1,4 +1,3 @@
-import { Char } from "@tsonic/dotnet/System.js";
 import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Path } from "@tsonic/dotnet/System.IO.js";
 import type { char } from "@tsonic/core/types.js";
@@ -18,7 +17,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
   }
 
   override getTemplate(relPathRaw: string): Template | undefined {
-    const slash: char = Char.parse("/");
+    const slash: char = "/";
     const relPath = relPathRaw.trimStart(slash).trim();
     const withExt = relPath.endsWith(".html") ? relPath : relPath + ".html";
     const relOs = withExt.replace(slash, Path.directorySeparatorChar);

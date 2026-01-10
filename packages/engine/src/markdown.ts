@@ -27,14 +27,14 @@ const pipeline = createPipeline();
 const normalizeNewlines = (text: string): string => text.replaceLineEndings("\n");
 
 const summaryMarker = "<!--more-->";
-const summaryMarkerLength: int = summaryMarker.length;
+const summaryMarkerLength = summaryMarker.length;
 
 const findSummaryDividerIndex = (markdown: string): int => indexOfTextIgnoreCase(markdown, summaryMarker);
 
 const firstBlock = (markdown: string): string => {
   const text = markdown.trim();
   if (text === "") return "";
-  const idx: int = indexOfText(text, "\n\n");
+  const idx = indexOfText(text, "\n\n");
   return idx >= 0 ? text.substring(0, idx) : text;
 };
 
