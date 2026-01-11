@@ -306,19 +306,35 @@ const parseYamlConfig = (text: string): SiteConfig => {
   let theme: string | undefined = undefined;
   let copyright: string | undefined = undefined;
   const params = new Dictionary<string, ParamValue>();
+  const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
 
   const lines = text.replaceLineEndings("\n").split("\n");
 
   let inParams = false;
+  let inMenu = false;
+  let currentMenuName = "";
+  let currentMenuEntry: MenuEntryBuilder | undefined = undefined;
+
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
     const line = raw.trim();
     if (line === "" || line.startsWith("#")) continue;
 
-    if (!raw.startsWith(" ")) inParams = false;
+    // Check for top-level sections
+    if (!raw.startsWith(" ")) {
+      inParams = false;
+      inMenu = false;
+      currentMenuName = "";
+      currentMenuEntry = undefined;
+    }
 
     if (!raw.startsWith(" ") && line.toLowerInvariant() === "params:") {
       inParams = true;
+      continue;
+    }
+
+    if (!raw.startsWith(" ") && line.toLowerInvariant() === "menu:") {
+      inMenu = true;
       continue;
     }
 
@@ -329,6 +345,69 @@ const parseYamlConfig = (text: string): SiteConfig => {
       params.remove(key);
       params.add(key, ParamValue.parseScalar(val));
       continue;
+    }
+
+    // Parse menu entries (YAML format: menu: main: - name: ...)
+    if (inMenu) {
+      // Menu name at 2 spaces indent (e.g., "  main:")
+      if (raw.startsWith("  ") && !raw.startsWith("    ") && line.endsWith(":")) {
+        currentMenuName = line.substring(0, line.length - 1).trim();
+        if (!menuBuilders.containsKey(currentMenuName)) {
+          menuBuilders.add(currentMenuName, new List<MenuEntryBuilder>());
+        }
+        currentMenuEntry = undefined;
+        continue;
+      }
+
+      // New menu entry at 4 spaces indent starting with "-"
+      if (raw.startsWith("    ") && !raw.startsWith("      ") && line.startsWith("-") && currentMenuName !== "") {
+        currentMenuEntry = new MenuEntryBuilder(currentMenuName);
+        let entries = new List<MenuEntryBuilder>();
+        if (menuBuilders.tryGetValue(currentMenuName, entries)) {
+          entries.add(currentMenuEntry);
+        }
+
+        // Check for inline entry (e.g., "    - name: About")
+        const rest = line.substring(1).trim();
+        if (rest.contains(":")) {
+          const colonIdx = rest.indexOf(":");
+          const propKey = rest.substring(0, colonIdx).trim().toLowerInvariant();
+          const propVal = unquote(rest.substring(colonIdx + 1).trim());
+          if (propKey === "name") currentMenuEntry.name = propVal;
+          else if (propKey === "url") currentMenuEntry.url = propVal;
+          else if (propKey === "pageref") currentMenuEntry.pageRef = propVal;
+          else if (propKey === "title") currentMenuEntry.title = propVal;
+          else if (propKey === "parent") currentMenuEntry.parent = propVal;
+          else if (propKey === "identifier") currentMenuEntry.identifier = propVal;
+          else if (propKey === "pre") currentMenuEntry.pre = propVal;
+          else if (propKey === "post") currentMenuEntry.post = propVal;
+          else if (propKey === "weight") {
+            const parsed: int = 0;
+            if (Int32.tryParse(propVal, parsed)) currentMenuEntry.weight = parsed;
+          }
+        }
+        continue;
+      }
+
+      // Menu entry properties at 6 spaces indent
+      if (raw.startsWith("      ") && currentMenuEntry !== undefined && line.contains(":")) {
+        const colonIdx = line.indexOf(":");
+        const propKey = line.substring(0, colonIdx).trim().toLowerInvariant();
+        const propVal = unquote(line.substring(colonIdx + 1).trim());
+        if (propKey === "name") currentMenuEntry.name = propVal;
+        else if (propKey === "url") currentMenuEntry.url = propVal;
+        else if (propKey === "pageref") currentMenuEntry.pageRef = propVal;
+        else if (propKey === "title") currentMenuEntry.title = propVal;
+        else if (propKey === "parent") currentMenuEntry.parent = propVal;
+        else if (propKey === "identifier") currentMenuEntry.identifier = propVal;
+        else if (propKey === "pre") currentMenuEntry.pre = propVal;
+        else if (propKey === "post") currentMenuEntry.post = propVal;
+        else if (propKey === "weight") {
+          const parsed: int = 0;
+          if (Int32.tryParse(propVal, parsed)) currentMenuEntry.weight = parsed;
+        }
+        continue;
+      }
     }
 
     if (!raw.startsWith(" ") && line.contains(":")) {
@@ -348,6 +427,22 @@ const parseYamlConfig = (text: string): SiteConfig => {
   const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
   config.contentDir = contentDir;
   config.Params = params;
+
+  // Build menus from parsed entries
+  const menuKeysIt = menuBuilders.keys.getEnumerator();
+  while (menuKeysIt.moveNext()) {
+    const menuName = menuKeysIt.current;
+    const builders = new List<MenuEntryBuilder>();
+    const hasBuilders = menuBuilders.tryGetValue(menuName, builders);
+    if (hasBuilders) {
+      const entries = new List<MenuEntry>();
+      const buildersArr = builders.toArray();
+      for (let j = 0; j < buildersArr.length; j++) entries.add(buildersArr[j]!.toEntry());
+      config.Menus.remove(menuName);
+      config.Menus.add(menuName, buildMenuHierarchy(entries.toArray()));
+    }
+  }
+
   return config;
 };
 

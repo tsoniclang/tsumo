@@ -2,12 +2,12 @@ import { DateTime } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import type { char, int } from "@tsonic/core/types.js";
-import { BuildRequest, BuildResult, PageContext, PageFile, SiteContext, SiteConfig } from "./models.ts";
+import { BuildRequest, BuildResult, LanguageContext, MenuEntry, PageContext, PageFile, SiteContext, SiteConfig } from "./models.ts";
 import { ParamValue } from "./params.ts";
 import { renderRobotsTxt, renderRss, renderSitemap } from "./outputs.ts";
 import { loadSiteConfig } from "./config.ts";
 import { loadDocsConfig } from "./docs/config.ts";
-import { parseContent } from "./frontmatter.ts";
+import { parseContent, FrontMatterMenu } from "./frontmatter.ts";
 import { copyDirRecursive, deleteDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.ts";
 import { BuildEnvironment } from "./env.ts";
 import { renderMarkdown } from "./markdown.ts";
@@ -38,6 +38,7 @@ class ContentPageBuild {
   readonly outputRelPath: string;
   readonly layout: string | undefined;
   readonly file: PageFile;
+  readonly menus: FrontMatterMenu[];
 
   constructor(
     sourcePath: string,
@@ -61,6 +62,7 @@ class ContentPageBuild {
     outputRelPath: string,
     layout: string | undefined,
     file: PageFile,
+    menus: FrontMatterMenu[],
   ) {
     this.sourcePath = sourcePath;
     this.section = section;
@@ -83,6 +85,7 @@ class ContentPageBuild {
     this.outputRelPath = outputRelPath;
     this.layout = layout;
     this.file = file;
+    this.menus = menus;
   }
 }
 
@@ -188,6 +191,117 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
     const childName = Path.getFileName(child);
     if (childName === undefined || childName === "") continue;
     copyBundleResources(child, Path.combine(destDir, childName));
+  }
+};
+
+// Find a page by its path reference
+const findPageByRef = (pages: PageContext[], pageRef: string): PageContext | undefined => {
+  const slash: char = "/";
+  const normalizedRef = pageRef.trim().trimStart(slash).trimEnd(slash).toLowerInvariant();
+  if (normalizedRef === "") return undefined;
+
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]!;
+    const normalizedPermalink = page.relPermalink.trimStart(slash).trimEnd(slash).toLowerInvariant();
+    if (normalizedPermalink === normalizedRef) return page;
+  }
+
+  // Also try matching by section/slug pattern
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]!;
+    // Check if pageRef matches the slug
+    if (page.slug.toLowerInvariant() === normalizedRef) return page;
+    // Check section/slug pattern
+    const sectionSlug = (page.section + "/" + page.slug).toLowerInvariant();
+    if (sectionSlug === normalizedRef) return page;
+  }
+
+  return undefined;
+};
+
+// Resolve pageRef for a menu entry and its children recursively
+const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void => {
+  if (entry.pageRef !== "" && entry.page === undefined) {
+    const resolved = findPageByRef(pages, entry.pageRef);
+    if (resolved !== undefined) {
+      entry.page = resolved;
+    }
+  }
+  // Resolve children recursively
+  for (let i = 0; i < entry.children.length; i++) {
+    resolveMenuEntryPageRef(entry.children[i]!, pages);
+  }
+};
+
+// Resolve pageRefs for all menu entries in a site
+const resolveMenuPageRefs = (site: SiteContext): void => {
+  const pages = site.pages;
+  const menus = site.Menus;
+  const menuKeys = menus.keys.getEnumerator();
+  while (menuKeys.moveNext()) {
+    const menuName = menuKeys.current;
+    let entries: MenuEntry[] = [];
+    const hasEntries = menus.tryGetValue(menuName, entries);
+    if (hasEntries) {
+      for (let i = 0; i < entries.length; i++) {
+        resolveMenuEntryPageRef(entries[i]!, pages);
+      }
+    }
+  }
+  menuKeys.dispose();
+};
+
+// Integrate frontmatter menus into site.Menus
+const integrateFrontmatterMenus = (
+  pageBuilds: ContentPageBuild[],
+  pageContexts: PageContext[],
+  site: SiteContext,
+): void => {
+  // Map page builds to contexts by index (they're in the same order)
+  for (let i = 0; i < pageBuilds.length; i++) {
+    const pageBuild = pageBuilds[i]!;
+    const pageContext = pageContexts[i]!;
+
+    for (let j = 0; j < pageBuild.menus.length; j++) {
+      const fmMenu = pageBuild.menus[j]!;
+      const menuName = fmMenu.menu;
+
+      // Create MenuEntry from frontmatter menu with page reference
+      const entry = new MenuEntry(
+        fmMenu.name !== "" ? fmMenu.name : pageContext.title,
+        "", // url is empty - will use page's relPermalink
+        "", // pageRef is empty - we have the page directly
+        fmMenu.title,
+        fmMenu.weight,
+        fmMenu.parent,
+        fmMenu.identifier !== "" ? fmMenu.identifier : pageContext.relPermalink,
+        fmMenu.pre,
+        fmMenu.post,
+        menuName,
+      );
+      entry.page = pageContext;
+
+      // Get or create menu entries list
+      let entries: MenuEntry[] = [];
+      const hasMenu = site.Menus.tryGetValue(menuName, entries);
+      if (!hasMenu) {
+        const emptyEntries: MenuEntry[] = [];
+        entries = emptyEntries;
+        site.Menus.add(menuName, entries);
+      }
+
+      // Add entry to the menu (will be sorted later)
+      const newEntries = new List<MenuEntry>();
+      for (let k = 0; k < entries.length; k++) newEntries.add(entries[k]!);
+      newEntries.add(entry);
+
+      // Sort by weight
+      newEntries.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+
+      // Update the menu
+      site.Menus.remove(menuName);
+      site.Menus.add(menuName, newEntries.toArray());
+    }
   }
 };
 
@@ -309,6 +423,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       outputRelPath,
       fm.layout,
       file,
+      fm.menus,
     );
 
     if (!page.draft || request.buildDrafts) pages.add(page);
@@ -319,7 +434,25 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const emptyPages: PageContext[] = [];
   const emptyTranslations: PageContext[] = [];
   const emptyStrings: string[] = [];
-  const site = new SiteContext(config, emptyPages);
+
+  // Build language contexts for multilingual support
+  const allLanguages = new List<LanguageContext>();
+  if (config.languages.length > 0) {
+    for (let i = 0; i < config.languages.length; i++) {
+      const langConfig = config.languages[i]!;
+      allLanguages.add(new LanguageContext(langConfig.lang, langConfig.languageName, langConfig.languageDirection));
+    }
+  }
+
+  // Create site with multilingual settings
+  // For now, build the default (first) language; full multilingual build will iterate through all
+  const currentLang = config.languages.length > 0 ? config.languages[0] : undefined;
+  const site = new SiteContext(config, emptyPages, currentLang, allLanguages.count > 0 ? allLanguages.toArray() : undefined);
+
+  // Set up Sites array (for now, just this site; full implementation would have all language sites)
+  const allSites: SiteContext[] = [site];
+  site.Sites = allSites;
+
   const pageContexts = new List<PageContext>();
   const bySection = new Dictionary<string, List<PageContext>>();
 
@@ -368,6 +501,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   const pageContextArr = pageContexts.toArray();
   site.pages = pageContextArr;
+
+  // Integrate frontmatter menus into site.Menus
+  integrateFrontmatterMenus(pageBuilds, pageContextArr, site);
+
+  // Resolve pageRef for menu entries
+  resolveMenuPageRefs(site);
 
   const baseCandidates = ["_default/baseof.html"];
 

@@ -12,7 +12,7 @@ import { indexOfTextFrom, replaceText } from "./utils/strings.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
 import { LanguageContext, MediaType, MenuEntry, OutputFormat, PageContext, PageFile, SiteContext } from "./models.ts";
 import type { DocsMountContext, NavItem } from "./docs/models.ts";
-import { markdownPipeline } from "./markdown.ts";
+import { markdownPipeline, renderMarkdownWithShortcodes } from "./markdown.ts";
 import { ParamKind, ParamValue } from "./params.ts";
 import { Resource, ResourceData } from "./resources.ts";
 import type { ResourceManager } from "./resources.ts";
@@ -198,6 +198,15 @@ class StringArrayValue extends TemplateValue {
   readonly value: string[];
 
   constructor(value: string[]) {
+    super();
+    this.value = value;
+  }
+}
+
+class SitesArrayValue extends TemplateValue {
+  readonly value: SiteContext[];
+
+  constructor(value: SiteContext[]) {
     super();
     this.value = value;
   }
@@ -705,6 +714,22 @@ export class RangeNode extends TemplateNode {
       return;
     }
 
+    if (value instanceof SitesArrayValue) {
+      const sites: SiteContext[] = value.value;
+      if (sites.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+        return;
+      }
+      for (let i = 0; i < sites.length; i++) {
+        const itemValue = new SiteValue(sites[i]!);
+        const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
+        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
+        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        this.renderBody(sb, valueScope, env, overrides, defines);
+      }
+      return;
+    }
+
     if (value instanceof MenuArrayValue) {
       const items: MenuEntry[] = value.value;
       const site = value.site;
@@ -922,6 +947,7 @@ class TemplateRuntime {
     if (value instanceof DictValue) return value.value.count > 0;
     if (value instanceof PageArrayValue) return value.value.length > 0;
     if (value instanceof StringArrayValue) return value.value.length > 0;
+    if (value instanceof SitesArrayValue) return value.value.length > 0;
     if (value instanceof DocsMountArrayValue) return value.value.length > 0;
     if (value instanceof NavArrayValue) return value.value.length > 0;
     if (value instanceof AnyArrayValue) return value.value.count > 0;
@@ -1052,6 +1078,8 @@ class TemplateRuntime {
         else if (k === "copyright") cur = new StringValue(site.copyright);
         else if (k === "language") cur = new LanguageValue(site.Language);
         else if (k === "languages") cur = TemplateRuntime.wrapLanguages(site.Languages);
+        else if (k === "ismultilingual") cur = new BoolValue(site.IsMultiLingual);
+        else if (k === "languageprefix") cur = new StringValue(site.LanguagePrefix);
         else if (k === "home") cur = site.home !== undefined ? new PageValue(site.home) : TemplateRuntime.nil;
         else if (k === "allpages") cur = new PageArrayValue(site.allPages);
         else if (k === "store") cur = new ScratchValue(TemplateRuntime.getSiteStore(site));
@@ -1061,6 +1089,7 @@ class TemplateRuntime {
         else if (k === "menus") cur = new MenusValue(site);
         else if (k === "taxonomies") cur = new TaxonomiesValue(site);
         else if (k === "outputformats") cur = new OutputFormatsValue(site);
+        else if (k === "sites") cur = new SitesArrayValue(site.Sites);
         else cur = TemplateRuntime.nil;
         continue;
       }
@@ -1783,7 +1812,9 @@ class TemplateRuntime {
 
         if (method === "renderstring" && args.length >= 1) {
           const markdown = TemplateRuntime.toPlainString(args[0]!);
-          return new HtmlValue(new HtmlString(Markdown.toHtml(markdown, markdownPipeline)));
+          // Use full markdown rendering with shortcodes and render hooks
+          const result = renderMarkdownWithShortcodes(markdown, page, scope.site, env);
+          return new HtmlValue(new HtmlString(result.html));
         }
 
         if (method === "getpage" && args.length >= 1) {
@@ -2395,6 +2426,10 @@ class TemplateRuntime {
         return new NumberValue(l);
       }
       if (v instanceof StringArrayValue) {
+        const l: int = v.value.length;
+        return new NumberValue(l);
+      }
+      if (v instanceof SitesArrayValue) {
         const l: int = v.value.length;
         return new NumberValue(l);
       }

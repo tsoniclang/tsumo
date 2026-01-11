@@ -8,7 +8,7 @@ import { ParamValue } from "./params.ts";
 export class FrontMatterMenu {
   readonly menu: string;
   name: string;
-  weight: number;
+  weight: int;
   parent: string;
   identifier: string;
   pre: string;

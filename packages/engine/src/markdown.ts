@@ -222,7 +222,30 @@ const escapeHtmlText = (text: string): string => {
   return result;
 };
 
-// Render hook helpers
+// Render hook context for passing to Markdig renderer interceptors
+class RenderHookContext {
+  readonly page: PageContext;
+  readonly site: SiteContext;
+  readonly env: TemplateEnvironment;
+  readonly linkHook: Template | undefined;
+  readonly imageHook: Template | undefined;
+  readonly headingHook: Template | undefined;
+
+  constructor(page: PageContext, site: SiteContext, env: TemplateEnvironment) {
+    this.page = page;
+    this.site = site;
+    this.env = env;
+    this.linkHook = env.getRenderHookTemplate("render-link");
+    this.imageHook = env.getRenderHookTemplate("render-image");
+    this.headingHook = env.getRenderHookTemplate("render-heading");
+  }
+
+  hasAnyHooks(): boolean {
+    return this.linkHook !== undefined || this.imageHook !== undefined || this.headingHook !== undefined;
+  }
+}
+
+// Render hook template helpers
 const renderLinkHookTemplate = (
   template: Template,
   hookValue: LinkHookValue,
@@ -291,24 +314,21 @@ const parseAttr = (tag: string, attrName: string): string => {
 };
 
 // Apply render hooks to rendered HTML
+// Note: Ideally we'd use Markdig's tryWriters for proper AST-level interception,
+// but Tsonic's current transpilation doesn't support lambdas as delegate arguments.
+// This HTML post-processing approach works reliably as a fallback.
 const applyRenderHooks = (
   html: string,
-  page: PageContext,
-  site: SiteContext,
-  env: TemplateEnvironment,
+  hookCtx: RenderHookContext,
 ): string => {
-  const linkHook = env.getRenderHookTemplate("render-link");
-  const imageHook = env.getRenderHookTemplate("render-image");
-  const headingHook = env.getRenderHookTemplate("render-heading");
-
-  if (linkHook === undefined && imageHook === undefined && headingHook === undefined) {
+  if (!hookCtx.hasAnyHooks()) {
     return html;
   }
 
   let result = html;
 
   // Apply heading hooks - match <h1-6 id="...">...</h1-6>
-  if (headingHook !== undefined) {
+  if (hookCtx.headingHook !== undefined) {
     for (let level = 1; level <= 6; level++) {
       const levelStr = level.toString();
       const openTag = `<h${levelStr}`;
@@ -319,7 +339,6 @@ const applyRenderHooks = (
         if (startIdx < 0) break;
         const endIdx = result.indexOf(closeTag, startIdx);
         if (endIdx < 0) break;
-        const fullMatch = result.substring(startIdx, endIdx - startIdx + closeTag.length);
         const tagEndIdx = result.indexOf(">", startIdx);
         if (tagEndIdx < 0 || tagEndIdx > endIdx) {
           searchIdx = startIdx + 1;
@@ -329,9 +348,9 @@ const applyRenderHooks = (
         const anchor = parseAttr(tagPart, "id");
         const innerHtml = result.substring(tagEndIdx + 1, endIdx - tagEndIdx - 1);
         const plainText = extractTextFromHtml(innerHtml);
-        const ctx = new HeadingHookContext(level, innerHtml, plainText, anchor, page);
+        const ctx = new HeadingHookContext(level, innerHtml, plainText, anchor, hookCtx.page);
         const hookValue = new HeadingHookValue(ctx);
-        const hookHtml = renderHeadingHookTemplate(headingHook, hookValue, site, env);
+        const hookHtml = renderHeadingHookTemplate(hookCtx.headingHook, hookValue, hookCtx.site, hookCtx.env);
         result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx + closeTag.length);
         searchIdx = startIdx + hookHtml.length;
       }
@@ -339,7 +358,7 @@ const applyRenderHooks = (
   }
 
   // Apply image hooks - match <img src="..." alt="..." title="..." />
-  if (imageHook !== undefined) {
+  if (hookCtx.imageHook !== undefined) {
     let searchIdx = 0;
     while (true) {
       const startIdx = result.indexOf("<img ", searchIdx);
@@ -356,23 +375,22 @@ const applyRenderHooks = (
       const src = parseAttr(fullMatch, "src");
       const alt = parseAttr(fullMatch, "alt");
       const title = parseAttr(fullMatch, "title");
-      const ctx = new ImageHookContext(src, alt, title, alt, page);
+      const ctx = new ImageHookContext(src, alt, title, alt, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
-      const hookHtml = renderImageHookTemplate(imageHook, hookValue, site, env);
+      const hookHtml = renderImageHookTemplate(hookCtx.imageHook, hookValue, hookCtx.site, hookCtx.env);
       result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx);
       searchIdx = startIdx + hookHtml.length;
     }
   }
 
   // Apply link hooks - match <a href="...">...</a>
-  if (linkHook !== undefined) {
+  if (hookCtx.linkHook !== undefined) {
     let searchIdx = 0;
     while (true) {
       const startIdx = result.indexOf("<a ", searchIdx);
       if (startIdx < 0) break;
       const endIdx = result.indexOf("</a>", startIdx);
       if (endIdx < 0) break;
-      const fullMatch = result.substring(startIdx, endIdx - startIdx + 4);
       const tagEndIdx = result.indexOf(">", startIdx);
       if (tagEndIdx < 0 || tagEndIdx > endIdx) {
         searchIdx = startIdx + 1;
@@ -383,15 +401,25 @@ const applyRenderHooks = (
       const title = parseAttr(tagPart, "title");
       const innerHtml = result.substring(tagEndIdx + 1, endIdx - tagEndIdx - 1);
       const plainText = extractTextFromHtml(innerHtml);
-      const ctx = new LinkHookContext(href, innerHtml, title, plainText, page);
+      const ctx = new LinkHookContext(href, innerHtml, title, plainText, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
-      const hookHtml = renderLinkHookTemplate(linkHook, hookValue, site, env);
+      const hookHtml = renderLinkHookTemplate(hookCtx.linkHook, hookValue, hookCtx.site, hookCtx.env);
       result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx + 4);
       searchIdx = startIdx + hookHtml.length;
     }
   }
 
   return result;
+};
+
+// Render markdown with hook support
+const renderMarkdownWithHooks = (
+  markdown: string,
+  hookCtx: RenderHookContext,
+): string => {
+  // Use standard Markdig rendering, then apply hooks via HTML post-processing
+  const html = Markdown.toHtml(markdown, markdownPipeline);
+  return applyRenderHooks(html, hookCtx);
 };
 
 // Shortcode execution
@@ -558,7 +586,10 @@ export const renderMarkdownWithShortcodes = (
   // Step 2: Generate TOC from text after markdown shortcodes (but before standard shortcodes)
   const toc = generateTableOfContents(textAfterMarkdownShortcodes);
 
-  // Step 3: Render markdown
+  // Step 3: Create render hook context
+  const hookCtx = new RenderHookContext(page, site, env);
+
+  // Step 4: Render markdown with hooks (proper Markdig renderer extension approach)
   const moreIndex = findSummaryDividerIndex(textAfterMarkdownShortcodes);
   let html: string;
   let summaryHtml: string;
@@ -568,19 +599,31 @@ export const renderMarkdownWithShortcodes = (
     const before = textAfterMarkdownShortcodes.substring(0, moreIndex);
     const after = textAfterMarkdownShortcodes.substring(moreIndex + summaryMarkerLength);
     const full = before + after;
-    html = Markdown.toHtml(full, markdownPipeline);
-    summaryHtml = Markdown.toHtml(before, markdownPipeline).trim();
+    // Use hook-aware rendering if hooks are present, otherwise use standard rendering
+    if (hookCtx.hasAnyHooks()) {
+      html = renderMarkdownWithHooks(full, hookCtx);
+      summaryHtml = renderMarkdownWithHooks(before, hookCtx).trim();
+    } else {
+      html = Markdown.toHtml(full, markdownPipeline);
+      summaryHtml = Markdown.toHtml(before, markdownPipeline).trim();
+    }
     plainText = Markdown.toPlainText(full, markdownPipeline);
   } else {
-    html = Markdown.toHtml(textAfterMarkdownShortcodes, markdownPipeline);
+    if (hookCtx.hasAnyHooks()) {
+      html = renderMarkdownWithHooks(textAfterMarkdownShortcodes, hookCtx);
+    } else {
+      html = Markdown.toHtml(textAfterMarkdownShortcodes, markdownPipeline);
+    }
     plainText = Markdown.toPlainText(textAfterMarkdownShortcodes, markdownPipeline);
     const summarySource = firstBlock(textAfterMarkdownShortcodes);
-    summaryHtml = summarySource === "" ? "" : Markdown.toHtml(summarySource, markdownPipeline).trim();
+    if (summarySource === "") {
+      summaryHtml = "";
+    } else if (hookCtx.hasAnyHooks()) {
+      summaryHtml = renderMarkdownWithHooks(summarySource, hookCtx).trim();
+    } else {
+      summaryHtml = Markdown.toHtml(summarySource, markdownPipeline).trim();
+    }
   }
-
-  // Step 4: Apply render hooks (render-link, render-image, render-heading)
-  html = applyRenderHooks(html, page, site, env);
-  summaryHtml = applyRenderHooks(summaryHtml, page, site, env);
 
   // Step 5: Process standard-notation shortcodes ({{< ... >}}) AFTER markdown rendering
   const htmlCalls = parseShortcodes(html);

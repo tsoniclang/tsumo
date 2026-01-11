@@ -141,6 +141,8 @@ export class SiteContext {
   readonly copyright: string;
   readonly Language: LanguageContext;
   readonly Languages: LanguageContext[];
+  readonly IsMultiLingual: boolean;
+  readonly LanguagePrefix: string;
   readonly Params: Dictionary<string, ParamValue>;
   readonly Menus: Dictionary<string, MenuEntry[]>;
   readonly Taxonomies: Dictionary<string, Dictionary<string, PageContext[]>>;
@@ -149,18 +151,38 @@ export class SiteContext {
   allPages: PageContext[];
   home: PageContext | undefined;
   docsMounts: DocsMountContext[];
+  Sites: SiteContext[];
 
-  constructor(config: SiteConfig, pages: PageContext[]) {
+  constructor(config: SiteConfig, pages: PageContext[], language?: LanguageConfig, allLanguages?: LanguageContext[]) {
     this.title = config.title;
     this.baseURL = config.baseURL;
-    this.languageCode = config.languageCode;
     this.copyright = config.copyright ?? "";
-    const lang = config.languages.length > 0 ? config.languages[0]!.lang : (config.languageCode.trim() === "" ? "en" : config.languageCode);
-    const name = config.languages.length > 0 ? config.languages[0]!.languageName : lang;
-    const dir = config.languages.length > 0 ? config.languages[0]!.languageDirection : "ltr";
-    this.Language = new LanguageContext(lang, name, dir);
-    const langs: LanguageContext[] = [this.Language];
-    this.Languages = langs;
+
+    // Set language from explicit parameter or config
+    if (language !== undefined) {
+      this.Language = new LanguageContext(language.lang, language.languageName, language.languageDirection);
+      this.languageCode = language.lang;
+    } else {
+      const lang = config.languages.length > 0 ? config.languages[0]!.lang : (config.languageCode.trim() === "" ? "en" : config.languageCode);
+      const name = config.languages.length > 0 ? config.languages[0]!.languageName : lang;
+      const dir = config.languages.length > 0 ? config.languages[0]!.languageDirection : "ltr";
+      this.Language = new LanguageContext(lang, name, dir);
+      this.languageCode = config.languageCode;
+    }
+
+    // Set all languages
+    if (allLanguages !== undefined && allLanguages.length > 0) {
+      this.Languages = allLanguages;
+      this.IsMultiLingual = allLanguages.length > 1;
+    } else {
+      const langs: LanguageContext[] = [this.Language];
+      this.Languages = langs;
+      this.IsMultiLingual = false;
+    }
+
+    // Set language prefix (e.g., "/fr" for non-default language)
+    this.LanguagePrefix = "";
+
     this.Params = config.Params;
     this.Menus = config.Menus;
     this.Taxonomies = new Dictionary<string, Dictionary<string, PageContext[]>>();
@@ -170,6 +192,8 @@ export class SiteContext {
     this.home = undefined;
     const empty: DocsMountContext[] = [];
     this.docsMounts = empty;
+    const emptySites: SiteContext[] = [];
+    this.Sites = emptySites;
   }
 
   getOutputFormats(): OutputFormat[] {
