@@ -2,15 +2,19 @@ import { DateTime } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import type { char, int } from "@tsonic/core/types.js";
-import { BuildRequest, BuildResult, PageContext, SiteContext, SiteConfig } from "./models.ts";
+import { BuildRequest, BuildResult, PageContext, PageFile, SiteContext, SiteConfig } from "./models.ts";
+import { ParamValue } from "./params.ts";
 import { renderRobotsTxt, renderRss, renderSitemap } from "./outputs.ts";
 import { loadSiteConfig } from "./config.ts";
+import { loadDocsConfig } from "./docs/config.ts";
 import { parseContent } from "./frontmatter.ts";
 import { copyDirRecursive, deleteDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.ts";
-import { LayoutEnvironment } from "./layouts.ts";
+import { BuildEnvironment } from "./env.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { HtmlString } from "./utils/html.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
+import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.ts";
+import { buildDocsSite } from "./docs/builder.ts";
 
 class ContentPageBuild {
   readonly sourcePath: string;
@@ -20,16 +24,20 @@ class ContentPageBuild {
   readonly title: string;
   readonly dateUtc: DateTime;
   readonly dateString: string;
+  readonly lastmodString: string;
   readonly draft: boolean;
   readonly description: string;
   readonly tags: string[];
   readonly categories: string[];
-  readonly Params: Dictionary<string, string>;
+  readonly Params: Dictionary<string, ParamValue>;
   readonly content: HtmlString;
   readonly summary: HtmlString;
+  readonly tableOfContents: HtmlString;
+  readonly plain: string;
   readonly relPermalink: string;
   readonly outputRelPath: string;
   readonly layout: string | undefined;
+  readonly file: PageFile;
 
   constructor(
     sourcePath: string,
@@ -39,16 +47,20 @@ class ContentPageBuild {
     title: string,
     dateUtc: DateTime,
     dateString: string,
+    lastmodString: string,
     draft: boolean,
     description: string,
     tags: string[],
     categories: string[],
-    parameters: Dictionary<string, string>,
+    parameters: Dictionary<string, ParamValue>,
     content: HtmlString,
     summary: HtmlString,
+    tableOfContents: HtmlString,
+    plain: string,
     relPermalink: string,
     outputRelPath: string,
     layout: string | undefined,
+    file: PageFile,
   ) {
     this.sourcePath = sourcePath;
     this.section = section;
@@ -57,6 +69,7 @@ class ContentPageBuild {
     this.title = title;
     this.dateUtc = dateUtc;
     this.dateString = dateString;
+    this.lastmodString = lastmodString;
     this.draft = draft;
     this.description = description;
     this.tags = tags;
@@ -64,9 +77,12 @@ class ContentPageBuild {
     this.Params = parameters;
     this.content = content;
     this.summary = summary;
+    this.tableOfContents = tableOfContents;
+    this.plain = plain;
     this.relPermalink = relPermalink;
     this.outputRelPath = outputRelPath;
     this.layout = layout;
+    this.file = file;
   }
 }
 
@@ -74,27 +90,39 @@ class ListPageContent {
   readonly title: string | undefined;
   readonly content: HtmlString;
   readonly summary: HtmlString;
+  readonly tableOfContents: HtmlString;
+  readonly plain: string;
   readonly description: string;
   readonly type: string | undefined;
-  readonly Params: Dictionary<string, string>;
+  readonly layout: string | undefined;
+  readonly Params: Dictionary<string, ParamValue>;
   readonly sourceDir: string;
+  readonly file: PageFile | undefined;
 
   constructor(
     title: string | undefined,
     content: HtmlString,
     summary: HtmlString,
+    tableOfContents: HtmlString,
+    plain: string,
     description: string,
     type: string | undefined,
-    parameters: Dictionary<string, string>,
+    layout: string | undefined,
+    parameters: Dictionary<string, ParamValue>,
     sourceDir: string,
+    file?: PageFile,
   ) {
     this.title = title;
     this.content = content;
     this.summary = summary;
+    this.tableOfContents = tableOfContents;
+    this.plain = plain;
     this.description = description;
     this.type = type;
+    this.layout = layout;
     this.Params = parameters;
     this.sourceDir = sourceDir;
+    this.file = file;
   }
 }
 
@@ -109,6 +137,12 @@ const isLeafBundleIndexFile = (name: string): boolean => name.toLowerInvariant()
 const withoutMdExtension = (fileName: string): string => {
   const lower = fileName.toLowerInvariant();
   return lower.endsWith(".md") ? fileName.substring(0, fileName.length - 3) : fileName;
+};
+
+const buildPageFile = (dirKey: string, fileName: string, filePath: string): PageFile => {
+  const slash: char = "/";
+  const dir = dirKey === "" ? "" : dirKey.trimEnd(slash) + "/";
+  return new PageFile(Path.getFullPath(filePath), dir, withoutMdExtension(fileName));
 };
 
 const joinUrlPath = (parts: string[]): string => {
@@ -157,55 +191,10 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
   }
 };
 
-const combineUrl = (parts: string[]): string => {
-  const slash: char = "/";
-  const sb = new List<string>();
-  for (let i = 0; i < parts.length; i++) {
-    const p = parts[i]!.trim();
-    if (p !== "") sb.add(p.trimStart(slash).trimEnd(slash));
-  }
-  const arr = sb.toArray();
-  let out = "/";
-  for (let i = 0; i < arr.length; i++) {
-    out += arr[i]!;
-    if (!out.endsWith("/")) out += "/";
-  }
-  return out === "//" ? "/" : out;
-};
-
-const resolveThemeDir = (siteDir: string, config: SiteConfig): string | undefined => {
-  if (config.theme === undefined) return undefined;
-  const themeName = config.theme.trim();
-  if (themeName === "") return undefined;
-  const dir = Path.combine(siteDir, "themes", themeName);
-  return Directory.exists(dir) ? dir : undefined;
-};
-
-const selectTemplate = (env: LayoutEnvironment, candidates: string[]): string | undefined => {
-  for (let i = 0; i < candidates.length; i++) {
-    const p = candidates[i]!;
-    const t = env.getTemplate(p);
-    if (t !== undefined) return p;
-  }
-  return undefined;
-};
-
-const renderWithBase = (env: LayoutEnvironment, basePath: string | undefined, mainPath: string, ctx: PageContext): string => {
-  const main = env.getTemplate(mainPath);
-  if (main === undefined) return "";
-
-  if (basePath !== undefined) {
-    const base = env.getTemplate(basePath);
-    if (base !== undefined && main.defines.count > 0) {
-      return base.render(ctx, env, main.defines);
-    }
-  }
-
-  return main.render(ctx, env);
-};
-
 export const buildSite = (request: BuildRequest): BuildResult => {
   const siteDir = Path.getFullPath(request.siteDir);
+  const docs = loadDocsConfig(siteDir);
+  if (docs !== undefined) return buildDocsSite(request, docs);
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
 
@@ -213,12 +202,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     config.baseURL = ensureTrailingSlash(request.baseURL.trim());
   }
 
-  const themeDir = resolveThemeDir(siteDir, config);
-  const env = new LayoutEnvironment(siteDir, themeDir);
-
   const outDir = Path.isPathRooted(request.destinationDir)
     ? request.destinationDir
     : Path.combine(siteDir, request.destinationDir);
+
+  const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
+  const env = new BuildEnvironment(siteDir, themeDir, outDir);
 
   if (request.cleanDestinationDir) {
     deleteDirRecursive(outDir);
@@ -231,7 +220,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const staticDir = Path.combine(siteDir, "static");
   copyDirRecursive(staticDir, outDir);
 
-  const contentDir = Path.combine(siteDir, "content");
+  const contentDir = Path.combine(siteDir, config.contentDir);
   const emptyFiles: string[] = [];
   const mdFiles: string[] = Directory.exists(contentDir)
     ? Directory.getFiles(contentDir, "*.md", SearchOption.allDirectories)
@@ -257,16 +246,20 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
     const dateUtc = fm.date ?? File.getLastWriteTimeUtc(filePath);
     const dateString = dateUtc.toString("O");
+    const lastmodString = File.getLastWriteTimeUtc(filePath).toString("O");
 
     const content = new HtmlString(md.html);
     const summary = new HtmlString(md.summaryHtml);
+    const tableOfContents = new HtmlString(md.tableOfContents);
+    const plain = md.plainText;
 
     const pageParams = fm.Params;
+    const file = buildPageFile(dirRel, fileName, filePath);
 
     if (isBranchIndexFile(fileName)) {
       const srcDir = Path.getDirectoryName(filePath) ?? contentDir;
       listIndex.remove(dirRel);
-      listIndex.add(dirRel, new ListPageContent(fm.title, content, summary, fm.description ?? "", fm.type, pageParams, srcDir));
+      listIndex.add(dirRel, new ListPageContent(fm.title, content, summary, tableOfContents, plain, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
       continue;
     }
 
@@ -302,6 +295,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       title,
       dateUtc,
       dateString,
+      lastmodString,
       fm.draft,
       fm.description ?? "",
       fm.tags,
@@ -309,9 +303,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       pageParams,
       content,
       summary,
+      tableOfContents,
+      plain,
       relPermalink,
       outputRelPath,
       fm.layout,
+      file,
     );
 
     if (!page.draft || request.buildDrafts) pages.add(page);
@@ -320,6 +317,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   pages.sort((a: ContentPageBuild, b: ContentPageBuild) => DateTime.compare(b.dateUtc, a.dateUtc));
 
   const emptyPages: PageContext[] = [];
+  const emptyTranslations: PageContext[] = [];
   const emptyStrings: string[] = [];
   const site = new SiteContext(config, emptyPages);
   const pageContexts = new List<PageContext>();
@@ -331,20 +329,30 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const ctx = new PageContext(
       p.title,
       p.dateString,
+      p.lastmodString,
       p.draft,
       "page",
       p.section,
       p.type,
       p.slug,
       p.relPermalink,
+      p.plain,
+      p.tableOfContents,
       p.content,
       p.summary,
       p.description,
       p.tags,
       p.categories,
       p.Params,
+      p.file,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       emptyPages,
+      undefined,
+      emptyPages,
+      p.layout,
     );
     pageContexts.add(ctx);
 
@@ -378,25 +386,34 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   let homeTitle = config.title;
   let homeContent = new HtmlString("");
   let homeSummary = new HtmlString("");
+  let homeToc = new HtmlString("");
+  let homePlain = "";
   let homeDescription = "";
   let homeType = "home";
-  let homeParams = new Dictionary<string, string>();
+  let homeLayout: string | undefined = undefined;
+  let homeParams = new Dictionary<string, ParamValue>();
+  let homeFile: PageFile | undefined = undefined;
   let homeSourceDir: string | undefined = undefined;
 
-  const homeIdxValue = new ListPageContent(undefined, homeContent, homeSummary, "", undefined, homeParams, contentDir);
+  const homeIdxValue = new ListPageContent(undefined, homeContent, homeSummary, homeToc, homePlain, "", undefined, undefined, homeParams, contentDir);
   const hasHomeIdx = listIndex.tryGetValue("", homeIdxValue);
   if (hasHomeIdx) {
     if (homeIdxValue.title !== undefined) homeTitle = homeIdxValue.title;
     homeContent = homeIdxValue.content;
     homeSummary = homeIdxValue.summary;
+    homeToc = homeIdxValue.tableOfContents;
+    homePlain = homeIdxValue.plain;
     homeDescription = homeIdxValue.description;
     homeType = homeIdxValue.type ?? "home";
+    homeLayout = homeIdxValue.layout;
     homeParams = homeIdxValue.Params;
+    homeFile = homeIdxValue.file;
     homeSourceDir = homeIdxValue.sourceDir;
   }
 
   const homeCtx = new PageContext(
     homeTitle,
+    "",
     "",
     false,
     "home",
@@ -404,14 +421,23 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     homeType,
     "",
     "/",
+    homePlain,
+    homeToc,
     homeContent,
     homeSummary,
     homeDescription,
     emptyStrings,
     emptyStrings,
     homeParams,
+    homeFile,
+    site.Language,
+    emptyTranslations,
+    undefined,
     site,
     site.pages,
+    undefined,
+    emptyPages,
+    homeLayout,
   );
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
@@ -455,25 +481,34 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let title = humanizeSlug(section);
     let content = new HtmlString("");
     let summary = new HtmlString("");
+    let toc = new HtmlString("");
+    let plain = "";
     let description = "";
     let listType = section;
-    let listParams = new Dictionary<string, string>();
+    let layout: string | undefined = undefined;
+    let listParams = new Dictionary<string, ParamValue>();
+    let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, content, summary, "", undefined, listParams, contentDir);
+    const idxValue = new ListPageContent(undefined, content, summary, toc, plain, "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(section, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
       content = idxValue.content;
       summary = idxValue.summary;
+      toc = idxValue.tableOfContents;
+      plain = idxValue.plain;
       description = idxValue.description;
       listType = idxValue.type ?? section;
+      layout = idxValue.layout;
       listParams = idxValue.Params;
+      file = idxValue.file;
       listSourceDir = idxValue.sourceDir;
     }
 
     const ctx = new PageContext(
       title,
+      "",
       "",
       false,
       "section",
@@ -481,14 +516,23 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       listType,
       section,
       combineUrl([section]),
+      plain,
+      toc,
       content,
       summary,
       description,
       emptyStrings,
       emptyStrings,
       listParams,
+      file,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       list,
+      undefined,
+      emptyPages,
+      layout,
     );
 
     const relOut = Path.combine(section, "index.html");
@@ -529,25 +573,34 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let title = humanizeSlug(leaf);
     let content = new HtmlString("");
     let summary = new HtmlString("");
+    let toc = new HtmlString("");
+    let plain = "";
     let description = "";
     let listType = section !== "" ? section : "section";
-    let listParams = new Dictionary<string, string>();
+    let layout: string | undefined = undefined;
+    let listParams = new Dictionary<string, ParamValue>();
+    let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, content, summary, "", undefined, listParams, contentDir);
+    const idxValue = new ListPageContent(undefined, content, summary, toc, plain, "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(dirKey, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
       content = idxValue.content;
       summary = idxValue.summary;
+      toc = idxValue.tableOfContents;
+      plain = idxValue.plain;
       description = idxValue.description;
       listType = idxValue.type ?? listType;
+      layout = idxValue.layout;
       listParams = idxValue.Params;
+      file = idxValue.file;
       listSourceDir = idxValue.sourceDir;
     }
 
     const ctx = new PageContext(
       title,
+      "",
       "",
       false,
       "section",
@@ -555,14 +608,23 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       listType,
       leaf,
       urlPrefix,
+      plain,
+      toc,
       content,
       summary,
       description,
       emptyStrings,
       emptyStrings,
       listParams,
+      file,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       listPages.toArray(),
+      undefined,
+      emptyPages,
+      layout,
     );
 
     const outRel = combineOutputRelPath(dirParts);
@@ -621,14 +683,15 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       if (!ok) continue;
       const pagesForTerm = pagesForTermList.toArray();
 
-      const termParams = new Dictionary<string, string>();
+      const termParams = new Dictionary<string, ParamValue>();
       termParams.remove("term");
-      termParams.add("term", termSlug);
+      termParams.add("term", ParamValue.string(termSlug));
       termParams.remove("taxonomy");
-      termParams.add("taxonomy", taxonomy);
+      termParams.add("taxonomy", ParamValue.string(taxonomy));
 
       const ctx = new PageContext(
         humanizeSlug(termSlug),
+        "",
         "",
         false,
         "term",
@@ -636,14 +699,22 @@ export const buildSite = (request: BuildRequest): BuildResult => {
         taxonomy,
         termSlug,
         combineUrl([taxonomy, termSlug]),
+        "",
+        new HtmlString(""),
         emptyHtml,
         emptyHtml,
         "",
         emptyStrings,
         emptyStrings,
         termParams,
+        undefined,
+        site.Language,
+        emptyTranslations,
+        undefined,
         site,
         pagesForTerm,
+        undefined,
+        emptyPages,
       );
 
       termPagesOut.add(ctx);
@@ -660,12 +731,13 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       sitemapUrlSet.add(ctx.relPermalink, true);
     }
 
-    const taxParams = new Dictionary<string, string>();
+    const taxParams = new Dictionary<string, ParamValue>();
     taxParams.remove("taxonomy");
-    taxParams.add("taxonomy", taxonomy);
+    taxParams.add("taxonomy", ParamValue.string(taxonomy));
 
     const taxCtx = new PageContext(
       humanizeSlug(taxonomy),
+      "",
       "",
       false,
       "taxonomy",
@@ -673,14 +745,22 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       taxonomy,
       taxonomy,
       combineUrl([taxonomy]),
+      "",
+      new HtmlString(""),
       emptyHtml,
       emptyHtml,
       "",
       emptyStrings,
       emptyStrings,
       taxParams,
+      undefined,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       termPagesOut.toArray(),
+      undefined,
+      emptyPages,
     );
 
     const taxOutRel = Path.combine(taxonomy, "index.html");

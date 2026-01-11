@@ -1,9 +1,98 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
+import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Path } from "@tsonic/dotnet/System.IO.js";
+import { Int32 } from "@tsonic/dotnet/System.js";
 import { JsonDocument, JsonValueKind } from "@tsonic/dotnet/System.Text.Json.js";
-import { SiteConfig } from "./models.ts";
+import type { int } from "@tsonic/core/types.js";
+import { LanguageConfig, MenuEntry, SiteConfig } from "./models.ts";
 import { fileExists, readTextFile } from "./fs.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
+import { ParamValue } from "./params.ts";
+
+class MenuEntryBuilder {
+  name: string;
+  url: string;
+  pageRef: string;
+  title: string;
+  weight: int;
+  parent: string;
+  identifier: string;
+  pre: string;
+  post: string;
+  menu: string;
+  params: Dictionary<string, ParamValue>;
+
+  constructor(menu: string) {
+    this.name = "";
+    this.url = "";
+    this.pageRef = "";
+    this.title = "";
+    this.weight = 0;
+    this.parent = "";
+    this.identifier = "";
+    this.pre = "";
+    this.post = "";
+    this.menu = menu;
+    this.params = new Dictionary<string, ParamValue>();
+  }
+
+  toEntry(): MenuEntry {
+    return new MenuEntry(
+      this.name,
+      this.url,
+      this.pageRef,
+      this.title,
+      this.weight,
+      this.parent,
+      this.identifier,
+      this.pre,
+      this.post,
+      this.menu,
+      this.params,
+    );
+  }
+}
+
+const sortMenuEntries = (entries: MenuEntry[]): MenuEntry[] => {
+  const copy = new List<MenuEntry>();
+  for (let i = 0; i < entries.length; i++) copy.add(entries[i]!);
+  copy.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+  return copy.toArray();
+};
+
+const buildMenuHierarchy = (entries: MenuEntry[]): MenuEntry[] => {
+  const topLevel = new List<MenuEntry>();
+  const byIdentifier = new Dictionary<string, MenuEntry>();
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    const id = entry.identifier !== "" ? entry.identifier : entry.name;
+    if (id !== "") {
+      byIdentifier.remove(id);
+      byIdentifier.add(id, entry);
+    }
+  }
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    if (entry.parent === "") {
+      topLevel.add(entry);
+    } else {
+      let parentEntry: MenuEntry = entries[0]!;
+      const found = byIdentifier.tryGetValue(entry.parent, parentEntry);
+      if (found) {
+        const children = new List<MenuEntry>();
+        for (let j = 0; j < parentEntry.children.length; j++) children.add(parentEntry.children[j]!);
+        children.add(entry);
+        children.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+        parentEntry.children = children.toArray();
+      } else {
+        topLevel.add(entry);
+      }
+    }
+  }
+
+  return sortMenuEntries(topLevel.toArray());
+};
 
 export class LoadedConfig {
   readonly path: string | undefined;
@@ -31,23 +120,82 @@ const unquote = (value: string): string => {
   return v;
 };
 
+class LanguageConfigBuilder {
+  readonly lang: string;
+  languageName: string;
+  languageDirection: string;
+  contentDir: string;
+  weight: int;
+
+  constructor(lang: string) {
+    this.lang = lang;
+    this.languageName = lang;
+    this.languageDirection = "ltr";
+    this.contentDir = `content.${lang}`;
+    this.weight = 0;
+  }
+
+  toConfig(): LanguageConfig {
+    return new LanguageConfig(this.lang, this.languageName, this.languageDirection, this.contentDir, this.weight);
+  }
+}
+
+const sortLanguages = (langs: LanguageConfig[]): LanguageConfig[] => {
+  const copy = new List<LanguageConfig>();
+  for (let i = 0; i < langs.length; i++) copy.add(langs[i]!);
+  copy.sort((a: LanguageConfig, b: LanguageConfig) => a.weight - b.weight);
+  return copy.toArray();
+};
+
 const parseTomlConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
   let baseURL = "";
   let languageCode = "en-us";
+  let hasLanguageCode = false;
+  let contentDir = "content";
   let theme: string | undefined = undefined;
-  const params = new Dictionary<string, string>();
+  let copyright: string | undefined = undefined;
+  const params = new Dictionary<string, ParamValue>();
+  const languages = new List<LanguageConfigBuilder>();
+  const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
 
   const lines = text.replaceLineEndings("\n").split("\n");
 
   let table = "";
+  let isArrayTable = false;
+  let currentMenuEntry: MenuEntryBuilder | undefined = undefined;
+
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
     const line = raw.trim();
     if (line === "" || line.startsWith("#")) continue;
 
+    if (line.startsWith("[[") && line.endsWith("]]")) {
+      const tableName = line.substring(2, line.length - 4).trim().toLowerInvariant();
+      table = tableName;
+      isArrayTable = true;
+
+      if (tableName.startsWith("menu.")) {
+        const menuName = tableName.substring("menu.".length).trim();
+        currentMenuEntry = new MenuEntryBuilder(menuName);
+        let entries = new List<MenuEntryBuilder>();
+        const hasMenu = menuBuilders.tryGetValue(menuName, entries);
+        if (!hasMenu) {
+          entries = new List<MenuEntryBuilder>();
+          menuBuilders.remove(menuName);
+          menuBuilders.add(menuName, entries);
+        }
+        entries.add(currentMenuEntry);
+      } else {
+        currentMenuEntry = undefined;
+      }
+      continue;
+    }
+
     if (line.startsWith("[") && line.endsWith("]")) {
       table = line.substring(1, line.length - 2).trim().toLowerInvariant();
+      isArrayTable = false;
+      currentMenuEntry = undefined;
       continue;
     }
 
@@ -57,21 +205,96 @@ const parseTomlConfig = (text: string): SiteConfig => {
     const key = line.substring(0, eq).trim();
     const value = unquote(line.substring(eq + 1).trim());
 
+    if (isArrayTable && currentMenuEntry !== undefined && table.startsWith("menu.")) {
+      const menuKey = key.toLowerInvariant();
+      if (menuKey === "name") currentMenuEntry.name = value;
+      else if (menuKey === "url") currentMenuEntry.url = value;
+      else if (menuKey === "pageref") currentMenuEntry.pageRef = value;
+      else if (menuKey === "title") currentMenuEntry.title = value;
+      else if (menuKey === "parent") currentMenuEntry.parent = value;
+      else if (menuKey === "identifier") currentMenuEntry.identifier = value;
+      else if (menuKey === "pre") currentMenuEntry.pre = value;
+      else if (menuKey === "post") currentMenuEntry.post = value;
+      else if (menuKey === "weight") {
+        const parsed: int = 0;
+        if (Int32.tryParse(value, parsed)) currentMenuEntry.weight = parsed;
+      }
+      continue;
+    }
+
     if (table === "params") {
       params.remove(key);
-      params.add(key, value);
+      params.add(key, ParamValue.parseScalar(value));
       continue;
+    }
+
+    if (table.startsWith("languages.")) {
+      const lang = table.substring("languages.".length).trim();
+      if (lang !== "") {
+        let entry: LanguageConfigBuilder | undefined = undefined;
+        const existing = languages.toArray();
+        for (let j = 0; j < existing.length; j++) {
+          const cur = existing[j]!;
+          if (cur.lang.toLowerInvariant() === lang) {
+            entry = cur;
+            break;
+          }
+        }
+        if (entry === undefined) {
+          entry = new LanguageConfigBuilder(lang);
+          languages.add(entry);
+        }
+
+        const langKey = key.toLowerInvariant();
+        if (langKey === "languagename") entry.languageName = value;
+        else if (langKey === "languagedirection") entry.languageDirection = value;
+        else if (langKey === "contentdir") entry.contentDir = value;
+        else if (langKey === "weight") {
+          const parsed: int = 0;
+          if (Int32.tryParse(value, parsed)) entry.weight = parsed;
+        }
+        continue;
+      }
     }
 
     const k = key.toLowerInvariant();
     if (k === "title") title = value;
     else if (k === "baseurl") baseURL = value;
-    else if (k === "languagecode") languageCode = value;
+    else if (k === "languagecode") {
+      languageCode = value;
+      hasLanguageCode = true;
+    } else if (k === "contentdir") contentDir = value;
     else if (k === "theme") theme = value;
+    else if (k === "copyright") copyright = value;
   }
 
-  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme);
+  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
+  config.contentDir = contentDir;
+  if (languages.count > 0) {
+    const langConfigs = new List<LanguageConfig>();
+    const arr = languages.toArray();
+    for (let i = 0; i < arr.length; i++) langConfigs.add(arr[i]!.toConfig());
+    config.languages = sortLanguages(langConfigs.toArray());
+    const selected = config.languages[0]!;
+    config.contentDir = selected.contentDir;
+    if (!hasLanguageCode) config.languageCode = selected.lang;
+  }
   config.Params = params;
+
+  const menuKeysIt = menuBuilders.keys.getEnumerator();
+  while (menuKeysIt.moveNext()) {
+    const menuName = menuKeysIt.current;
+    const builders = new List<MenuEntryBuilder>();
+    const hasBuilders = menuBuilders.tryGetValue(menuName, builders);
+    if (hasBuilders) {
+      const entries = new List<MenuEntry>();
+      const buildersArr = builders.toArray();
+      for (let i = 0; i < buildersArr.length; i++) entries.add(buildersArr[i]!.toEntry());
+      config.Menus.remove(menuName);
+      config.Menus.add(menuName, buildMenuHierarchy(entries.toArray()));
+    }
+  }
+
   return config;
 };
 
@@ -79,8 +302,10 @@ const parseYamlConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
   let baseURL = "";
   let languageCode = "en-us";
+  let contentDir = "content";
   let theme: string | undefined = undefined;
-  const params = new Dictionary<string, string>();
+  let copyright: string | undefined = undefined;
+  const params = new Dictionary<string, ParamValue>();
 
   const lines = text.replaceLineEndings("\n").split("\n");
 
@@ -102,7 +327,7 @@ const parseYamlConfig = (text: string): SiteConfig => {
       const key = line.substring(0, idx).trim();
       const val = unquote(line.substring(idx + 1).trim());
       params.remove(key);
-      params.add(key, val);
+      params.add(key, ParamValue.parseScalar(val));
       continue;
     }
 
@@ -113,12 +338,15 @@ const parseYamlConfig = (text: string): SiteConfig => {
       if (key === "title") title = val;
       else if (key === "baseurl") baseURL = val;
       else if (key === "languagecode") languageCode = val;
+      else if (key === "contentdir") contentDir = val;
       else if (key === "theme") theme = val;
+      else if (key === "copyright") copyright = val;
       continue;
     }
   }
 
-  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme);
+  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
+  config.contentDir = contentDir;
   config.Params = params;
   return config;
 };
@@ -127,8 +355,13 @@ const parseJsonConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
   let baseURL = "";
   let languageCode = "en-us";
+  let contentDir = "content";
   let theme: string | undefined = undefined;
-  const params = new Dictionary<string, string>();
+  let copyright: string | undefined = undefined;
+  const params = new Dictionary<string, ParamValue>();
+  const languages = new List<LanguageConfig>();
+  const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
+  let hasLanguageCode = false;
 
   const doc = JsonDocument.parse(text);
   const root = doc.rootElement;
@@ -150,10 +383,19 @@ const parseJsonConfig = (text: string): SiteConfig => {
       }
       if (key === "languagecode" && v.valueKind === JsonValueKind.string_) {
         languageCode = v.getString() ?? languageCode;
+        hasLanguageCode = true;
+        continue;
+      }
+      if (key === "contentdir" && v.valueKind === JsonValueKind.string_) {
+        contentDir = v.getString() ?? contentDir;
         continue;
       }
       if (key === "theme" && v.valueKind === JsonValueKind.string_) {
         theme = v.getString();
+        continue;
+      }
+      if (key === "copyright" && v.valueKind === JsonValueKind.string_) {
+        copyright = v.getString();
         continue;
       }
       if (key === "params" && v.valueKind === JsonValueKind.object_) {
@@ -165,8 +407,83 @@ const parseJsonConfig = (text: string): SiteConfig => {
             const s = val.getString();
             if (s !== undefined) {
               params.remove(prop.name);
-              params.add(prop.name, s);
+              params.add(prop.name, ParamValue.string(s));
             }
+          } else if (val.valueKind === JsonValueKind.true_ || val.valueKind === JsonValueKind.false_) {
+            params.remove(prop.name);
+            params.add(prop.name, ParamValue.bool(val.getBoolean()));
+          } else if (val.valueKind === JsonValueKind.number_) {
+            params.remove(prop.name);
+            params.add(prop.name, ParamValue.number(val.getInt32()));
+          }
+        }
+      }
+
+      if (key === "languages" && v.valueKind === JsonValueKind.object_) {
+        const lp = v.enumerateObject().getEnumerator();
+        while (lp.moveNext()) {
+          const langProp = lp.current;
+          if (langProp.value.valueKind !== JsonValueKind.object_) continue;
+          const lang = langProp.name;
+
+          let languageName = lang;
+          let languageDirection = "ltr";
+          let langContentDir = `content.${lang}`;
+          let weight: int = 0;
+
+          const cfgProps = langProp.value.enumerateObject().getEnumerator();
+          while (cfgProps.moveNext()) {
+            const c = cfgProps.current;
+            const ck = c.name.toLowerInvariant();
+            const cv = c.value;
+            if (ck === "languagename" && cv.valueKind === JsonValueKind.string_) languageName = cv.getString() ?? languageName;
+            else if (ck === "languagedirection" && cv.valueKind === JsonValueKind.string_) languageDirection = cv.getString() ?? languageDirection;
+            else if (ck === "contentdir" && cv.valueKind === JsonValueKind.string_) langContentDir = cv.getString() ?? langContentDir;
+            else if (ck === "weight" && cv.valueKind === JsonValueKind.number_) weight = cv.getInt32();
+          }
+
+          languages.add(new LanguageConfig(lang, languageName, languageDirection, langContentDir, weight));
+        }
+      }
+
+      // Parse menu entries
+      if (key === "menu" && v.valueKind === JsonValueKind.object_) {
+        const menuProps = v.enumerateObject().getEnumerator();
+        while (menuProps.moveNext()) {
+          const menuProp = menuProps.current;
+          const menuName = menuProp.name;
+          if (menuProp.value.valueKind !== JsonValueKind.array) continue;
+
+          let entries = new List<MenuEntryBuilder>();
+          const hasMenu = menuBuilders.tryGetValue(menuName, entries);
+          if (!hasMenu) {
+            entries = new List<MenuEntryBuilder>();
+            menuBuilders.remove(menuName);
+            menuBuilders.add(menuName, entries);
+          }
+
+          const menuItems = menuProp.value.enumerateArray().getEnumerator();
+          while (menuItems.moveNext()) {
+            const item = menuItems.current;
+            if (item.valueKind !== JsonValueKind.object_) continue;
+
+            const builder = new MenuEntryBuilder(menuName);
+            const itemProps = item.enumerateObject().getEnumerator();
+            while (itemProps.moveNext()) {
+              const ip = itemProps.current;
+              const ik = ip.name.toLowerInvariant();
+              const iv = ip.value;
+              if (ik === "name" && iv.valueKind === JsonValueKind.string_) builder.name = iv.getString() ?? "";
+              else if (ik === "url" && iv.valueKind === JsonValueKind.string_) builder.url = iv.getString() ?? "";
+              else if (ik === "pageref" && iv.valueKind === JsonValueKind.string_) builder.pageRef = iv.getString() ?? "";
+              else if (ik === "title" && iv.valueKind === JsonValueKind.string_) builder.title = iv.getString() ?? "";
+              else if (ik === "parent" && iv.valueKind === JsonValueKind.string_) builder.parent = iv.getString() ?? "";
+              else if (ik === "identifier" && iv.valueKind === JsonValueKind.string_) builder.identifier = iv.getString() ?? "";
+              else if (ik === "pre" && iv.valueKind === JsonValueKind.string_) builder.pre = iv.getString() ?? "";
+              else if (ik === "post" && iv.valueKind === JsonValueKind.string_) builder.post = iv.getString() ?? "";
+              else if (ik === "weight" && iv.valueKind === JsonValueKind.number_) builder.weight = iv.getInt32();
+            }
+            entries.add(builder);
           }
         }
       }
@@ -175,8 +492,32 @@ const parseJsonConfig = (text: string): SiteConfig => {
 
   doc.dispose();
 
-  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme);
+  // Build menus
+  const menus = new Dictionary<string, MenuEntry[]>();
+  const menuKeysIt = menuBuilders.keys.getEnumerator();
+  while (menuKeysIt.moveNext()) {
+    const menuName = menuKeysIt.current;
+    const builders = new List<MenuEntryBuilder>();
+    const hasBuilders = menuBuilders.tryGetValue(menuName, builders);
+    if (hasBuilders) {
+      const entries = new List<MenuEntry>();
+      const buildersArr = builders.toArray();
+      for (let i = 0; i < buildersArr.length; i++) entries.add(buildersArr[i]!.toEntry());
+      menus.remove(menuName);
+      menus.add(menuName, buildMenuHierarchy(entries.toArray()));
+    }
+  }
+
+  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
+  config.contentDir = contentDir;
+  if (languages.count > 0) {
+    config.languages = sortLanguages(languages.toArray());
+    const selected = config.languages[0]!;
+    config.contentDir = selected.contentDir;
+    if (!hasLanguageCode) config.languageCode = selected.lang;
+  }
   config.Params = params;
+  config.Menus = menus;
   return config;
 };
 
@@ -194,14 +535,14 @@ export const loadSiteConfig = (siteDir: string): LoadedConfig => {
 
   const path = tryGetFirstExisting(candidates);
   if (path === undefined) {
-    const config = new SiteConfig("Tsumo Site", "", "en-us", undefined);
-    return new LoadedConfig(undefined, config);
+    const defaultConfig = new SiteConfig("Tsumo Site", "", "en-us", undefined);
+    return new LoadedConfig(undefined, defaultConfig);
   }
 
   const text = readTextFile(path);
   const lower = path.toLowerInvariant();
-  const config =
+  const parsedConfig =
     lower.endsWith(".toml") ? parseTomlConfig(text) : lower.endsWith(".json") ? parseJsonConfig(text) : parseYamlConfig(text);
 
-  return new LoadedConfig(path, config);
+  return new LoadedConfig(path, parsedConfig);
 };

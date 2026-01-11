@@ -48,9 +48,14 @@ dist/
 
 # Site output
 public/
+public-aot/
+.tmp/
 
 # Vendored build outputs
 packages/markdig/vendor/
+
+# Local agent/task scratch
+.analysis/
 
 # .NET build outputs
 **/bin/

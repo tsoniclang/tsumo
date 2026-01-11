@@ -7,6 +7,7 @@ import { Task } from "@tsonic/dotnet/System.Threading.Tasks.js";
 import { Encoding } from "@tsonic/dotnet/System.Text.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
 import { buildSite } from "./builder.ts";
+import { loadDocsConfig } from "./docs/config.ts";
 import { ServeRequest } from "./models.ts";
 import { contentTypeForPath } from "./utils/mime.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
@@ -93,11 +94,11 @@ const handleRequest = (outDir: string, ctx: HttpListenerContext): void => {
   sendBytes(response, 200, ct, bytes);
 };
 
-const createWatcher = (path: string): FileSystemWatcher | undefined => {
+const createWatcher = (path: string, filter: string, includeSubdirectories: boolean): FileSystemWatcher | undefined => {
   if (!Directory.exists(path)) return undefined;
   const w = new FileSystemWatcher(path);
-  w.includeSubdirectories = true;
-  w.filter = "*.*";
+  w.includeSubdirectories = includeSubdirectories;
+  w.filter = filter;
   w.enableRaisingEvents = true;
   return w;
 };
@@ -106,14 +107,28 @@ const watchLoop = (req: ServeRequest, outDir: string): void => {
   const siteDir = Path.getFullPath(req.siteDir);
   const watchers = new List<FileSystemWatcher>();
 
-  const content = createWatcher(Path.combine(siteDir, "content"));
-  if (content !== undefined) watchers.add(content);
-  const layouts = createWatcher(Path.combine(siteDir, "layouts"));
+  const docsConfig = loadDocsConfig(siteDir);
+
+  if (docsConfig === undefined) {
+    const content = createWatcher(Path.combine(siteDir, "content"), "*.*", true);
+    if (content !== undefined) watchers.add(content);
+    const archetypes = createWatcher(Path.combine(siteDir, "archetypes"), "*.*", true);
+    if (archetypes !== undefined) watchers.add(archetypes);
+  } else {
+    const mounts = docsConfig.config.mounts;
+    for (let i = 0; i < mounts.length; i++) {
+      const m = mounts[i]!;
+      const w = createWatcher(m.sourceDir, "*.*", true);
+      if (w !== undefined) watchers.add(w);
+    }
+    const docsCfg = createWatcher(siteDir, "tsumo.docs.json", false);
+    if (docsCfg !== undefined) watchers.add(docsCfg);
+  }
+
+  const layouts = createWatcher(Path.combine(siteDir, "layouts"), "*.*", true);
   if (layouts !== undefined) watchers.add(layouts);
-  const staticDir = createWatcher(Path.combine(siteDir, "static"));
+  const staticDir = createWatcher(Path.combine(siteDir, "static"), "*.*", true);
   if (staticDir !== undefined) watchers.add(staticDir);
-  const archetypes = createWatcher(Path.combine(siteDir, "archetypes"));
-  if (archetypes !== undefined) watchers.add(archetypes);
 
   const watcherArr = watchers.toArray();
   if (watcherArr.length === 0) return;

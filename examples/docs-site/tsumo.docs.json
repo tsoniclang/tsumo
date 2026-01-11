@@ -1,0 +1,28 @@
+{
+  "siteName": "tsumo docs example",
+  "homeMount": "Tsonic",
+  "strictLinks": false,
+  "search": true,
+  "searchFile": "search.json",
+  "mounts": [
+    {
+      "name": "Tsonic",
+      "source": "../../../tsonic/docs",
+      "prefix": "/tsonic/",
+      "repoUrl": "https://github.com/tsoniclang/tsonic",
+      "repoBranch": "main",
+      "repoPath": "docs",
+      "navPath": "README.md"
+    },
+    {
+      "name": "tsbindgen",
+      "source": "../../../tsbindgen/docs",
+      "prefix": "/tsbindgen/",
+      "repoUrl": "https://github.com/tsoniclang/tsbindgen",
+      "repoBranch": "main",
+      "repoPath": "docs",
+      "navPath": "README.md"
+    }
+  ]
+}
+

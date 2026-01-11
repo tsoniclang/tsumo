@@ -1,0 +1,21 @@
+<nav class="nav">
+  {{ range .Nav }}
+    {{ if .IsSection }}
+      <div class="nav-group">{{ .Title }}</div>
+      <ul class="nav-items">
+        {{ range .Children }}
+          <li>
+            <a class="nav-link {{ if eq .Url $.RelPermalink }}active{{ end }}" href="{{ .Url }}">{{ .Title }}</a>
+          </li>
+        {{ end }}
+      </ul>
+    {{ else }}
+      <ul class="nav-items">
+        <li>
+          <a class="nav-link {{ if eq .Url $.RelPermalink }}active{{ end }}" href="{{ .Url }}">{{ .Title }}</a>
+        </li>
+      </ul>
+    {{ end }}
+  {{ end }}
+</nav>
+

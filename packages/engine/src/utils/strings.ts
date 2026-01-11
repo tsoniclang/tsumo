@@ -12,3 +12,6 @@ export const indexOfTextIgnoreCase = (source: string, value: string): int =>
 
 export const indexOfTextFrom = (source: string, value: string, startIndex: int): int =>
   source.indexOf(value, startIndex, source.length - startIndex, StringComparison.ordinal);
+
+export const lastIndexOfText = (source: string, value: string): int =>
+  source.lastIndexOf(value, source.length - 1, source.length, StringComparison.ordinal);
