@@ -159,6 +159,7 @@ export class SiteContext {
     this.copyright = config.copyright ?? "";
 
     // Set language from explicit parameter or config
+    // Note: languageCode must always match Language.Lang for consistency
     if (language !== undefined) {
       this.Language = new LanguageContext(language.lang, language.languageName, language.languageDirection);
       this.languageCode = language.lang;
@@ -167,7 +168,7 @@ export class SiteContext {
       const name = config.languages.length > 0 ? config.languages[0]!.languageName : lang;
       const dir = config.languages.length > 0 ? config.languages[0]!.languageDirection : "ltr";
       this.Language = new LanguageContext(lang, name, dir);
-      this.languageCode = config.languageCode;
+      this.languageCode = lang;  // Use computed lang, not config.languageCode, for consistency
     }
 
     // Set all languages

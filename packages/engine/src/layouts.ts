@@ -3,7 +3,7 @@ import { Path } from "@tsonic/dotnet/System.IO.js";
 import { Console } from "@tsonic/dotnet/System.js";
 import type { char } from "@tsonic/core/types.js";
 import { fileExists, readTextFile } from "./fs.ts";
-import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template.ts";
+import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.ts";
 import type { ResourceManager } from "./resources.ts";
 import { I18nStore } from "./i18n.ts";
 

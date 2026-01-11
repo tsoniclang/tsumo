@@ -1,14 +1,18 @@
 import { Markdown, MarkdownExtensions, MarkdownPipeline, MarkdownPipelineBuilder } from "@tsumo/markdig/Markdig.js";
 import { AutoIdentifierOptions } from "@tsumo/markdig/Markdig.Extensions.AutoIdentifiers.js";
+import { HtmlAttributes, HtmlAttributesExtensions } from "@tsumo/markdig/Markdig.Renderers.Html.js";
+import type { Block, ContainerBlock, HeadingBlock, LeafBlock, MarkdownDocument } from "@tsumo/markdig/Markdig.Syntax.js";
+import type { ContainerInline, Inline, LinkInline } from "@tsumo/markdig/Markdig.Syntax.Inlines.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { int } from "@tsonic/core/types.js";
+import { trycast } from "@tsonic/core/lang.js";
 import { indexOfText, indexOfTextIgnoreCase } from "./utils/strings.ts";
 import { parseShortcodes, ShortcodeCall, innerDeindent } from "./shortcode.ts";
 import {
   ShortcodeContext, ShortcodeValue, RenderScope, TemplateEnvironment, TemplateNode, PageValue, Template,
   LinkHookContext, LinkHookValue, ImageHookContext, ImageHookValue, HeadingHookContext, HeadingHookValue
-} from "./template.ts";
+} from "./template/index.ts";
 import { PageContext, SiteContext } from "./models.ts";
 import { ParamValue } from "./params.ts";
 
@@ -245,6 +249,121 @@ class RenderHookContext {
   }
 }
 
+// Hook data collected during AST walk - stored for post-processing
+class HookableHeading {
+  readonly hookId: string;
+  readonly level: int;
+  readonly anchor: string;
+
+  constructor(hookId: string, level: int, anchor: string) {
+    this.hookId = hookId;
+    this.level = level;
+    this.anchor = anchor;
+  }
+}
+
+class HookableLink {
+  readonly hookId: string;
+  readonly href: string;
+  readonly title: string;
+  readonly isImage: boolean;
+
+  constructor(hookId: string, href: string, title: string, isImage: boolean) {
+    this.hookId = hookId;
+    this.href = href;
+    this.title = title;
+    this.isImage = isImage;
+  }
+}
+
+class HookableElements {
+  readonly headings: List<HookableHeading>;
+  readonly links: List<HookableLink>;
+
+  constructor() {
+    this.headings = new List<HookableHeading>();
+    this.links = new List<HookableLink>();
+  }
+}
+
+// AST walking to inject hook markers and collect data
+const hookMarkerAttr = "data-tsumo-hook";
+
+// Helper class to track state during AST walking
+class HookInjectionState {
+  readonly elements: HookableElements;
+  readonly hookCtx: RenderHookContext;
+  counter: int;
+
+  constructor(hookCtx: RenderHookContext) {
+    this.elements = new HookableElements();
+    this.hookCtx = hookCtx;
+    this.counter = 0;
+  }
+
+  nextId(): string {
+    this.counter = this.counter + 1;
+    return `hook-${this.counter}`;
+  }
+}
+
+// Process inline elements - handles recursive inline structures
+const walkInlinesForHooks = (container: ContainerInline, state: HookInjectionState): void => {
+  const it = container.getEnumerator();
+  while (it.moveNext()) {
+    const inline = it.current;
+
+    const link = trycast<LinkInline>(inline);
+    if (link !== null) {
+      const isImage = link.isImage;
+      const hasHook = isImage ? state.hookCtx.imageHook !== undefined : state.hookCtx.linkHook !== undefined;
+      if (hasHook) {
+        const hookId = state.nextId();
+        const attrs = HtmlAttributesExtensions.getAttributes(link);
+        attrs.addProperty(hookMarkerAttr, hookId);
+        state.elements.links.add(new HookableLink(hookId, link.url, link.title !== undefined ? link.title : "", isImage));
+      }
+    }
+
+    const childContainer = trycast<ContainerInline>(inline);
+    if (childContainer !== null) walkInlinesForHooks(childContainer, state);
+  }
+  it.dispose();
+};
+
+// Process block elements - handles recursive block structures
+const walkBlockForHooks = (block: Block, state: HookInjectionState): void => {
+  const heading = trycast<HeadingBlock>(block);
+  if (heading !== null && state.hookCtx.headingHook !== undefined) {
+    const hookId = state.nextId();
+    const attrs = HtmlAttributesExtensions.getAttributes(heading);
+    // Get the auto-generated id if present
+    const existingAttrs = HtmlAttributesExtensions.tryGetAttributes(heading);
+    const anchor = existingAttrs !== undefined && existingAttrs.id !== undefined ? existingAttrs.id : "";
+    attrs.addProperty(hookMarkerAttr, hookId);
+    state.elements.headings.add(new HookableHeading(hookId, heading.level, anchor));
+  }
+
+  const leaf = trycast<LeafBlock>(block);
+  if (leaf !== null) {
+    const inline = leaf.inline;
+    if (inline !== undefined) walkInlinesForHooks(inline, state);
+  }
+
+  const container = trycast<ContainerBlock>(block);
+  if (container !== null) {
+    const it = container.getEnumerator();
+    while (it.moveNext()) walkBlockForHooks(it.current, state);
+    it.dispose();
+  }
+};
+
+const injectHookMarkers = (document: MarkdownDocument, hookCtx: RenderHookContext): HookableElements => {
+  const state = new HookInjectionState(hookCtx);
+  walkBlockForHooks(document, state);
+  return state.elements;
+};
+
 // Render hook template helpers
 const renderLinkHookTemplate = (
   template: Template,
@@ -313,12 +432,12 @@ const parseAttr = (tag: string, attrName: string): string => {
   return tag.substring(startIdx, endIdx - startIdx);
 };
 
-// Apply render hooks to rendered HTML
-// Note: Ideally we'd use Markdig's tryWriters for proper AST-level interception,
-// but Tsonic's current transpilation doesn't support lambdas as delegate arguments.
-// This HTML post-processing approach works reliably as a fallback.
-const applyRenderHooks = (
+// Apply render hooks using AST-injected markers for reliable element matching.
+// The markers (data-tsumo-hook="hook-N") are injected during AST walking before rendering,
+// ensuring we can find and replace exact elements without fragile HTML pattern matching.
+const applyRenderHooksWithMarkers = (
   html: string,
+  elements: HookableElements,
   hookCtx: RenderHookContext,
 ): string => {
   if (!hookCtx.hasAnyHooks()) {
@@ -327,99 +446,113 @@ const applyRenderHooks = (
 
   let result = html;
 
-  // Apply heading hooks - match <h1-6 id="...">...</h1-6>
+  // Process headings - find by marker attribute
   if (hookCtx.headingHook !== undefined) {
-    for (let level = 1; level <= 6; level++) {
-      const levelStr = level.toString();
-      const openTag = `<h${levelStr}`;
-      const closeTag = `</h${levelStr}>`;
-      let searchIdx = 0;
-      while (true) {
-        const startIdx = result.indexOf(openTag, searchIdx);
-        if (startIdx < 0) break;
-        const endIdx = result.indexOf(closeTag, startIdx);
-        if (endIdx < 0) break;
-        const tagEndIdx = result.indexOf(">", startIdx);
-        if (tagEndIdx < 0 || tagEndIdx > endIdx) {
-          searchIdx = startIdx + 1;
-          continue;
-        }
-        const tagPart = result.substring(startIdx, tagEndIdx - startIdx + 1);
-        const anchor = parseAttr(tagPart, "id");
-        const innerHtml = result.substring(tagEndIdx + 1, endIdx - tagEndIdx - 1);
-        const plainText = extractTextFromHtml(innerHtml);
-        const ctx = new HeadingHookContext(level, innerHtml, plainText, anchor, hookCtx.page);
-        const hookValue = new HeadingHookValue(ctx);
-        const hookHtml = renderHeadingHookTemplate(hookCtx.headingHook, hookValue, hookCtx.site, hookCtx.env);
-        result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx + closeTag.length);
-        searchIdx = startIdx + hookHtml.length;
+    const headingArr = elements.headings.toArray();
+    for (let i = 0; i < headingArr.length; i++) {
+      const h = headingArr[i]!;
+      const markerPattern = `${hookMarkerAttr}="${h.hookId}"`;
+      const markerIdx = result.indexOf(markerPattern);
+      if (markerIdx < 0) continue;
+
+      // Find the start of the opening tag (search backward for '<h')
+      let startIdx = markerIdx;
+      while (startIdx > 0 && result.substring(startIdx, 2) !== "<h") {
+        startIdx = startIdx - 1;
       }
+      if (startIdx < 0) continue;
+
+      // Find the closing tag
+      const levelStr = h.level.toString();
+      const closeTag = `</h${levelStr}>`;
+      const endIdx = result.indexOf(closeTag, markerIdx);
+      if (endIdx < 0) continue;
+
+      // Extract inner HTML (content between > and </hN>)
+      const tagEndIdx = result.indexOf(">", startIdx);
+      if (tagEndIdx < 0 || tagEndIdx > endIdx) continue;
+      const innerHtml = result.substring(tagEndIdx + 1, endIdx - tagEndIdx - 1);
+      const plainText = extractTextFromHtml(innerHtml);
+
+      const ctx = new HeadingHookContext(h.level, innerHtml, plainText, h.anchor, hookCtx.page);
+      const hookValue = new HeadingHookValue(ctx);
+      const hookHtml = renderHeadingHookTemplate(hookCtx.headingHook, hookValue, hookCtx.site, hookCtx.env);
+      result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx + closeTag.length);
     }
   }
 
-  // Apply image hooks - match <img src="..." alt="..." title="..." />
-  if (hookCtx.imageHook !== undefined) {
-    let searchIdx = 0;
-    while (true) {
-      const startIdx = result.indexOf("<img ", searchIdx);
-      if (startIdx < 0) break;
-      let endIdx = result.indexOf("/>", startIdx);
+  // Process links and images - find by marker attribute
+  const linkArr = elements.links.toArray();
+  for (let i = 0; i < linkArr.length; i++) {
+    const link = linkArr[i]!;
+    const markerPattern = `${hookMarkerAttr}="${link.hookId}"`;
+    const markerIdx = result.indexOf(markerPattern);
+    if (markerIdx < 0) continue;
+
+    if (link.isImage && hookCtx.imageHook !== undefined) {
+      // Find the start of the <img tag (search backward)
+      let startIdx = markerIdx;
+      while (startIdx > 0 && result.substring(startIdx, 4) !== "<img") {
+        startIdx = startIdx - 1;
+      }
+      if (startIdx < 0) continue;
+
+      // Find end of img tag (either /> or >)
+      let endIdx = result.indexOf("/>", markerIdx);
       if (endIdx < 0) {
-        endIdx = result.indexOf(">", startIdx);
-        if (endIdx < 0) break;
+        endIdx = result.indexOf(">", markerIdx);
+        if (endIdx < 0) continue;
         endIdx = endIdx + 1;
       } else {
         endIdx = endIdx + 2;
       }
-      const fullMatch = result.substring(startIdx, endIdx - startIdx);
-      const src = parseAttr(fullMatch, "src");
-      const alt = parseAttr(fullMatch, "alt");
-      const title = parseAttr(fullMatch, "title");
-      const ctx = new ImageHookContext(src, alt, title, alt, hookCtx.page);
+
+      // Extract alt from the tag
+      const tagContent = result.substring(startIdx, endIdx - startIdx);
+      const alt = parseAttr(tagContent, "alt");
+
+      const ctx = new ImageHookContext(link.href, alt, link.title, alt, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
       const hookHtml = renderImageHookTemplate(hookCtx.imageHook, hookValue, hookCtx.site, hookCtx.env);
       result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx);
-      searchIdx = startIdx + hookHtml.length;
-    }
-  }
-
-  // Apply link hooks - match <a href="...">...</a>
-  if (hookCtx.linkHook !== undefined) {
-    let searchIdx = 0;
-    while (true) {
-      const startIdx = result.indexOf("<a ", searchIdx);
-      if (startIdx < 0) break;
-      const endIdx = result.indexOf("</a>", startIdx);
-      if (endIdx < 0) break;
-      const tagEndIdx = result.indexOf(">", startIdx);
-      if (tagEndIdx < 0 || tagEndIdx > endIdx) {
-        searchIdx = startIdx + 1;
-        continue;
+    } else if (!link.isImage && hookCtx.linkHook !== undefined) {
+      // Find the start of the <a tag (search backward)
+      let startIdx = markerIdx;
+      while (startIdx > 0 && result.substring(startIdx, 2) !== "<a") {
+        startIdx = startIdx - 1;
       }
-      const tagPart = result.substring(startIdx, tagEndIdx - startIdx + 1);
-      const href = parseAttr(tagPart, "href");
-      const title = parseAttr(tagPart, "title");
+      if (startIdx < 0) continue;
+
+      // Find the closing </a> tag
+      const endIdx = result.indexOf("</a>", markerIdx);
+      if (endIdx < 0) continue;
+
+      // Extract inner HTML
+      const tagEndIdx = result.indexOf(">", startIdx);
+      if (tagEndIdx < 0 || tagEndIdx > endIdx) continue;
       const innerHtml = result.substring(tagEndIdx + 1, endIdx - tagEndIdx - 1);
       const plainText = extractTextFromHtml(innerHtml);
-      const ctx = new LinkHookContext(href, innerHtml, title, plainText, hookCtx.page);
+
+      const ctx = new LinkHookContext(link.href, innerHtml, link.title, plainText, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
       const hookHtml = renderLinkHookTemplate(hookCtx.linkHook, hookValue, hookCtx.site, hookCtx.env);
       result = result.substring(0, startIdx) + hookHtml + result.substring(endIdx + 4);
-      searchIdx = startIdx + hookHtml.length;
     }
   }
 
   return result;
 };
 
-// Render markdown with hook support
+// Render markdown with hook support using AST-based marker injection
 const renderMarkdownWithHooks = (
   markdown: string,
   hookCtx: RenderHookContext,
 ): string => {
-  // Use standard Markdig rendering, then apply hooks via HTML post-processing
-  const html = Markdown.toHtml(markdown, markdownPipeline);
-  return applyRenderHooks(html, hookCtx);
+  // Parse to AST, inject markers, render, then apply hooks using markers
+  const document = Markdown.parse(markdown, markdownPipeline);
+  const elements = injectHookMarkers(document, hookCtx);
+  const html = Markdown.toHtml(document, markdownPipeline);
+  return applyRenderHooksWithMarkers(html, elements, hookCtx);
 };
 
 // Shortcode execution

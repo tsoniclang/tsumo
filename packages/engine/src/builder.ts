@@ -252,6 +252,37 @@ const resolveMenuPageRefs = (site: SiteContext): void => {
 };
 
 // Integrate frontmatter menus into site.Menus
+// Helper to find a menu entry by identifier, searching recursively through children
+const findMenuEntryByIdentifier = (entries: MenuEntry[], identifier: string): MenuEntry | undefined => {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    const entryId = entry.identifier !== "" ? entry.identifier : entry.name;
+    if (entryId === identifier) return entry;
+    // Search children recursively
+    const found = findMenuEntryByIdentifier(entry.children, identifier);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+};
+
+// Helper to add entry to parent's children array in sorted order
+const addChildToParent = (parent: MenuEntry, child: MenuEntry): void => {
+  const newChildren = new List<MenuEntry>();
+  for (let i = 0; i < parent.children.length; i++) newChildren.add(parent.children[i]!);
+  newChildren.add(child);
+  newChildren.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+  parent.children = newChildren.toArray();
+};
+
+// Helper to add entry to top-level menu in sorted order
+const addToTopLevel = (entries: MenuEntry[], entry: MenuEntry): MenuEntry[] => {
+  const newEntries = new List<MenuEntry>();
+  for (let i = 0; i < entries.length; i++) newEntries.add(entries[i]!);
+  newEntries.add(entry);
+  newEntries.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+  return newEntries.toArray();
+};
+
 const integrateFrontmatterMenus = (
   pageBuilds: ContentPageBuild[],
   pageContexts: PageContext[],
@@ -290,17 +321,20 @@ const integrateFrontmatterMenus = (
         site.Menus.add(menuName, entries);
       }
 
-      // Add entry to the menu (will be sorted later)
-      const newEntries = new List<MenuEntry>();
-      for (let k = 0; k < entries.length; k++) newEntries.add(entries[k]!);
-      newEntries.add(entry);
+      // If entry has a parent, try to find and add to parent's children
+      if (fmMenu.parent !== "") {
+        const parentEntry = findMenuEntryByIdentifier(entries, fmMenu.parent);
+        if (parentEntry !== undefined) {
+          addChildToParent(parentEntry, entry);
+          continue; // Don't add to top-level
+        }
+        // Parent not found - fall through to add to top-level
+      }
 
-      // Sort by weight
-      newEntries.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
-
-      // Update the menu
+      // Add entry to top-level of the menu
+      const newEntries = addToTopLevel(entries, entry);
       site.Menus.remove(menuName);
-      site.Menus.add(menuName, newEntries.toArray());
+      site.Menus.add(menuName, newEntries);
     }
   }
 };
