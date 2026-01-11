@@ -7,6 +7,7 @@ import { LanguageConfig, MenuEntry, SiteConfig } from "./models.ts";
 import { fileExists, readTextFile } from "./fs.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
 import { ParamValue } from "./params.ts";
+import { buildMenuHierarchy } from "./menus.ts";
 
 class MenuEntryBuilder {
   name: string;
@@ -52,47 +53,7 @@ class MenuEntryBuilder {
   }
 }
 
-const sortMenuEntries = (entries: MenuEntry[]): MenuEntry[] => {
-  const copy = new List<MenuEntry>();
-  for (let i = 0; i < entries.length; i++) copy.add(entries[i]!);
-  copy.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
-  return copy.toArray();
-};
-
-const buildMenuHierarchy = (entries: MenuEntry[]): MenuEntry[] => {
-  const topLevel = new List<MenuEntry>();
-  const byIdentifier = new Dictionary<string, MenuEntry>();
-
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
-    const id = entry.identifier !== "" ? entry.identifier : entry.name;
-    if (id !== "") {
-      byIdentifier.remove(id);
-      byIdentifier.add(id, entry);
-    }
-  }
-
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
-    if (entry.parent === "") {
-      topLevel.add(entry);
-    } else {
-      let parentEntry: MenuEntry = entries[0]!;
-      const found = byIdentifier.tryGetValue(entry.parent, parentEntry);
-      if (found) {
-        const children = new List<MenuEntry>();
-        for (let j = 0; j < parentEntry.children.length; j++) children.add(parentEntry.children[j]!);
-        children.add(entry);
-        children.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
-        parentEntry.children = children.toArray();
-      } else {
-        topLevel.add(entry);
-      }
-    }
-  }
-
-  return sortMenuEntries(topLevel.toArray());
-};
+// Menu hierarchy building moved to menus.ts
 
 export class LoadedConfig {
   readonly path: string | undefined;

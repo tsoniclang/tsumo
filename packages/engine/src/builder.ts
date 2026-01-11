@@ -15,6 +15,7 @@ import { HtmlString } from "./utils/html.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.ts";
 import { buildDocsSite } from "./docs/builder.ts";
+import { findMenuEntryByIdentifier, addChildToParent, addToTopLevel } from "./menus.ts";
 
 class ContentPageBuild {
   readonly sourcePath: string;
@@ -251,47 +252,35 @@ const resolveMenuPageRefs = (site: SiteContext): void => {
   menuKeys.dispose();
 };
 
-// Integrate frontmatter menus into site.Menus
-// Helper to find a menu entry by identifier, searching recursively through children
-const findMenuEntryByIdentifier = (entries: MenuEntry[], identifier: string): MenuEntry | undefined => {
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
-    const entryId = entry.identifier !== "" ? entry.identifier : entry.name;
-    if (entryId === identifier) return entry;
-    // Search children recursively
-    const found = findMenuEntryByIdentifier(entry.children, identifier);
-    if (found !== undefined) return found;
-  }
-  return undefined;
-};
-
-// Helper to add entry to parent's children array in sorted order
-const addChildToParent = (parent: MenuEntry, child: MenuEntry): void => {
-  const newChildren = new List<MenuEntry>();
-  for (let i = 0; i < parent.children.length; i++) newChildren.add(parent.children[i]!);
-  newChildren.add(child);
-  newChildren.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
-  parent.children = newChildren.toArray();
-};
-
-// Helper to add entry to top-level menu in sorted order
-const addToTopLevel = (entries: MenuEntry[], entry: MenuEntry): MenuEntry[] => {
-  const newEntries = new List<MenuEntry>();
-  for (let i = 0; i < entries.length; i++) newEntries.add(entries[i]!);
-  newEntries.add(entry);
-  newEntries.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
-  return newEntries.toArray();
-};
+// Menu helpers imported from menus.ts
 
 const integrateFrontmatterMenus = (
   pageBuilds: ContentPageBuild[],
-  pageContexts: PageContext[],
   site: SiteContext,
 ): void => {
-  // Map page builds to contexts by index (they're in the same order)
+  // Build a dictionary of pages keyed by lowercase filename for safe lookup
+  // This avoids fragile index-based mapping between pageBuilds and pageContexts
+  const pagesByFilename = new Dictionary<string, PageContext>();
+  const allPages = site.pages;
+  for (let i = 0; i < allPages.length; i++) {
+    const page = allPages[i]!;
+    if (page.File !== undefined) {
+      const key = page.File.Filename.toLowerInvariant();
+      pagesByFilename.remove(key); // Remove any existing (shouldn't happen)
+      pagesByFilename.add(key, page);
+    }
+  }
+
+  // Process each page build that has frontmatter menus
   for (let i = 0; i < pageBuilds.length; i++) {
     const pageBuild = pageBuilds[i]!;
-    const pageContext = pageContexts[i]!;
+    if (pageBuild.menus.length === 0) continue;
+
+    // Look up the page context by filename
+    const filenameKey = pageBuild.file.Filename.toLowerInvariant();
+    let pageContext: PageContext = allPages[0]!; // Placeholder for tryGetValue
+    const foundPage = pagesByFilename.tryGetValue(filenameKey, pageContext);
+    if (!foundPage) continue; // Page not found - skip this build
 
     for (let j = 0; j < pageBuild.menus.length; j++) {
       const fmMenu = pageBuild.menus[j]!;
@@ -537,7 +526,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   site.pages = pageContextArr;
 
   // Integrate frontmatter menus into site.Menus
-  integrateFrontmatterMenus(pageBuilds, pageContextArr, site);
+  integrateFrontmatterMenus(pageBuilds, site);
 
   // Resolve pageRef for menu entries
   resolveMenuPageRefs(site);

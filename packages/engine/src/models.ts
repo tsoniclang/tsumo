@@ -172,14 +172,15 @@ export class SiteContext {
     }
 
     // Set all languages
+    // Note: IsMultiLingual is false until per-language build is implemented.
+    // Even with multiple configured languages, we only build for one language currently.
     if (allLanguages !== undefined && allLanguages.length > 0) {
       this.Languages = allLanguages;
-      this.IsMultiLingual = allLanguages.length > 1;
     } else {
       const langs: LanguageContext[] = [this.Language];
       this.Languages = langs;
-      this.IsMultiLingual = false;
     }
+    this.IsMultiLingual = false; // TODO: Set true when per-language build is implemented
 
     // Set language prefix (e.g., "/fr" for non-default language)
     this.LanguagePrefix = "";
