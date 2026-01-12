@@ -77,7 +77,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
       else if (menuKey === "pre") currentMenuEntry.pre = value;
       else if (menuKey === "post") currentMenuEntry.post = value;
       else if (menuKey === "weight") {
-        const parsed: int = 0;
+        let parsed: int = 0;
         if (Int32.tryParse(value, parsed)) currentMenuEntry.weight = parsed;
       }
       continue;
@@ -111,7 +111,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
         else if (langKey === "languagedirection") entry.languageDirection = value;
         else if (langKey === "contentdir") entry.contentDir = value;
         else if (langKey === "weight") {
-          const parsed: int = 0;
+          let parsed: int = 0;
           if (Int32.tryParse(value, parsed)) entry.weight = parsed;
         }
         continue;
@@ -145,7 +145,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
   const menuKeysIt = menuBuilders.keys.getEnumerator();
   while (menuKeysIt.moveNext()) {
     const menuName = menuKeysIt.current;
-    const builders = new List<MenuEntryBuilder>();
+    let builders = new List<MenuEntryBuilder>();
     const hasBuilders = menuBuilders.tryGetValue(menuName, builders);
     if (hasBuilders) {
       const entries = new List<MenuEntry>();

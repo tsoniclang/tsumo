@@ -43,7 +43,7 @@ export class ShortcodeContext {
 
   Get(keyOrIndex: string): ParamValue | undefined {
     if (this.IsNamedParams) {
-      const value: ParamValue = ParamValue.string("");
+      let value: ParamValue = ParamValue.string("");
       const found = this.Params.tryGetValue(keyOrIndex, value);
       return found ? value : undefined;
     }

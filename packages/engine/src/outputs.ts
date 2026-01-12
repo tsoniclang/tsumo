@@ -43,7 +43,7 @@ export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
   for (let i = 0; i < pages.length; i++) {
     const p = pages[i]!;
     const link = toAbsoluteUrl(config.baseURL, p.relPermalink);
-    const parsed: DateTime = DateTime.minValue;
+    let parsed: DateTime = DateTime.minValue;
     const ok = DateTime.tryParse(p.date, parsed);
     const pub = ok ? parsed : now;
 

@@ -112,7 +112,7 @@ export class TemplateInvokeNode extends TemplateNode {
   ): void {
     const ctx = this.context.eval(scope, env, overrides, defines);
     const dot = ctx instanceof NilValue ? scope.dot : ctx;
-    const nodes: TemplateNode[] = [];
+    let nodes: TemplateNode[] = [];
     const hasOverride = overrides.tryGetValue(this.name, nodes);
     if (!hasOverride) {
       const hasLocal = defines.tryGetValue(this.name, nodes);
@@ -366,7 +366,7 @@ export class BlockNode extends TemplateNode {
     overrides: Dictionary<string, TemplateNode[]>,
     defines: Dictionary<string, TemplateNode[]>,
   ): void {
-    const overrideNodes: TemplateNode[] = [];
+    let overrideNodes: TemplateNode[] = [];
     const hasOverride = overrides.tryGetValue(this.name, overrideNodes);
     const ctx = this.context.eval(scope, env, overrides, defines);
     const dot = ctx instanceof NilValue ? scope.dot : ctx;

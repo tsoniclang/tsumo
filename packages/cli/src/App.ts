@@ -41,7 +41,7 @@ const usage = (): void => {
 };
 
 const parseInt = (value: string): int | undefined => {
-  const parsed: int = 0;
+  let parsed: int = 0;
   const ok = Int32.tryParse(value, parsed);
   return ok ? parsed : undefined;
 };

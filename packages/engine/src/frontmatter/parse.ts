@@ -50,7 +50,7 @@ const applyScalar = (fm: FrontMatter, keyRaw: string, valueRaw: string): void =>
   }
 
   if (key === "date") {
-    const parsed: DateTime = DateTime.minValue;
+    let parsed: DateTime = DateTime.minValue;
     const ok = DateTime.tryParse(unquote(value), parsed);
     if (ok) fm.date = parsed;
     return;
@@ -198,7 +198,7 @@ const parseYaml = (all: string[]): FrontMatter => {
             const propKey = nt.substring(0, colonIdx).trim().toLowerInvariant();
             const propVal = unquote(nt.substring(colonIdx + 1).trim());
             if (propKey === "weight") {
-              const parsed: int = 0;
+              let parsed: int = 0;
               if (Int32.tryParse(propVal, parsed)) currentMenu.weight = parsed;
             } else if (propKey === "name") currentMenu.name = propVal;
             else if (propKey === "parent") currentMenu.parent = propVal;
@@ -264,7 +264,7 @@ const parseToml = (lines: string[]): FrontMatter => {
     if (currentMenu !== undefined && currentTable.startsWith("menu.")) {
       const keyLower = keyRaw.toLowerInvariant();
       if (keyLower === "weight") {
-        const parsed: int = 0;
+        let parsed: int = 0;
         if (Int32.tryParse(unquote(valueRaw), parsed)) currentMenu.weight = parsed;
       } else if (keyLower === "name") currentMenu.name = unquote(valueRaw);
       else if (keyLower === "parent") currentMenu.parent = unquote(valueRaw);
@@ -300,7 +300,7 @@ const parseToml = (lines: string[]): FrontMatter => {
     }
 
     if (keyRaw.toLowerInvariant() === "date") {
-      const parsed: DateTime = DateTime.minValue;
+      let parsed: DateTime = DateTime.minValue;
       const ok = DateTime.tryParse(unquote(valueRaw), parsed);
       if (ok) fm.date = parsed;
       continue;
@@ -314,7 +314,7 @@ const parseToml = (lines: string[]): FrontMatter => {
   const keysIt = menuBuilders.keys.getEnumerator();
   while (keysIt.moveNext()) {
     const menuName = keysIt.current;
-    const entries = new List<FrontMatterMenu>();
+    let entries = new List<FrontMatterMenu>();
     if (menuBuilders.tryGetValue(menuName, entries)) {
       const arr = entries.toArray();
       for (let j = 0; j < arr.length; j++) {
@@ -384,7 +384,7 @@ const parseJson = (json: string): FrontMatter => {
       }
 
       if (key === "date" && v.valueKind === JsonValueKind.string_) {
-        const parsed: DateTime = DateTime.minValue;
+        let parsed: DateTime = DateTime.minValue;
         const ok = DateTime.tryParse(v.getString() ?? "", parsed);
         if (ok) fm.date = parsed;
         continue;

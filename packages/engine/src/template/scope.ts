@@ -23,7 +23,7 @@ export class RenderScope {
   getVar(name: string): TemplateValue | undefined {
     let cur: RenderScope | undefined = this;
     while (cur !== undefined) {
-      const value: TemplateValue = new NilValue();
+      let value: TemplateValue = new NilValue();
       if (cur.vars.tryGetValue(name, value)) return value;
       cur = cur.parent;
     }
@@ -38,7 +38,7 @@ export class RenderScope {
   assignVar(name: string, value: TemplateValue): void {
     let cur: RenderScope | undefined = this;
     while (cur !== undefined) {
-      const existing: TemplateValue = new NilValue();
+      let existing: TemplateValue = new NilValue();
       const has = cur.vars.tryGetValue(name, existing);
       if (has) {
         cur.vars.remove(name);
