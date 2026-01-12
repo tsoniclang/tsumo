@@ -78,3 +78,26 @@ export const addToTopLevel = (entries: MenuEntry[], entry: MenuEntry): MenuEntry
   newEntries.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
   return newEntries.toArray();
 };
+
+// Helper to collect entries recursively into a list
+const collectFlatEntries = (list: MenuEntry[], result: List<MenuEntry>): void => {
+  for (let i = 0; i < list.length; i++) {
+    const entry = list[i]!;
+    // Recursively collect children first
+    if (entry.children.length > 0) {
+      collectFlatEntries(entry.children, result);
+    }
+    // Clear children array since we're flattening
+    const emptyChildren: MenuEntry[] = [];
+    entry.children = emptyChildren;
+    result.add(entry);
+  }
+};
+
+// Flatten a hierarchical menu into a flat list (children are cleared)
+// This extracts all entries recursively and returns them as a flat array
+export const flattenMenuEntries = (entries: MenuEntry[]): MenuEntry[] => {
+  const result = new List<MenuEntry>();
+  collectFlatEntries(entries, result);
+  return result.toArray();
+};

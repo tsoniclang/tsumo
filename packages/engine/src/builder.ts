@@ -10,12 +10,12 @@ import { loadDocsConfig } from "./docs/config.ts";
 import { parseContent, FrontMatterMenu } from "./frontmatter.ts";
 import { copyDirRecursive, deleteDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.ts";
 import { BuildEnvironment } from "./env.ts";
-import { renderMarkdown } from "./markdown.ts";
+import { renderMarkdownWithShortcodes } from "./markdown.ts";
 import { HtmlString } from "./utils/html.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.ts";
 import { buildDocsSite } from "./docs/builder.ts";
-import { findMenuEntryByIdentifier, addChildToParent, addToTopLevel } from "./menus.ts";
+import { buildMenuHierarchy, flattenMenuEntries } from "./menus.ts";
 
 class ContentPageBuild {
   readonly sourcePath: string;
@@ -31,10 +31,7 @@ class ContentPageBuild {
   readonly tags: string[];
   readonly categories: string[];
   readonly Params: Dictionary<string, ParamValue>;
-  readonly content: HtmlString;
-  readonly summary: HtmlString;
-  readonly tableOfContents: HtmlString;
-  readonly plain: string;
+  readonly rawBody: string;
   readonly relPermalink: string;
   readonly outputRelPath: string;
   readonly layout: string | undefined;
@@ -55,10 +52,7 @@ class ContentPageBuild {
     tags: string[],
     categories: string[],
     parameters: Dictionary<string, ParamValue>,
-    content: HtmlString,
-    summary: HtmlString,
-    tableOfContents: HtmlString,
-    plain: string,
+    rawBody: string,
     relPermalink: string,
     outputRelPath: string,
     layout: string | undefined,
@@ -78,10 +72,7 @@ class ContentPageBuild {
     this.tags = tags;
     this.categories = categories;
     this.Params = parameters;
-    this.content = content;
-    this.summary = summary;
-    this.tableOfContents = tableOfContents;
-    this.plain = plain;
+    this.rawBody = rawBody;
     this.relPermalink = relPermalink;
     this.outputRelPath = outputRelPath;
     this.layout = layout;
@@ -92,10 +83,7 @@ class ContentPageBuild {
 
 class ListPageContent {
   readonly title: string | undefined;
-  readonly content: HtmlString;
-  readonly summary: HtmlString;
-  readonly tableOfContents: HtmlString;
-  readonly plain: string;
+  readonly rawBody: string;
   readonly description: string;
   readonly type: string | undefined;
   readonly layout: string | undefined;
@@ -105,10 +93,7 @@ class ListPageContent {
 
   constructor(
     title: string | undefined,
-    content: HtmlString,
-    summary: HtmlString,
-    tableOfContents: HtmlString,
-    plain: string,
+    rawBody: string,
     description: string,
     type: string | undefined,
     layout: string | undefined,
@@ -117,10 +102,7 @@ class ListPageContent {
     file?: PageFile,
   ) {
     this.title = title;
-    this.content = content;
-    this.summary = summary;
-    this.tableOfContents = tableOfContents;
-    this.plain = plain;
+    this.rawBody = rawBody;
     this.description = description;
     this.type = type;
     this.layout = layout;
@@ -259,28 +241,29 @@ const integrateFrontmatterMenus = (
   site: SiteContext,
 ): void => {
   // Build a dictionary of pages keyed by lowercase filename for safe lookup
-  // This avoids fragile index-based mapping between pageBuilds and pageContexts
   const pagesByFilename = new Dictionary<string, PageContext>();
   const allPages = site.pages;
   for (let i = 0; i < allPages.length; i++) {
     const page = allPages[i]!;
     if (page.File !== undefined) {
       const key = page.File.Filename.toLowerInvariant();
-      pagesByFilename.remove(key); // Remove any existing (shouldn't happen)
+      pagesByFilename.remove(key);
       pagesByFilename.add(key, page);
     }
   }
 
-  // Process each page build that has frontmatter menus
+  // Collect all frontmatter menu entries per menu name
+  const frontmatterEntriesPerMenu = new Dictionary<string, List<MenuEntry>>();
+
   for (let i = 0; i < pageBuilds.length; i++) {
     const pageBuild = pageBuilds[i]!;
     if (pageBuild.menus.length === 0) continue;
 
     // Look up the page context by filename
     const filenameKey = pageBuild.file.Filename.toLowerInvariant();
-    let pageContext: PageContext = allPages[0]!; // Placeholder for tryGetValue
+    let pageContext: PageContext = allPages[0]!;
     const foundPage = pagesByFilename.tryGetValue(filenameKey, pageContext);
-    if (!foundPage) continue; // Page not found - skip this build
+    if (!foundPage) continue;
 
     for (let j = 0; j < pageBuild.menus.length; j++) {
       const fmMenu = pageBuild.menus[j]!;
@@ -301,30 +284,58 @@ const integrateFrontmatterMenus = (
       );
       entry.page = pageContext;
 
-      // Get or create menu entries list
-      let entries: MenuEntry[] = [];
-      const hasMenu = site.Menus.tryGetValue(menuName, entries);
-      if (!hasMenu) {
-        const emptyEntries: MenuEntry[] = [];
-        entries = emptyEntries;
-        site.Menus.add(menuName, entries);
+      // Add to collection for this menu
+      let entryList: List<MenuEntry> = new List<MenuEntry>();
+      const hasEntries = frontmatterEntriesPerMenu.tryGetValue(menuName, entryList);
+      if (!hasEntries) {
+        entryList = new List<MenuEntry>();
+        frontmatterEntriesPerMenu.add(menuName, entryList);
       }
-
-      // If entry has a parent, try to find and add to parent's children
-      if (fmMenu.parent !== "") {
-        const parentEntry = findMenuEntryByIdentifier(entries, fmMenu.parent);
-        if (parentEntry !== undefined) {
-          addChildToParent(parentEntry, entry);
-          continue; // Don't add to top-level
-        }
-        // Parent not found - fall through to add to top-level
-      }
-
-      // Add entry to top-level of the menu
-      const newEntries = addToTopLevel(entries, entry);
-      site.Menus.remove(menuName);
-      site.Menus.add(menuName, newEntries);
+      entryList.add(entry);
     }
+  }
+
+  // For each menu with frontmatter entries, merge with existing config entries and rebuild hierarchy
+  const menuNamesList = new List<string>();
+  const keysIt = frontmatterEntriesPerMenu.keys.getEnumerator();
+  while (keysIt.moveNext()) menuNamesList.add(keysIt.current);
+  keysIt.dispose();
+  const menuNames = menuNamesList.toArray();
+  for (let i = 0; i < menuNames.length; i++) {
+    const menuName = menuNames[i]!;
+
+    // Get existing menu entries (may already have hierarchy from config)
+    let existingEntries: MenuEntry[] = [];
+    const hasExisting = site.Menus.tryGetValue(menuName, existingEntries);
+
+    // Flatten existing entries to break apart any hierarchy
+    let flatExisting: MenuEntry[] = [];
+    if (hasExisting) {
+      flatExisting = flattenMenuEntries(existingEntries);
+    }
+
+    // Get frontmatter entries for this menu
+    let fmEntryList: List<MenuEntry> = new List<MenuEntry>();
+    frontmatterEntriesPerMenu.tryGetValue(menuName, fmEntryList);
+    const fmEntries = fmEntryList.toArray();
+
+    // Combine all entries into a flat list
+    const combined = new List<MenuEntry>();
+    for (let j = 0; j < flatExisting.length; j++) {
+      const entry = flatExisting[j]!;
+      combined.add(entry);
+    }
+    for (let j = 0; j < fmEntries.length; j++) {
+      const entry = fmEntries[j]!;
+      combined.add(entry);
+    }
+
+    // Rebuild hierarchy from combined flat list (order-independent)
+    const hierarchical = buildMenuHierarchy(combined.toArray());
+
+    // Update the site's menu
+    site.Menus.remove(menuName);
+    site.Menus.add(menuName, hierarchical);
   }
 };
 
@@ -378,17 +389,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const dirRel = joinUrlPath(dirParts);
 
     const parsed = parseContent(readTextFile(filePath));
-    const md = renderMarkdown(parsed.body);
     const fm = parsed.frontMatter;
 
     const dateUtc = fm.date ?? File.getLastWriteTimeUtc(filePath);
     const dateString = dateUtc.toString("O");
     const lastmodString = File.getLastWriteTimeUtc(filePath).toString("O");
-
-    const content = new HtmlString(md.html);
-    const summary = new HtmlString(md.summaryHtml);
-    const tableOfContents = new HtmlString(md.tableOfContents);
-    const plain = md.plainText;
 
     const pageParams = fm.Params;
     const file = buildPageFile(dirRel, fileName, filePath);
@@ -396,7 +401,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     if (isBranchIndexFile(fileName)) {
       const srcDir = Path.getDirectoryName(filePath) ?? contentDir;
       listIndex.remove(dirRel);
-      listIndex.add(dirRel, new ListPageContent(fm.title, content, summary, tableOfContents, plain, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
+      listIndex.add(dirRel, new ListPageContent(fm.title, parsed.body, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
       continue;
     }
 
@@ -438,10 +443,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       fm.tags,
       fm.categories,
       pageParams,
-      content,
-      summary,
-      tableOfContents,
-      plain,
+      parsed.body,
       relPermalink,
       outputRelPath,
       fm.layout,
@@ -478,6 +480,8 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   const pageContexts = new List<PageContext>();
   const bySection = new Dictionary<string, List<PageContext>>();
+  const pageRawBodies = new Dictionary<PageContext, string>();
+  const placeholderHtml = new HtmlString("");
 
   const pageBuilds = pages.toArray();
   for (let i = 0; i < pageBuilds.length; i++) {
@@ -492,10 +496,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       p.type,
       p.slug,
       p.relPermalink,
-      p.plain,
-      p.tableOfContents,
-      p.content,
-      p.summary,
+      "",
+      placeholderHtml,
+      placeholderHtml,
+      placeholderHtml,
       p.description,
       p.tags,
       p.categories,
@@ -511,6 +515,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       p.layout,
     );
     pageContexts.add(ctx);
+    pageRawBodies.add(ctx, p.rawBody);
 
     let sectionPages = new List<PageContext>();
     const hasSection = bySection.tryGetValue(p.section, sectionPages);
@@ -546,10 +551,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const sitemapUrlSet = new Dictionary<string, boolean>();
 
   let homeTitle = config.title;
-  let homeContent = new HtmlString("");
-  let homeSummary = new HtmlString("");
-  let homeToc = new HtmlString("");
-  let homePlain = "";
+  let homeRawBody = "";
   let homeDescription = "";
   let homeType = "home";
   let homeLayout: string | undefined = undefined;
@@ -557,14 +559,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   let homeFile: PageFile | undefined = undefined;
   let homeSourceDir: string | undefined = undefined;
 
-  const homeIdxValue = new ListPageContent(undefined, homeContent, homeSummary, homeToc, homePlain, "", undefined, undefined, homeParams, contentDir);
+  const homeIdxValue = new ListPageContent(undefined, "", "", undefined, undefined, homeParams, contentDir);
   const hasHomeIdx = listIndex.tryGetValue("", homeIdxValue);
   if (hasHomeIdx) {
     if (homeIdxValue.title !== undefined) homeTitle = homeIdxValue.title;
-    homeContent = homeIdxValue.content;
-    homeSummary = homeIdxValue.summary;
-    homeToc = homeIdxValue.tableOfContents;
-    homePlain = homeIdxValue.plain;
+    homeRawBody = homeIdxValue.rawBody;
     homeDescription = homeIdxValue.description;
     homeType = homeIdxValue.type ?? "home";
     homeLayout = homeIdxValue.layout;
@@ -573,6 +572,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     homeSourceDir = homeIdxValue.sourceDir;
   }
 
+  const emptyHtmlString = new HtmlString("");
   const homeCtx = new PageContext(
     homeTitle,
     "",
@@ -583,10 +583,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     homeType,
     "",
     "/",
-    homePlain,
-    homeToc,
-    homeContent,
-    homeSummary,
+    "",
+    emptyHtmlString,
+    emptyHtmlString,
+    emptyHtmlString,
     homeDescription,
     emptyStrings,
     emptyStrings,
@@ -601,6 +601,15 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     emptyPages,
     homeLayout,
   );
+
+  // Render home page content with shortcodes
+  if (homeRawBody !== "") {
+    const homeMd = renderMarkdownWithShortcodes(homeRawBody, homeCtx, site, env);
+    homeCtx.content = new HtmlString(homeMd.html);
+    homeCtx.summary = new HtmlString(homeMd.summaryHtml);
+    homeCtx.tableOfContents = new HtmlString(homeMd.tableOfContents);
+    homeCtx.plain = homeMd.plainText;
+  }
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
   writeTextFile(Path.combine(outDir, "index.html"), homeHtml);
@@ -641,10 +650,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     if (ok) list = sectionPages.toArray();
 
     let title = humanizeSlug(section);
-    let content = new HtmlString("");
-    let summary = new HtmlString("");
-    let toc = new HtmlString("");
-    let plain = "";
+    let sectionRawBody = "";
     let description = "";
     let listType = section;
     let layout: string | undefined = undefined;
@@ -652,14 +658,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, content, summary, toc, plain, "", undefined, undefined, listParams, contentDir);
+    const idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(section, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
-      content = idxValue.content;
-      summary = idxValue.summary;
-      toc = idxValue.tableOfContents;
-      plain = idxValue.plain;
+      sectionRawBody = idxValue.rawBody;
       description = idxValue.description;
       listType = idxValue.type ?? section;
       layout = idxValue.layout;
@@ -678,10 +681,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       listType,
       section,
       combineUrl([section]),
-      plain,
-      toc,
-      content,
-      summary,
+      "",
+      placeholderHtml,
+      placeholderHtml,
+      placeholderHtml,
       description,
       emptyStrings,
       emptyStrings,
@@ -696,6 +699,15 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       emptyPages,
       layout,
     );
+
+    // Render section content with shortcodes
+    if (sectionRawBody !== "") {
+      const md = renderMarkdownWithShortcodes(sectionRawBody, ctx, site, env);
+      ctx.content = new HtmlString(md.html);
+      ctx.summary = new HtmlString(md.summaryHtml);
+      ctx.tableOfContents = new HtmlString(md.tableOfContents);
+      ctx.plain = md.plainText;
+    }
 
     const relOut = Path.combine(section, "index.html");
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
@@ -733,10 +745,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const section = dirParts.length > 0 ? dirParts[0]! : "";
 
     let title = humanizeSlug(leaf);
-    let content = new HtmlString("");
-    let summary = new HtmlString("");
-    let toc = new HtmlString("");
-    let plain = "";
+    let nestedRawBody = "";
     let description = "";
     let listType = section !== "" ? section : "section";
     let layout: string | undefined = undefined;
@@ -744,14 +753,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, content, summary, toc, plain, "", undefined, undefined, listParams, contentDir);
+    const idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(dirKey, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
-      content = idxValue.content;
-      summary = idxValue.summary;
-      toc = idxValue.tableOfContents;
-      plain = idxValue.plain;
+      nestedRawBody = idxValue.rawBody;
       description = idxValue.description;
       listType = idxValue.type ?? listType;
       layout = idxValue.layout;
@@ -770,10 +776,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       listType,
       leaf,
       urlPrefix,
-      plain,
-      toc,
-      content,
-      summary,
+      "",
+      placeholderHtml,
+      placeholderHtml,
+      placeholderHtml,
       description,
       emptyStrings,
       emptyStrings,
@@ -788,6 +794,15 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       emptyPages,
       layout,
     );
+
+    // Render nested section content with shortcodes
+    if (nestedRawBody !== "") {
+      const md = renderMarkdownWithShortcodes(nestedRawBody, ctx, site, env);
+      ctx.content = new HtmlString(md.html);
+      ctx.summary = new HtmlString(md.summaryHtml);
+      ctx.tableOfContents = new HtmlString(md.tableOfContents);
+      ctx.plain = md.plainText;
+    }
 
     const outRel = combineOutputRelPath(dirParts);
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
@@ -945,6 +960,17 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const p = singles[i]!;
 
     const ctx = pageContextArr[i]!;
+
+    // Render content with shortcodes now that we have PageContext and SiteContext
+    let rawBody = "";
+    const hasRawBody = pageRawBodies.tryGetValue(ctx, rawBody);
+    if (hasRawBody && rawBody !== "") {
+      const md = renderMarkdownWithShortcodes(rawBody, ctx, site, env);
+      ctx.content = new HtmlString(md.html);
+      ctx.summary = new HtmlString(md.summaryHtml);
+      ctx.tableOfContents = new HtmlString(md.tableOfContents);
+      ctx.plain = md.plainText;
+    }
 
     const templateType = p.type !== "" ? p.type : p.section;
     const layoutCandidates = p.layout !== undefined && p.layout.trim() !== ""
