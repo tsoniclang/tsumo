@@ -48,9 +48,14 @@ dist/
 
 # Site output
 public/
+public-aot/
+.tmp/
 
 # Vendored build outputs
 packages/markdig/vendor/
+
+# Local agent/task scratch
+.analysis/
 
 # .NET build outputs
 **/bin/
@@ -138,6 +143,7 @@ dist
 .tern-port
 
 # Stores VSCode versions used for testing VSCode extensions
+.vscode/
 .vscode-test
 
 # yarn v3

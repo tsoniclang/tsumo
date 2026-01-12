@@ -1,0 +1,17 @@
+{{ if .Params.mount }}
+  {{ range .Site.Mounts }}
+    {{ if eq .Name $.Params.mount }}
+      {{ partial "sidebar-mount.html" . }}
+    {{ end }}
+  {{ end }}
+{{ else }}
+  <div class="sidebar-home">
+    <div class="sidebar-title">Docs</div>
+    <ul>
+      {{ range .Site.Mounts }}
+        <li><a href="{{ .UrlPrefix }}">{{ .Name }}</a></li>
+      {{ end }}
+    </ul>
+  </div>
+{{ end }}
+

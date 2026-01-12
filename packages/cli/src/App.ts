@@ -28,6 +28,7 @@ const usage = (): void => {
   logLine("  -d, --destination <dir>    Output directory (default: public)");
   logLine("  -D, --buildDrafts          Include drafts");
   logLine("  --baseURL <url>            Override baseURL");
+  logLine("  --themesDir <dir>          Themes directory (like Hugo --themesDir)");
   logLine("  --no-clean                 Do not wipe destination dir");
   logLine("");
   logLine("SERVER OPTIONS:");
@@ -36,6 +37,7 @@ const usage = (): void => {
   logLine("  --host <host>              Host (default: localhost)");
   logLine("  --watch / --no-watch       Watch and rebuild (default: on)");
   logLine("  -D, --buildDrafts          Include drafts");
+  logLine("  --themesDir <dir>          Themes directory (like Hugo --themesDir)");
 };
 
 const parseInt = (value: string): int | undefined => {
@@ -100,6 +102,7 @@ export function main(): void {
     let serveSourceDir = Environment.currentDirectory;
     let serveDestinationDir = "public";
     let serveBaseURL: string | undefined = undefined;
+    let serveThemesDir: string | undefined = undefined;
     let serveHost = "localhost";
     let servePort: int = 1313;
     let serveWatch = true;
@@ -116,6 +119,9 @@ export function main(): void {
         i++;
       } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.length) {
         serveBaseURL = args[i + 1]!;
+        i++;
+      } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.length) {
+        serveThemesDir = args[i + 1]!;
         i++;
       } else if ((a === "--host" || a === "--bind") && i + 1 < args.length) {
         serveHost = args[i + 1]!;
@@ -146,6 +152,7 @@ export function main(): void {
     const serveReq = new ServeRequest(serveSourceDir);
     serveReq.destinationDir = serveDestinationDir;
     serveReq.baseURL = serveBaseURL;
+    serveReq.themesDir = serveThemesDir;
     serveReq.host = serveHost;
     serveReq.port = servePort;
     serveReq.watch = serveWatch;
@@ -168,6 +175,7 @@ export function main(): void {
   let buildSourceDir = Environment.currentDirectory;
   let buildDestinationDir = "public";
   let buildBaseURL: string | undefined = undefined;
+  let buildThemesDir: string | undefined = undefined;
   let includeDrafts = false;
   let cleanDestinationDir = true;
 
@@ -183,6 +191,9 @@ export function main(): void {
     } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.length) {
       buildBaseURL = args[i + 1]!;
       i++;
+    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.length) {
+      buildThemesDir = args[i + 1]!;
+      i++;
     } else if (a === "-D" || a === "--buildDrafts" || a === "--buildDrafts") {
       includeDrafts = true;
     } else if (a === "--no-clean") {
@@ -195,6 +206,7 @@ export function main(): void {
   const buildReq = new BuildRequest(buildSourceDir);
   buildReq.destinationDir = buildDestinationDir;
   buildReq.baseURL = buildBaseURL;
+  buildReq.themesDir = buildThemesDir;
   buildReq.buildDrafts = includeDrafts;
   buildReq.cleanDestinationDir = cleanDestinationDir;
 

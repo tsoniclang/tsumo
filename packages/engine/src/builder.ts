@@ -2,15 +2,20 @@ import { DateTime } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import type { char, int } from "@tsonic/core/types.js";
-import { BuildRequest, BuildResult, PageContext, SiteContext, SiteConfig } from "./models.ts";
+import { BuildRequest, BuildResult, LanguageContext, MenuEntry, PageContext, PageFile, SiteContext, SiteConfig } from "./models.ts";
+import { ParamValue } from "./params.ts";
 import { renderRobotsTxt, renderRss, renderSitemap } from "./outputs.ts";
 import { loadSiteConfig } from "./config.ts";
-import { parseContent } from "./frontmatter.ts";
+import { loadDocsConfig } from "./docs/config.ts";
+import { parseContent, FrontMatterMenu } from "./frontmatter.ts";
 import { copyDirRecursive, deleteDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.ts";
-import { LayoutEnvironment } from "./layouts.ts";
-import { renderMarkdown } from "./markdown.ts";
+import { BuildEnvironment } from "./env.ts";
+import { renderMarkdownWithShortcodes } from "./markdown.ts";
 import { HtmlString } from "./utils/html.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
+import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.ts";
+import { buildDocsSite } from "./docs/builder.ts";
+import { buildMenuHierarchy, flattenMenuEntries } from "./menus.ts";
 
 class ContentPageBuild {
   readonly sourcePath: string;
@@ -20,16 +25,18 @@ class ContentPageBuild {
   readonly title: string;
   readonly dateUtc: DateTime;
   readonly dateString: string;
+  readonly lastmodString: string;
   readonly draft: boolean;
   readonly description: string;
   readonly tags: string[];
   readonly categories: string[];
-  readonly Params: Dictionary<string, string>;
-  readonly content: HtmlString;
-  readonly summary: HtmlString;
+  readonly Params: Dictionary<string, ParamValue>;
+  readonly rawBody: string;
   readonly relPermalink: string;
   readonly outputRelPath: string;
   readonly layout: string | undefined;
+  readonly file: PageFile;
+  readonly menus: FrontMatterMenu[];
 
   constructor(
     sourcePath: string,
@@ -39,16 +46,18 @@ class ContentPageBuild {
     title: string,
     dateUtc: DateTime,
     dateString: string,
+    lastmodString: string,
     draft: boolean,
     description: string,
     tags: string[],
     categories: string[],
-    parameters: Dictionary<string, string>,
-    content: HtmlString,
-    summary: HtmlString,
+    parameters: Dictionary<string, ParamValue>,
+    rawBody: string,
     relPermalink: string,
     outputRelPath: string,
     layout: string | undefined,
+    file: PageFile,
+    menus: FrontMatterMenu[],
   ) {
     this.sourcePath = sourcePath;
     this.section = section;
@@ -57,44 +66,49 @@ class ContentPageBuild {
     this.title = title;
     this.dateUtc = dateUtc;
     this.dateString = dateString;
+    this.lastmodString = lastmodString;
     this.draft = draft;
     this.description = description;
     this.tags = tags;
     this.categories = categories;
     this.Params = parameters;
-    this.content = content;
-    this.summary = summary;
+    this.rawBody = rawBody;
     this.relPermalink = relPermalink;
     this.outputRelPath = outputRelPath;
     this.layout = layout;
+    this.file = file;
+    this.menus = menus;
   }
 }
 
 class ListPageContent {
   readonly title: string | undefined;
-  readonly content: HtmlString;
-  readonly summary: HtmlString;
+  readonly rawBody: string;
   readonly description: string;
   readonly type: string | undefined;
-  readonly Params: Dictionary<string, string>;
+  readonly layout: string | undefined;
+  readonly Params: Dictionary<string, ParamValue>;
   readonly sourceDir: string;
+  readonly file: PageFile | undefined;
 
   constructor(
     title: string | undefined,
-    content: HtmlString,
-    summary: HtmlString,
+    rawBody: string,
     description: string,
     type: string | undefined,
-    parameters: Dictionary<string, string>,
+    layout: string | undefined,
+    parameters: Dictionary<string, ParamValue>,
     sourceDir: string,
+    file?: PageFile,
   ) {
     this.title = title;
-    this.content = content;
-    this.summary = summary;
+    this.rawBody = rawBody;
     this.description = description;
     this.type = type;
+    this.layout = layout;
     this.Params = parameters;
     this.sourceDir = sourceDir;
+    this.file = file;
   }
 }
 
@@ -109,6 +123,12 @@ const isLeafBundleIndexFile = (name: string): boolean => name.toLowerInvariant()
 const withoutMdExtension = (fileName: string): string => {
   const lower = fileName.toLowerInvariant();
   return lower.endsWith(".md") ? fileName.substring(0, fileName.length - 3) : fileName;
+};
+
+const buildPageFile = (dirKey: string, fileName: string, filePath: string): PageFile => {
+  const slash: char = "/";
+  const dir = dirKey === "" ? "" : dirKey.trimEnd(slash) + "/";
+  return new PageFile(Path.getFullPath(filePath), dir, withoutMdExtension(fileName));
 };
 
 const joinUrlPath = (parts: string[]): string => {
@@ -157,55 +177,172 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
   }
 };
 
-const combineUrl = (parts: string[]): string => {
+// Find a page by its path reference
+const findPageByRef = (pages: PageContext[], pageRef: string): PageContext | undefined => {
   const slash: char = "/";
-  const sb = new List<string>();
-  for (let i = 0; i < parts.length; i++) {
-    const p = parts[i]!.trim();
-    if (p !== "") sb.add(p.trimStart(slash).trimEnd(slash));
-  }
-  const arr = sb.toArray();
-  let out = "/";
-  for (let i = 0; i < arr.length; i++) {
-    out += arr[i]!;
-    if (!out.endsWith("/")) out += "/";
-  }
-  return out === "//" ? "/" : out;
-};
+  const normalizedRef = pageRef.trim().trimStart(slash).trimEnd(slash).toLowerInvariant();
+  if (normalizedRef === "") return undefined;
 
-const resolveThemeDir = (siteDir: string, config: SiteConfig): string | undefined => {
-  if (config.theme === undefined) return undefined;
-  const themeName = config.theme.trim();
-  if (themeName === "") return undefined;
-  const dir = Path.combine(siteDir, "themes", themeName);
-  return Directory.exists(dir) ? dir : undefined;
-};
-
-const selectTemplate = (env: LayoutEnvironment, candidates: string[]): string | undefined => {
-  for (let i = 0; i < candidates.length; i++) {
-    const p = candidates[i]!;
-    const t = env.getTemplate(p);
-    if (t !== undefined) return p;
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]!;
+    const normalizedPermalink = page.relPermalink.trimStart(slash).trimEnd(slash).toLowerInvariant();
+    if (normalizedPermalink === normalizedRef) return page;
   }
+
+  // Also try matching by section/slug pattern
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]!;
+    // Check if pageRef matches the slug
+    if (page.slug.toLowerInvariant() === normalizedRef) return page;
+    // Check section/slug pattern
+    const sectionSlug = (page.section + "/" + page.slug).toLowerInvariant();
+    if (sectionSlug === normalizedRef) return page;
+  }
+
   return undefined;
 };
 
-const renderWithBase = (env: LayoutEnvironment, basePath: string | undefined, mainPath: string, ctx: PageContext): string => {
-  const main = env.getTemplate(mainPath);
-  if (main === undefined) return "";
+// Resolve pageRef for a menu entry and its children recursively
+const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void => {
+  if (entry.pageRef !== "" && entry.page === undefined) {
+    const resolved = findPageByRef(pages, entry.pageRef);
+    if (resolved !== undefined) {
+      entry.page = resolved;
+    }
+  }
+  // Resolve children recursively
+  for (let i = 0; i < entry.children.length; i++) {
+    resolveMenuEntryPageRef(entry.children[i]!, pages);
+  }
+};
 
-  if (basePath !== undefined) {
-    const base = env.getTemplate(basePath);
-    if (base !== undefined && main.defines.count > 0) {
-      return base.render(ctx, env, main.defines);
+// Resolve pageRefs for all menu entries in a site
+const resolveMenuPageRefs = (site: SiteContext): void => {
+  const pages = site.pages;
+  const menus = site.Menus;
+  const menuKeys = menus.keys.getEnumerator();
+  while (menuKeys.moveNext()) {
+    const menuName = menuKeys.current;
+    let entries: MenuEntry[] = [];
+    const hasEntries = menus.tryGetValue(menuName, entries);
+    if (hasEntries) {
+      for (let i = 0; i < entries.length; i++) {
+        resolveMenuEntryPageRef(entries[i]!, pages);
+      }
+    }
+  }
+  menuKeys.dispose();
+};
+
+// Menu helpers imported from menus.ts
+
+const integrateFrontmatterMenus = (
+  pageBuilds: ContentPageBuild[],
+  site: SiteContext,
+): void => {
+  // Build a dictionary of pages keyed by lowercase filename for safe lookup
+  const pagesByFilename = new Dictionary<string, PageContext>();
+  const allPages = site.pages;
+  for (let i = 0; i < allPages.length; i++) {
+    const page = allPages[i]!;
+    if (page.File !== undefined) {
+      const key = page.File.Filename.toLowerInvariant();
+      pagesByFilename.remove(key);
+      pagesByFilename.add(key, page);
     }
   }
 
-  return main.render(ctx, env);
+  // Collect all frontmatter menu entries per menu name
+  const frontmatterEntriesPerMenu = new Dictionary<string, List<MenuEntry>>();
+
+  for (let i = 0; i < pageBuilds.length; i++) {
+    const pageBuild = pageBuilds[i]!;
+    if (pageBuild.menus.length === 0) continue;
+
+    // Look up the page context by filename
+    const filenameKey = pageBuild.file.Filename.toLowerInvariant();
+    let pageContext: PageContext = allPages[0]!;
+    const foundPage = pagesByFilename.tryGetValue(filenameKey, pageContext);
+    if (!foundPage) continue;
+
+    for (let j = 0; j < pageBuild.menus.length; j++) {
+      const fmMenu = pageBuild.menus[j]!;
+      const menuName = fmMenu.menu;
+
+      // Create MenuEntry from frontmatter menu with page reference
+      const entry = new MenuEntry(
+        fmMenu.name !== "" ? fmMenu.name : pageContext.title,
+        "", // url is empty - will use page's relPermalink
+        "", // pageRef is empty - we have the page directly
+        fmMenu.title,
+        fmMenu.weight,
+        fmMenu.parent,
+        fmMenu.identifier !== "" ? fmMenu.identifier : pageContext.relPermalink,
+        fmMenu.pre,
+        fmMenu.post,
+        menuName,
+      );
+      entry.page = pageContext;
+
+      // Add to collection for this menu
+      let entryList: List<MenuEntry> = new List<MenuEntry>();
+      const hasEntries = frontmatterEntriesPerMenu.tryGetValue(menuName, entryList);
+      if (!hasEntries) {
+        entryList = new List<MenuEntry>();
+        frontmatterEntriesPerMenu.add(menuName, entryList);
+      }
+      entryList.add(entry);
+    }
+  }
+
+  // For each menu with frontmatter entries, merge with existing config entries and rebuild hierarchy
+  const menuNamesList = new List<string>();
+  const keysIt = frontmatterEntriesPerMenu.keys.getEnumerator();
+  while (keysIt.moveNext()) menuNamesList.add(keysIt.current);
+  keysIt.dispose();
+  const menuNames = menuNamesList.toArray();
+  for (let i = 0; i < menuNames.length; i++) {
+    const menuName = menuNames[i]!;
+
+    // Get existing menu entries (may already have hierarchy from config)
+    let existingEntries: MenuEntry[] = [];
+    const hasExisting = site.Menus.tryGetValue(menuName, existingEntries);
+
+    // Flatten existing entries to break apart any hierarchy
+    let flatExisting: MenuEntry[] = [];
+    if (hasExisting) {
+      flatExisting = flattenMenuEntries(existingEntries);
+    }
+
+    // Get frontmatter entries for this menu
+    let fmEntryList: List<MenuEntry> = new List<MenuEntry>();
+    frontmatterEntriesPerMenu.tryGetValue(menuName, fmEntryList);
+    const fmEntries = fmEntryList.toArray();
+
+    // Combine all entries into a flat list
+    const combined = new List<MenuEntry>();
+    for (let j = 0; j < flatExisting.length; j++) {
+      const entry = flatExisting[j]!;
+      combined.add(entry);
+    }
+    for (let j = 0; j < fmEntries.length; j++) {
+      const entry = fmEntries[j]!;
+      combined.add(entry);
+    }
+
+    // Rebuild hierarchy from combined flat list (order-independent)
+    const hierarchical = buildMenuHierarchy(combined.toArray());
+
+    // Update the site's menu
+    site.Menus.remove(menuName);
+    site.Menus.add(menuName, hierarchical);
+  }
 };
 
 export const buildSite = (request: BuildRequest): BuildResult => {
   const siteDir = Path.getFullPath(request.siteDir);
+  const docs = loadDocsConfig(siteDir);
+  if (docs !== undefined) return buildDocsSite(request, docs);
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
 
@@ -213,12 +350,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     config.baseURL = ensureTrailingSlash(request.baseURL.trim());
   }
 
-  const themeDir = resolveThemeDir(siteDir, config);
-  const env = new LayoutEnvironment(siteDir, themeDir);
-
   const outDir = Path.isPathRooted(request.destinationDir)
     ? request.destinationDir
     : Path.combine(siteDir, request.destinationDir);
+
+  const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
+  const env = new BuildEnvironment(siteDir, themeDir, outDir);
 
   if (request.cleanDestinationDir) {
     deleteDirRecursive(outDir);
@@ -231,7 +368,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const staticDir = Path.combine(siteDir, "static");
   copyDirRecursive(staticDir, outDir);
 
-  const contentDir = Path.combine(siteDir, "content");
+  const contentDir = Path.combine(siteDir, config.contentDir);
   const emptyFiles: string[] = [];
   const mdFiles: string[] = Directory.exists(contentDir)
     ? Directory.getFiles(contentDir, "*.md", SearchOption.allDirectories)
@@ -252,21 +389,19 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const dirRel = joinUrlPath(dirParts);
 
     const parsed = parseContent(readTextFile(filePath));
-    const md = renderMarkdown(parsed.body);
     const fm = parsed.frontMatter;
 
     const dateUtc = fm.date ?? File.getLastWriteTimeUtc(filePath);
     const dateString = dateUtc.toString("O");
-
-    const content = new HtmlString(md.html);
-    const summary = new HtmlString(md.summaryHtml);
+    const lastmodString = File.getLastWriteTimeUtc(filePath).toString("O");
 
     const pageParams = fm.Params;
+    const file = buildPageFile(dirRel, fileName, filePath);
 
     if (isBranchIndexFile(fileName)) {
       const srcDir = Path.getDirectoryName(filePath) ?? contentDir;
       listIndex.remove(dirRel);
-      listIndex.add(dirRel, new ListPageContent(fm.title, content, summary, fm.description ?? "", fm.type, pageParams, srcDir));
+      listIndex.add(dirRel, new ListPageContent(fm.title, parsed.body, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
       continue;
     }
 
@@ -302,16 +437,18 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       title,
       dateUtc,
       dateString,
+      lastmodString,
       fm.draft,
       fm.description ?? "",
       fm.tags,
       fm.categories,
       pageParams,
-      content,
-      summary,
+      parsed.body,
       relPermalink,
       outputRelPath,
       fm.layout,
+      file,
+      fm.menus,
     );
 
     if (!page.draft || request.buildDrafts) pages.add(page);
@@ -320,10 +457,31 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   pages.sort((a: ContentPageBuild, b: ContentPageBuild) => DateTime.compare(b.dateUtc, a.dateUtc));
 
   const emptyPages: PageContext[] = [];
+  const emptyTranslations: PageContext[] = [];
   const emptyStrings: string[] = [];
-  const site = new SiteContext(config, emptyPages);
+
+  // Build language contexts for multilingual support
+  const allLanguages = new List<LanguageContext>();
+  if (config.languages.length > 0) {
+    for (let i = 0; i < config.languages.length; i++) {
+      const langConfig = config.languages[i]!;
+      allLanguages.add(new LanguageContext(langConfig.lang, langConfig.languageName, langConfig.languageDirection));
+    }
+  }
+
+  // Create site with multilingual settings
+  // For now, build the default (first) language; full multilingual build will iterate through all
+  const currentLang = config.languages.length > 0 ? config.languages[0] : undefined;
+  const site = new SiteContext(config, emptyPages, currentLang, allLanguages.count > 0 ? allLanguages.toArray() : undefined);
+
+  // Set up Sites array (for now, just this site; full implementation would have all language sites)
+  const allSites: SiteContext[] = [site];
+  site.Sites = allSites;
+
   const pageContexts = new List<PageContext>();
   const bySection = new Dictionary<string, List<PageContext>>();
+  const pageRawBodies = new Dictionary<PageContext, string>();
+  const placeholderHtml = new HtmlString("");
 
   const pageBuilds = pages.toArray();
   for (let i = 0; i < pageBuilds.length; i++) {
@@ -331,22 +489,33 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const ctx = new PageContext(
       p.title,
       p.dateString,
+      p.lastmodString,
       p.draft,
       "page",
       p.section,
       p.type,
       p.slug,
       p.relPermalink,
-      p.content,
-      p.summary,
+      "",
+      placeholderHtml,
+      placeholderHtml,
+      placeholderHtml,
       p.description,
       p.tags,
       p.categories,
       p.Params,
+      p.file,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       emptyPages,
+      undefined,
+      emptyPages,
+      p.layout,
     );
     pageContexts.add(ctx);
+    pageRawBodies.add(ctx, p.rawBody);
 
     let sectionPages = new List<PageContext>();
     const hasSection = bySection.tryGetValue(p.section, sectionPages);
@@ -360,6 +529,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   const pageContextArr = pageContexts.toArray();
   site.pages = pageContextArr;
+
+  // Integrate frontmatter menus into site.Menus
+  integrateFrontmatterMenus(pageBuilds, site);
+
+  // Resolve pageRef for menu entries
+  resolveMenuPageRefs(site);
 
   const baseCandidates = ["_default/baseof.html"];
 
@@ -376,27 +551,31 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const sitemapUrlSet = new Dictionary<string, boolean>();
 
   let homeTitle = config.title;
-  let homeContent = new HtmlString("");
-  let homeSummary = new HtmlString("");
+  let homeRawBody = "";
   let homeDescription = "";
   let homeType = "home";
-  let homeParams = new Dictionary<string, string>();
+  let homeLayout: string | undefined = undefined;
+  let homeParams = new Dictionary<string, ParamValue>();
+  let homeFile: PageFile | undefined = undefined;
   let homeSourceDir: string | undefined = undefined;
 
-  const homeIdxValue = new ListPageContent(undefined, homeContent, homeSummary, "", undefined, homeParams, contentDir);
+  const homeIdxValue = new ListPageContent(undefined, "", "", undefined, undefined, homeParams, contentDir);
   const hasHomeIdx = listIndex.tryGetValue("", homeIdxValue);
   if (hasHomeIdx) {
     if (homeIdxValue.title !== undefined) homeTitle = homeIdxValue.title;
-    homeContent = homeIdxValue.content;
-    homeSummary = homeIdxValue.summary;
+    homeRawBody = homeIdxValue.rawBody;
     homeDescription = homeIdxValue.description;
     homeType = homeIdxValue.type ?? "home";
+    homeLayout = homeIdxValue.layout;
     homeParams = homeIdxValue.Params;
+    homeFile = homeIdxValue.file;
     homeSourceDir = homeIdxValue.sourceDir;
   }
 
+  const emptyHtmlString = new HtmlString("");
   const homeCtx = new PageContext(
     homeTitle,
+    "",
     "",
     false,
     "home",
@@ -404,15 +583,33 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     homeType,
     "",
     "/",
-    homeContent,
-    homeSummary,
+    "",
+    emptyHtmlString,
+    emptyHtmlString,
+    emptyHtmlString,
     homeDescription,
     emptyStrings,
     emptyStrings,
     homeParams,
+    homeFile,
+    site.Language,
+    emptyTranslations,
+    undefined,
     site,
     site.pages,
+    undefined,
+    emptyPages,
+    homeLayout,
   );
+
+  // Render home page content with shortcodes
+  if (homeRawBody !== "") {
+    const homeMd = renderMarkdownWithShortcodes(homeRawBody, homeCtx, site, env);
+    homeCtx.content = new HtmlString(homeMd.html);
+    homeCtx.summary = new HtmlString(homeMd.summaryHtml);
+    homeCtx.tableOfContents = new HtmlString(homeMd.tableOfContents);
+    homeCtx.plain = homeMd.plainText;
+  }
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
   writeTextFile(Path.combine(outDir, "index.html"), homeHtml);
@@ -453,27 +650,30 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     if (ok) list = sectionPages.toArray();
 
     let title = humanizeSlug(section);
-    let content = new HtmlString("");
-    let summary = new HtmlString("");
+    let sectionRawBody = "";
     let description = "";
     let listType = section;
-    let listParams = new Dictionary<string, string>();
+    let layout: string | undefined = undefined;
+    let listParams = new Dictionary<string, ParamValue>();
+    let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, content, summary, "", undefined, listParams, contentDir);
+    const idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(section, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
-      content = idxValue.content;
-      summary = idxValue.summary;
+      sectionRawBody = idxValue.rawBody;
       description = idxValue.description;
       listType = idxValue.type ?? section;
+      layout = idxValue.layout;
       listParams = idxValue.Params;
+      file = idxValue.file;
       listSourceDir = idxValue.sourceDir;
     }
 
     const ctx = new PageContext(
       title,
+      "",
       "",
       false,
       "section",
@@ -481,15 +681,33 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       listType,
       section,
       combineUrl([section]),
-      content,
-      summary,
+      "",
+      placeholderHtml,
+      placeholderHtml,
+      placeholderHtml,
       description,
       emptyStrings,
       emptyStrings,
       listParams,
+      file,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       list,
+      undefined,
+      emptyPages,
+      layout,
     );
+
+    // Render section content with shortcodes
+    if (sectionRawBody !== "") {
+      const md = renderMarkdownWithShortcodes(sectionRawBody, ctx, site, env);
+      ctx.content = new HtmlString(md.html);
+      ctx.summary = new HtmlString(md.summaryHtml);
+      ctx.tableOfContents = new HtmlString(md.tableOfContents);
+      ctx.plain = md.plainText;
+    }
 
     const relOut = Path.combine(section, "index.html");
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
@@ -527,27 +745,30 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const section = dirParts.length > 0 ? dirParts[0]! : "";
 
     let title = humanizeSlug(leaf);
-    let content = new HtmlString("");
-    let summary = new HtmlString("");
+    let nestedRawBody = "";
     let description = "";
     let listType = section !== "" ? section : "section";
-    let listParams = new Dictionary<string, string>();
+    let layout: string | undefined = undefined;
+    let listParams = new Dictionary<string, ParamValue>();
+    let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, content, summary, "", undefined, listParams, contentDir);
+    const idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(dirKey, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
-      content = idxValue.content;
-      summary = idxValue.summary;
+      nestedRawBody = idxValue.rawBody;
       description = idxValue.description;
       listType = idxValue.type ?? listType;
+      layout = idxValue.layout;
       listParams = idxValue.Params;
+      file = idxValue.file;
       listSourceDir = idxValue.sourceDir;
     }
 
     const ctx = new PageContext(
       title,
+      "",
       "",
       false,
       "section",
@@ -555,15 +776,33 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       listType,
       leaf,
       urlPrefix,
-      content,
-      summary,
+      "",
+      placeholderHtml,
+      placeholderHtml,
+      placeholderHtml,
       description,
       emptyStrings,
       emptyStrings,
       listParams,
+      file,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       listPages.toArray(),
+      undefined,
+      emptyPages,
+      layout,
     );
+
+    // Render nested section content with shortcodes
+    if (nestedRawBody !== "") {
+      const md = renderMarkdownWithShortcodes(nestedRawBody, ctx, site, env);
+      ctx.content = new HtmlString(md.html);
+      ctx.summary = new HtmlString(md.summaryHtml);
+      ctx.tableOfContents = new HtmlString(md.tableOfContents);
+      ctx.plain = md.plainText;
+    }
 
     const outRel = combineOutputRelPath(dirParts);
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
@@ -621,14 +860,15 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       if (!ok) continue;
       const pagesForTerm = pagesForTermList.toArray();
 
-      const termParams = new Dictionary<string, string>();
+      const termParams = new Dictionary<string, ParamValue>();
       termParams.remove("term");
-      termParams.add("term", termSlug);
+      termParams.add("term", ParamValue.string(termSlug));
       termParams.remove("taxonomy");
-      termParams.add("taxonomy", taxonomy);
+      termParams.add("taxonomy", ParamValue.string(taxonomy));
 
       const ctx = new PageContext(
         humanizeSlug(termSlug),
+        "",
         "",
         false,
         "term",
@@ -636,14 +876,22 @@ export const buildSite = (request: BuildRequest): BuildResult => {
         taxonomy,
         termSlug,
         combineUrl([taxonomy, termSlug]),
+        "",
+        new HtmlString(""),
         emptyHtml,
         emptyHtml,
         "",
         emptyStrings,
         emptyStrings,
         termParams,
+        undefined,
+        site.Language,
+        emptyTranslations,
+        undefined,
         site,
         pagesForTerm,
+        undefined,
+        emptyPages,
       );
 
       termPagesOut.add(ctx);
@@ -660,12 +908,13 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       sitemapUrlSet.add(ctx.relPermalink, true);
     }
 
-    const taxParams = new Dictionary<string, string>();
+    const taxParams = new Dictionary<string, ParamValue>();
     taxParams.remove("taxonomy");
-    taxParams.add("taxonomy", taxonomy);
+    taxParams.add("taxonomy", ParamValue.string(taxonomy));
 
     const taxCtx = new PageContext(
       humanizeSlug(taxonomy),
+      "",
       "",
       false,
       "taxonomy",
@@ -673,14 +922,22 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       taxonomy,
       taxonomy,
       combineUrl([taxonomy]),
+      "",
+      new HtmlString(""),
       emptyHtml,
       emptyHtml,
       "",
       emptyStrings,
       emptyStrings,
       taxParams,
+      undefined,
+      site.Language,
+      emptyTranslations,
+      undefined,
       site,
       termPagesOut.toArray(),
+      undefined,
+      emptyPages,
     );
 
     const taxOutRel = Path.combine(taxonomy, "index.html");
@@ -703,6 +960,17 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const p = singles[i]!;
 
     const ctx = pageContextArr[i]!;
+
+    // Render content with shortcodes now that we have PageContext and SiteContext
+    let rawBody = "";
+    const hasRawBody = pageRawBodies.tryGetValue(ctx, rawBody);
+    if (hasRawBody && rawBody !== "") {
+      const md = renderMarkdownWithShortcodes(rawBody, ctx, site, env);
+      ctx.content = new HtmlString(md.html);
+      ctx.summary = new HtmlString(md.summaryHtml);
+      ctx.tableOfContents = new HtmlString(md.tableOfContents);
+      ctx.plain = md.plainText;
+    }
 
     const templateType = p.type !== "" ? p.type : p.section;
     const layoutCandidates = p.layout !== undefined && p.layout.trim() !== ""

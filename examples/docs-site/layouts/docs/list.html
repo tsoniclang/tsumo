@@ -1,0 +1,22 @@
+{{ define "main" }}
+<article class="doc">
+  <nav class="breadcrumbs">
+    {{ range .Ancestors }}
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+      <span class="sep">/</span>
+    {{ end }}
+    <span>{{ .Title }}</span>
+  </nav>
+
+  <h1>{{ .Title }}</h1>
+  {{ with .Content }}<div class="content">{{ . }}</div>{{ end }}
+
+  {{ if .Pages }}
+    <ul class="page-list">
+      {{ range .Pages }}
+        <li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>
+      {{ end }}
+    </ul>
+  {{ end }}
+</article>
+{{ end }}

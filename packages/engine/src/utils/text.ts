@@ -65,3 +65,9 @@ export const ensureTrailingSlash = (url: string): string => {
   if (url === "") return url;
   return url.endsWith("/") ? url : url + "/";
 };
+
+export const ensureLeadingSlash = (url: string): string => {
+  const trimmed = url.trim();
+  if (trimmed === "") return "/";
+  return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+};
