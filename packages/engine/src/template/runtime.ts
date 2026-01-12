@@ -1,4 +1,4 @@
-import { DateTime, Environment, Exception, Int32, Uri, UriKind } from "@tsonic/dotnet/System.js";
+import { Console, DateTime, Environment, Exception, Int32, Uri, UriKind } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import { WebUtility } from "@tsonic/dotnet/System.Net.js";
@@ -564,18 +564,20 @@ class TemplateRuntime {
   }
 
   static getPageStore(page: PageContext): ScratchStore {
+    const existing = new ScratchStore();
+    const has = TemplateRuntime.pageStores.tryGetValue(page, existing);
+    if (has) return existing;
     const store = new ScratchStore();
-    const has = TemplateRuntime.pageStores.tryGetValue(page, store);
-    if (has) return store;
     TemplateRuntime.pageStores.remove(page);
     TemplateRuntime.pageStores.add(page, store);
     return store;
   }
 
   static getSiteStore(site: SiteContext): ScratchStore {
+    const existing = new ScratchStore();
+    const has = TemplateRuntime.siteStores.tryGetValue(site, existing);
+    if (has) return existing;
     const store = new ScratchStore();
-    const has = TemplateRuntime.siteStores.tryGetValue(site, store);
-    if (has) return store;
     TemplateRuntime.siteStores.remove(site);
     TemplateRuntime.siteStores.add(site, store);
     return store;
@@ -832,6 +834,44 @@ class TemplateRuntime {
     _defines: Dictionary<string, TemplateNode[]>,
   ): TemplateValue {
     const name = nameRaw.trim().toLowerInvariant();
+    try {
+
+    if (name === "site.store.get" && args.length >= 1) {
+      const store = TemplateRuntime.getSiteStore(scope.site);
+      return store.get(TemplateRuntime.toPlainString(args[0]!));
+    }
+    if (name === "site.store.set" && args.length >= 2) {
+      const store = TemplateRuntime.getSiteStore(scope.site);
+      store.set(TemplateRuntime.toPlainString(args[0]!), args[1]!);
+      return TemplateRuntime.nil;
+    }
+    if (name === "site.store.add" && args.length >= 2) {
+      const store = TemplateRuntime.getSiteStore(scope.site);
+      store.add(TemplateRuntime.toPlainString(args[0]!), args[1]!);
+      return TemplateRuntime.nil;
+    }
+    if (name === "site.store.delete" && args.length >= 1) {
+      const store = TemplateRuntime.getSiteStore(scope.site);
+      store.delete(TemplateRuntime.toPlainString(args[0]!));
+      return TemplateRuntime.nil;
+    }
+    if (name === "site.store.setinmap" && args.length >= 3) {
+      const store = TemplateRuntime.getSiteStore(scope.site);
+      const mapName = TemplateRuntime.toPlainString(args[0]!);
+      const key = TemplateRuntime.toPlainString(args[1]!);
+      const value = args[2]!;
+      try {
+        store.setInMap(mapName, key, value);
+      } catch (e) {
+        throw new Exception(`site.Store.SetInMap failed (map=${mapName}, key=${key}): ${e}`);
+      }
+      return TemplateRuntime.nil;
+    }
+    if (name === "site.store.deleteinmap" && args.length >= 2) {
+      const store = TemplateRuntime.getSiteStore(scope.site);
+      store.deleteInMap(TemplateRuntime.toPlainString(args[0]!), TemplateRuntime.toPlainString(args[1]!));
+      return TemplateRuntime.nil;
+    }
 
     const trimmedName = nameRaw.trim();
     const lastDot = trimmedName.lastIndexOf(".");
@@ -842,9 +882,11 @@ class TemplateRuntime {
 
     let receiverToken: string | undefined = undefined;
     let methodName: string | undefined = undefined;
-    if (lastDot > 0 && (startsWithDot || startsWithDollar || startsWithSite)) {
-      receiverToken = trimmedName.substring(0, lastDot);
-      methodName = trimmedName.substring(lastDot + 1).trim();
+    if (lastDot > 0) {
+      if (startsWithDot || startsWithDollar || startsWithSite) {
+        receiverToken = trimmedName.substring(0, lastDot);
+        methodName = trimmedName.substring(lastDot + 1).trim();
+      }
     } else if (startsWithDot && lastDot === 0) {
       receiverToken = ".";
       methodName = trimmedName.substring(1).trim();
@@ -1703,6 +1745,11 @@ class TemplateRuntime {
     }
 
     return TemplateRuntime.nil;
+    } catch (e) {
+      if (e instanceof ReturnException) throw e;
+      Console.error.writeLine("Template function failed: {0} ({1})", nameRaw, name);
+      throw e;
+    }
   }
 
   static toJson(value: TemplateValue): string {
@@ -1987,7 +2034,7 @@ class TokenExpr extends Expr {
 
   override eval(scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): TemplateValue {
     const t = this.token.trim();
-    const isValueLike =
+    if (
       t === "." ||
       t === "$" ||
       t.startsWith(".") ||
@@ -1996,9 +2043,8 @@ class TokenExpr extends Expr {
       TemplateRuntime.parseStringLiteral(t) !== undefined ||
       t === "true" ||
       t === "false" ||
-      TemplateRuntime.isNumberLiteral(t);
-
-    if (isValueLike) return TemplateRuntime.evalToken(t, scope);
+      TemplateRuntime.isNumberLiteral(t)
+    ) return TemplateRuntime.evalToken(t, scope);
     return TemplateRuntime.callFunction(t, [], scope, env, overrides, defines);
   }
 }
@@ -2163,8 +2209,9 @@ class Parser {
     let elseNodes: TemplateNode[] = [];
     if (thenBody.endedWithElse) {
       const elseTokens = this.takeElseTokens();
-      const isElseIf = elseTokens.length >= 2 && elseTokens[1] === "if";
-      if (isElseIf) {
+      let isElseIf = false;
+      if (elseTokens.length >= 2) isElseIf = elseTokens[1] === "if";
+      if (isElseIf === true) {
         const elseCond = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(elseTokens, 2));
         const nested = this.parseIfFrom(elseCond);
         elseNodes = [nested];

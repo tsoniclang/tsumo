@@ -99,8 +99,8 @@ export class ResourceManager {
       const value: int = b;
       const hi = (value >> 4) & 0xf;
       const lo = value & 0xf;
-      out += chars.substring(hi, hi + 1);
-      out += chars.substring(lo, lo + 1);
+      out += chars.substring(hi, 1);
+      out += chars.substring(lo, 1);
     }
     return out;
   }
@@ -363,7 +363,14 @@ export class ResourceManager {
     startInfo.useShellExecute = false;
     startInfo.createNoWindow = true;
 
-    const process = Process.start(startInfo);
+    let process: Process | undefined = undefined;
+    try {
+      process = Process.start(startInfo);
+    } catch (e) {
+      throw new Exception(
+        `Failed to start Sass compiler '${sassExe}'. Install Dart Sass (the \`sass\` CLI) or set TSUMO_SASS to the full path of a Sass executable. Details: ${e}`,
+      );
+    }
     if (process === undefined) throw new Exception("Failed to start Sass compiler");
     process.waitForExit();
     if (process.exitCode !== 0) {

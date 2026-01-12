@@ -48,13 +48,14 @@ class ParseState {
 
   peek(offset: int): string {
     const idx = this.pos + offset;
-    return idx < this.text.length ? this.text.substring(idx, idx + 1) : "";
+    return idx < this.text.length ? this.text.substring(idx, 1) : "";
   }
 
   peekString(length: int): string {
-    const endPos = this.pos + length;
-    const end = endPos < this.text.length ? endPos : this.text.length;
-    return this.text.substring(this.pos, end);
+    const remaining = this.text.length - this.pos;
+    if (remaining <= 0) return "";
+    const sliceLength = length < remaining ? length : remaining;
+    return this.text.substring(this.pos, sliceLength);
   }
 
   advance(count: int): void {
@@ -81,24 +82,26 @@ const isInCodeBlock = (text: string, pos: int): boolean => {
   let i = 0;
 
   while (i < pos) {
-    const c = text.substring(i, i + 1);
+    const c = text.substring(i, 1);
 
-    if (!inFence && (c === "`" || c === "~")) {
+    if (!inFence) {
+      if (c === "`" || c === "~") {
       let len = 1;
-      while (i + len < text.length && text.substring(i + len, i + len + 1) === c) len++;
+      while (i + len < text.length && text.substring(i + len, 1) === c) len++;
       if (len >= 3) {
         inFence = true;
         fenceChar = c;
         fenceLen = len;
         i += len;
-        while (i < text.length && text.substring(i, i + 1) !== "\n") i++;
+        while (i < text.length && text.substring(i, 1) !== "\n") i++;
         continue;
       }
+    }
     }
 
     if (inFence && c === fenceChar) {
       let len = 1;
-      while (i + len < text.length && text.substring(i + len, i + len + 1) === c) len++;
+      while (i + len < text.length && text.substring(i + len, 1) === c) len++;
       if (len >= fenceLen) {
         inFence = false;
         fenceChar = "";
@@ -193,8 +196,9 @@ const parseParams = (argsText: string): { params: Dictionary<string, ParamValue>
       params.remove(key);
       params.add(key, ParamValue.parseScalar(value));
     } else {
-      if (key === "" && (state.peek(0) === "\"" || state.peek(0) === "'")) {
-        key = parseQuotedString(state);
+      if (key === "") {
+        const q = state.peek(0);
+        if (q === "\"" || q === "'") key = parseQuotedString(state);
       }
       if (key !== "") {
         positional.add(key);
@@ -227,7 +231,7 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
     if (remaining.startsWith(closeTagPrefix) || remaining.startsWith(closeTagPrefix2)) {
       depth--;
       if (depth === 0) {
-        const inner = text.substring(innerStart, pos);
+        const inner = text.substring(innerStart, pos - innerStart);
         const endSuffix = isMarkdown ? "%}}" : ">}}";
         const closeEnd = indexOfTextFrom(text, endSuffix, pos);
         if (closeEnd < 0) return undefined;
@@ -252,10 +256,14 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
     let openPos: int = -1;
     let isMarkdown = false;
 
-    if (openAngle >= 0 && (openPercent < 0 || openAngle <= openPercent)) {
-      openPos = openAngle;
-      isMarkdown = false;
-    } else if (openPercent >= 0) {
+    if (openAngle >= 0) {
+      if (openPercent < 0 || openAngle <= openPercent) {
+        openPos = openAngle;
+        isMarkdown = false;
+      }
+    }
+
+    if (openPos < 0 && openPercent >= 0) {
       openPos = openPercent;
       isMarkdown = true;
     }
@@ -267,7 +275,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
       continue;
     }
 
-    const after3 = text.substring(openPos + 3, openPos + 4);
+    const after3 = text.substring(openPos + 3, 1);
     if (after3 === "*") {
       pos = openPos + 4;
       continue;
@@ -287,14 +295,15 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
       continue;
     }
 
-    const content = text.substring(openPos + 3, closePos);
+    const content = text.substring(openPos + 3, closePos - (openPos + 3));
 
     const selfClosePattern = isMarkdown ? "/%" : "/>";
     const selfCloseIdx = lastIndexOfText(content, selfClosePattern);
-    const isSelfClosing = selfCloseIdx >= 0 && content.substring(selfCloseIdx).trim() === selfClosePattern;
+    let isSelfClosing = false;
+    if (selfCloseIdx >= 0) isSelfClosing = content.substring(selfCloseIdx).trim() === selfClosePattern;
 
     let tagContent = content;
-    if (isSelfClosing) {
+    if (isSelfClosing === true) {
       tagContent = content.substring(0, selfCloseIdx).trim();
     }
 
@@ -309,7 +318,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
 
     const parsed = parseParams(argsText);
 
-    if (isSelfClosing) {
+    if (isSelfClosing === true) {
       const call = new ShortcodeCall(
         name,
         parsed.params,
@@ -373,7 +382,7 @@ export const innerDeindent = (inner: string): string => {
     if (line.trim() === "") continue;
     let indent = 0;
     for (let j = 0; j < line.length; j++) {
-      const c = line.substring(j, j + 1);
+      const c = line.substring(j, 1);
       if (c === " ") indent++;
       else if (c === "\t") indent += 4;
       else break;
@@ -393,7 +402,7 @@ export const innerDeindent = (inner: string): string => {
     let removed = 0;
     let startIdx = 0;
     for (let j = 0; j < line.length && removed < minIndent; j++) {
-      const c = line.substring(j, j + 1);
+      const c = line.substring(j, 1);
       if (c === " ") {
         removed++;
         startIdx++;
