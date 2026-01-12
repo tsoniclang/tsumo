@@ -154,7 +154,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
   const menuKeysIt = menuBuilders.keys.getEnumerator();
   while (menuKeysIt.moveNext()) {
     const menuName = menuKeysIt.current;
-    const builders = new List<MenuEntryBuilder>();
+    let builders = new List<MenuEntryBuilder>();
     const hasBuilders = menuBuilders.tryGetValue(menuName, builders);
     if (hasBuilders) {
       const entries = new List<MenuEntry>();

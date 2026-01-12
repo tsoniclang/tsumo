@@ -15,7 +15,7 @@ export class ScratchStore {
   }
 
   get(key: string): TemplateValue {
-    const v: TemplateValue = new NilValue();
+    let v: TemplateValue = new NilValue();
     return this.values.tryGetValue(key, v) ? v : new NilValue();
   }
 
@@ -25,7 +25,7 @@ export class ScratchStore {
   }
 
   add(key: string, value: TemplateValue): void {
-    const cur: TemplateValue = new NilValue();
+    let cur: TemplateValue = new NilValue();
     const has = this.values.tryGetValue(key, cur);
     if (!has) {
       this.set(key, value);
@@ -57,7 +57,7 @@ export class ScratchStore {
   }
 
   setInMap(mapName: string, key: string, value: TemplateValue): void {
-    const cur: TemplateValue = new NilValue();
+    let cur: TemplateValue = new NilValue();
     const has = this.values.tryGetValue(mapName, cur);
     if (has) {
       if (cur instanceof DictValue) {
@@ -75,7 +75,7 @@ export class ScratchStore {
   }
 
   deleteInMap(mapName: string, key: string): void {
-    const cur: TemplateValue = new NilValue();
+    let cur: TemplateValue = new NilValue();
     const has = this.values.tryGetValue(mapName, cur);
     if (has) {
       if (cur instanceof DictValue) {

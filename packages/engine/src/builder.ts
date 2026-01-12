@@ -559,7 +559,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   let homeFile: PageFile | undefined = undefined;
   let homeSourceDir: string | undefined = undefined;
 
-  const homeIdxValue = new ListPageContent(undefined, "", "", undefined, undefined, homeParams, contentDir);
+  let homeIdxValue = new ListPageContent(undefined, "", "", undefined, undefined, homeParams, contentDir);
   const hasHomeIdx = listIndex.tryGetValue("", homeIdxValue);
   if (hasHomeIdx) {
     if (homeIdxValue.title !== undefined) homeTitle = homeIdxValue.title;
@@ -645,7 +645,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const section = sectionKeys[i]!;
 
     let list: PageContext[] = emptyPages;
-    const sectionPages = new List<PageContext>();
+    let sectionPages = new List<PageContext>();
     const ok = bySection.tryGetValue(section, sectionPages);
     if (ok) list = sectionPages.toArray();
 
@@ -658,7 +658,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
+    let idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(section, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
@@ -753,7 +753,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
-    const idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
+    let idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
     const hasIdx = listIndex.tryGetValue(dirKey, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
@@ -855,7 +855,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const termSlugs = termKeys.toArray();
     for (let i = 0; i < termSlugs.length; i++) {
       const termSlug = termSlugs[i]!;
-      const pagesForTermList = new List<PageContext>();
+      let pagesForTermList = new List<PageContext>();
       const ok = byTerm.tryGetValue(termSlug, pagesForTermList);
       if (!ok) continue;
       const pagesForTerm = pagesForTermList.toArray();

@@ -92,7 +92,7 @@ export const parseYamlConfig = (text: string): SiteConfig => {
           else if (propKey === "pre") currentMenuEntry.pre = propVal;
           else if (propKey === "post") currentMenuEntry.post = propVal;
           else if (propKey === "weight") {
-            const parsed: int = 0;
+            let parsed: int = 0;
             if (Int32.tryParse(propVal, parsed)) currentMenuEntry.weight = parsed;
           }
         }
@@ -113,7 +113,7 @@ export const parseYamlConfig = (text: string): SiteConfig => {
         else if (propKey === "pre") currentMenuEntry.pre = propVal;
         else if (propKey === "post") currentMenuEntry.post = propVal;
         else if (propKey === "weight") {
-          const parsed: int = 0;
+          let parsed: int = 0;
           if (Int32.tryParse(propVal, parsed)) currentMenuEntry.weight = parsed;
         }
         continue;
@@ -142,7 +142,7 @@ export const parseYamlConfig = (text: string): SiteConfig => {
   const menuKeysIt = menuBuilders.keys.getEnumerator();
   while (menuKeysIt.moveNext()) {
     const menuName = menuKeysIt.current;
-    const builders = new List<MenuEntryBuilder>();
+    let builders = new List<MenuEntryBuilder>();
     const hasBuilders = menuBuilders.tryGetValue(menuName, builders);
     if (hasBuilders) {
       const entries = new List<MenuEntry>();

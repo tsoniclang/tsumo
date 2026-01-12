@@ -155,7 +155,7 @@ class TemplateRuntime {
 
   static isNumberLiteral(token: string): boolean {
     if (token === "") return false;
-    const parsed: int = 0;
+    let parsed: int = 0;
     return Int32.tryParse(token, parsed);
   }
 
@@ -268,7 +268,7 @@ class TemplateRuntime {
 
       if (cur instanceof MenusValue) {
         const site = cur.site;
-        const entries: MenuEntry[] = [];
+        let entries: MenuEntry[] = [];
         const hasMenu = site.Menus.tryGetValue(seg, entries);
         if (hasMenu) {
           cur = new MenuArrayValue(entries, site);
@@ -383,7 +383,7 @@ class TemplateRuntime {
 
       if (cur instanceof TaxonomiesValue) {
         const site = cur.site;
-        const terms: Dictionary<string, PageContext[]> = new Dictionary<string, PageContext[]>();
+        let terms: Dictionary<string, PageContext[]> = new Dictionary<string, PageContext[]>();
         const found = site.Taxonomies.tryGetValue(seg, terms);
         if (found) {
           cur = new TaxonomyTermsValue(terms, site);
@@ -398,7 +398,7 @@ class TemplateRuntime {
       if (cur instanceof TaxonomyTermsValue) {
         const termsDict = cur.terms;
         const site = cur.site;
-        const pages: PageContext[] = [];
+        let pages: PageContext[] = [];
         const found = termsDict.tryGetValue(seg, pages);
         if (found) {
           cur = new PageArrayValue(pages);
@@ -504,14 +504,14 @@ class TemplateRuntime {
 
       if (cur instanceof DictValue) {
         const dict = cur.value;
-        const direct: TemplateValue = TemplateRuntime.nil;
+        let direct: TemplateValue = TemplateRuntime.nil;
         const hasDirect = dict.tryGetValue(seg, direct);
         if (hasDirect) {
           cur = direct;
           continue;
         }
         const lowerKey = seg.toLowerInvariant();
-        const lower: TemplateValue = TemplateRuntime.nil;
+        let lower: TemplateValue = TemplateRuntime.nil;
         const hasLower = dict.tryGetValue(lowerKey, lower);
         if (hasLower) {
           cur = lower;
@@ -564,7 +564,7 @@ class TemplateRuntime {
   }
 
   static getPageStore(page: PageContext): ScratchStore {
-    const existing = new ScratchStore();
+    let existing = new ScratchStore();
     const has = TemplateRuntime.pageStores.tryGetValue(page, existing);
     if (has) return existing;
     const store = new ScratchStore();
@@ -574,7 +574,7 @@ class TemplateRuntime {
   }
 
   static getSiteStore(site: SiteContext): ScratchStore {
-    const existing = new ScratchStore();
+    let existing = new ScratchStore();
     const has = TemplateRuntime.siteStores.tryGetValue(site, existing);
     if (has) return existing;
     const store = new ScratchStore();
@@ -754,7 +754,7 @@ class TemplateRuntime {
         return false;
       }
       if (expected instanceof DictValue) {
-        const v: TemplateValue = TemplateRuntime.nil;
+        let v: TemplateValue = TemplateRuntime.nil;
         return expected.value.tryGetValue(actualText, v);
       }
       return false;
@@ -1263,7 +1263,7 @@ class TemplateRuntime {
     if (name === "time.format" && args.length >= 2) {
       const layout = TemplateRuntime.toPlainString(args[0]!);
       const input = TemplateRuntime.toPlainString(args[1]!);
-      const parsed: DateTime = DateTime.minValue;
+      let parsed: DateTime = DateTime.minValue;
       const ok = DateTime.tryParse(input, parsed);
       if (!ok) return new StringValue("");
       const fmt = TemplateRuntime.convertGoDateLayoutToDotNet(layout);
@@ -1389,7 +1389,7 @@ class TemplateRuntime {
       const container = args[0]!;
       const key = TemplateRuntime.toPlainString(args[1]!);
       if (container instanceof DictValue) {
-        const v: TemplateValue = TemplateRuntime.nil;
+        let v: TemplateValue = TemplateRuntime.nil;
         return new BoolValue(container.value.tryGetValue(key, v));
       }
       return new BoolValue(false);
@@ -1400,7 +1400,7 @@ class TemplateRuntime {
       const keyValue = args[1]!;
       if (container instanceof DictValue) {
         const key = TemplateRuntime.toPlainString(keyValue);
-        const v: TemplateValue = TemplateRuntime.nil;
+        let v: TemplateValue = TemplateRuntime.nil;
         return container.value.tryGetValue(key, v) ? v : TemplateRuntime.nil;
       }
       if (container instanceof AnyArrayValue) {
@@ -1484,7 +1484,7 @@ class TemplateRuntime {
       let sum: int = 0;
       for (let i = 0; i < args.length; i++) {
         const v = args[i]!;
-        const parsed: int = 0;
+        let parsed: int = 0;
         const s = TemplateRuntime.toPlainString(v);
         if (Int32.tryParse(s, parsed)) sum += parsed;
       }
@@ -1640,7 +1640,7 @@ class TemplateRuntime {
     if (name === "dateformat" && args.length >= 2) {
       const layout = TemplateRuntime.toPlainString(args[0]!);
       const s = TemplateRuntime.toPlainString(args[1]!);
-      const parsed: DateTime = DateTime.minValue;
+      let parsed: DateTime = DateTime.minValue;
       const ok = DateTime.tryParse(s, parsed);
       if (!ok) return new StringValue("");
       const fmt = TemplateRuntime.convertGoDateLayoutToDotNet(layout);

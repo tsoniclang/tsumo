@@ -50,7 +50,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
 
     if (resolved === undefined) return undefined;
     const cachedNodes: TemplateNode[] = [];
-    const cached = new Template(cachedNodes, new Dictionary<string, TemplateNode[]>());
+    let cached = new Template(cachedNodes, new Dictionary<string, TemplateNode[]>());
     const hasCached = this.cache.tryGetValue(resolved, cached);
     if (hasCached) return cached;
 
@@ -68,7 +68,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
 
   override getShortcodeTemplate(name: string): Template | undefined {
     const cachedNodes: TemplateNode[] = [];
-    const cached = new Template(cachedNodes, new Dictionary<string, TemplateNode[]>());
+    let cached = new Template(cachedNodes, new Dictionary<string, TemplateNode[]>());
     const hasCached = this.shortcodeCache.tryGetValue(name, cached);
     if (hasCached) return cached;
 
@@ -101,7 +101,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
 
   override getRenderHookTemplate(hookName: string): Template | undefined {
     const cachedNodes: TemplateNode[] = [];
-    const cached = new Template(cachedNodes, new Dictionary<string, TemplateNode[]>());
+    let cached = new Template(cachedNodes, new Dictionary<string, TemplateNode[]>());
     const hasCached = this.renderHookCache.tryGetValue(hookName, cached);
     if (hasCached) return cached;
 

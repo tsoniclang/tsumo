@@ -39,7 +39,7 @@ export class ParamValue {
     if (lower === "true") return ParamValue.bool(true);
     if (lower === "false") return ParamValue.bool(false);
 
-    const parsed: int = 0;
+    let parsed: int = 0;
     if (Int32.tryParse(trimmed, parsed)) return ParamValue.number(parsed);
 
     return ParamValue.string(trimmed);

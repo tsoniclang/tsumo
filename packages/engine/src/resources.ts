@@ -201,7 +201,7 @@ export class ResourceManager {
     if (rel === "") return undefined;
     const key = `get:${rel}`;
     const emptyBytes: byte[] = [];
-    const cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
+    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
     if (this.cache.tryGetValue(key, cached)) return cached;
 
     const full = this.resolveAssetFullPath(rel);
@@ -262,7 +262,7 @@ export class ResourceManager {
   minify(resource: Resource): Resource {
     const key = `${resource.id}|minify`;
     const emptyBytes: byte[] = [];
-    const cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
+    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
     if (this.cache.tryGetValue(key, cached)) return cached;
 
     if (resource.text === undefined) {
@@ -291,7 +291,7 @@ export class ResourceManager {
   fingerprint(resource: Resource): Resource {
     const key = `${resource.id}|fingerprint`;
     const emptyBytes: byte[] = [];
-    const cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
+    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
     if (this.cache.tryGetValue(key, cached)) return cached;
 
     const hash = SHA256.hashData(resource.bytes);
@@ -313,7 +313,7 @@ export class ResourceManager {
   sassCompile(resource: Resource): Resource {
     const key = `${resource.id}|sass`;
     const emptyBytes: byte[] = [];
-    const cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
+    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
     if (this.cache.tryGetValue(key, cached)) return cached;
 
     if (resource.text === undefined) throw new Exception("css.Sass expects a text resource");
