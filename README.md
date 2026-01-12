@@ -1,23 +1,33 @@
 # tsumo
-A hugo-inspired blog engine
+A Hugo-inspired static site generator.
 
-tsumo is a Hugo-inspired static site generator implemented in TypeScript and compiled to native code with Tsonic (TS → C# → .NET).
+tsumo is implemented in TypeScript and compiled to native code with Tsonic (TS → C# → .NET).
+
+## Documentation
+
+- `docs/README.md` — end-user docs (getting started, CLI, config, templates, docs mode)
+- `examples/basic-blog/README.md` — minimal blog example
+- `examples/docs-site/README.md` — multi-repo docs example (mounts + nav + search)
 
 ## Hugo compatibility (subset)
 
 | Area | Feature | Status | Notes |
 | --- | --- | --- | --- |
-| Markdown | GitHub Flavored Markdown (GFM) | ✅ | Powered by Markdig (tables, task lists, autolinks, strikethrough, fenced code blocks, etc.) |
+| Markdown | GitHub Flavored Markdown (GFM) | ✅ | Powered by Markdig (GitHub heading IDs, tables, task lists, autolinks, fenced code blocks, etc.) |
 | Content | Sections + nested paths | ✅ | `content/posts/series/part-1.md` → `/posts/series/part-1/` |
 | Content | Leaf bundles (`index.md`) | ✅ | Copies non-`.md` bundle resources next to the built page |
 | Content | Branch bundles (`_index.md`) | ✅ | Home and nested section list pages |
 | Front matter | YAML / TOML / JSON | ✅ | `title`, `date`, `draft`, `description`, `slug`, `type`, `layout`, `tags`, `categories`, `params` |
-| Taxonomies | `tags` + `categories` | ✅ | Generates `/tags/`, `/tags/<term>/`, `/categories/`, `/categories/<term>/` |
-| Templates | Hugo-like Go templates (subset) | ✅ | `baseof`, `block`, `define`, `partial`, `if/else/else if`, `with`, `range` |
-| Templates | Common funcs | ✅ | `relURL`, `absURL`, `urlize`, `humanize`, `dateFormat`, `len`, `default`, `printf`, comparisons, boolean ops |
+| Taxonomies | `tags` + `categories` | ✅ | Generates terms + term pages |
+| Templates | Hugo-like Go templates (subset) | ✅ | `baseof`, `block`, `define`, `partial`, `if/else/else if`, `with`, `range`, `template` |
+| Templates | Render hooks | ✅ | `layouts/_markup/*.html` + `layouts/_default/_markup/*.html` |
+| Shortcodes | `{{< >}}` + `{{% %}}` | ✅ | Loaded from `layouts/shortcodes/` + `layouts/_shortcodes/` |
+| Menus | Config + front matter menus | ✅ | Merged + hierarchical (`parent`, `weight`) |
+| Assets | Hugo-like pipeline (subset) | ✅ | `resources.*`, `css.Sass`, `Fingerprint`, `ExecuteAsTemplate` (Sass requires `TSUMO_SASS`/`sass`) |
 | Outputs | `index.xml`, `sitemap.xml`, `robots.txt` | ✅ | Generated unless you provide your own static files |
 | CLI | `build`, `server`, `new site`, `new` | ✅ | `server` supports watch + rebuild |
-| Advanced Hugo | Shortcodes, menus, pagination, assets pipeline | ❌ | Intentionally out of scope |
+| Docs | Multi-repo mounts + nav + search | ✅ | Enabled by `tsumo.docs.json` (tsumo-specific) |
+| Advanced Hugo | Multilingual builds, pagination | ❌ | Not implemented |
 
 ## Repo layout
 
@@ -25,6 +35,7 @@ tsumo is a Hugo-inspired static site generator implemented in TypeScript and com
 - `packages/cli` — `tsumo` CLI (Tsonic executable)
 - `packages/markdig` — vendored Markdig build + tsbindgen bindings (GFM Markdown)
 - `examples/basic-blog` — example site (Hugo-style layout)
+- `examples/docs-site` — docs-mode example (mounts + nav + search)
 
 ## Build
 
