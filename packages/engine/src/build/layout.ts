@@ -50,7 +50,9 @@ export const renderWithBase = (env: LayoutEnvironment, basePath: string | undefi
 
   if (basePath !== undefined) {
     const base = env.getTemplate(basePath);
-    if (base !== undefined && main.defines.count > 0) {
+    if (base !== undefined) {
+      // Always use base template when it exists - main.defines provides overrides
+      // The base template has its own block definitions for defaults
       return base.render(ctx, env, main.defines);
     }
   }

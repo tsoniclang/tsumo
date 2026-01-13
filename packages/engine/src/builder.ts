@@ -538,12 +538,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   const baseCandidates = ["_default/baseof.html", "baseof.html"];
 
-  const homeCandidates = ["index.html", "home.html", "_default/home.html", "_default/list.html"];
+  const homeCandidates = ["index.html", "home.html", "_default/home.html", "_default/list.html", "list.html"];
   const listCandidates = ["list.html", "_default/list.html"];
   const singleCandidates = ["single.html", "_default/single.html"];
 
-  const homeTpl = selectTemplate(env, homeCandidates) ?? homeCandidates[1]!;
   const listTpl = selectTemplate(env, listCandidates) ?? listCandidates[0]!;
+  const homeTpl = selectTemplate(env, homeCandidates) ?? listTpl;
   const singleTpl = selectTemplate(env, singleCandidates) ?? singleCandidates[0]!;
   const baseTpl = selectTemplate(env, baseCandidates);
 
@@ -988,8 +988,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const mainPath = selectTemplate(env, layoutCandidates) ?? singleTpl;
     const basePath = selectTemplate(
       env,
-      templateType !== "" ? [`${templateType}/baseof.html`, `${p.section}/baseof.html`, "_default/baseof.html"] : ["_default/baseof.html"],
-    );
+      templateType !== ""
+        ? [`${templateType}/baseof.html`, `${p.section}/baseof.html`, "_default/baseof.html", "baseof.html"]
+        : ["_default/baseof.html", "baseof.html"],
+    ) ?? baseTpl;
 
     const html = renderWithBase(env, basePath, mainPath, ctx);
     writeTextFile(Path.combine(outDir, p.outputRelPath), html);
