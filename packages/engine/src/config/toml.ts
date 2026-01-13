@@ -248,7 +248,7 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
       if (line === "" || line.startsWith("#")) continue;
 
       if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
-        table = line.substring(1, line.length - 1).trim();
+        table = line.substring(1, line.length - 2).trim();
         nestedPrefix = table === "" ? "" : table + ".";
         continue;
       }
@@ -264,9 +264,85 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
     return config;
   }
 
-  // Handle languages.*.toml (e.g., languages.en.toml)
+  // Handle languages.toml (combined file with all languages as tables like [en], [de])
+  if (lowerFileName === "languages.toml") {
+    const langBuilders = new Dictionary<string, LanguageConfigBuilder>();
+    let currentLang = "";
+    let inParamsTable = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i]!;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
+
+      if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
+        const tableName = line.substring(1, line.length - 2).trim().toLowerInvariant();
+
+        // Check for [en.params] style table (language-specific params, skip for now)
+        if (tableName.contains(".params")) {
+          currentLang = tableName.substring(0, tableName.indexOf("."));
+          inParamsTable = true;
+        } else {
+          currentLang = tableName;
+          inParamsTable = false;
+          // Create builder if needed
+          let existingBuilder = new LanguageConfigBuilder(currentLang);
+          const hasBuilder = langBuilders.tryGetValue(currentLang, existingBuilder);
+          if (!hasBuilder) {
+            langBuilders.add(currentLang, new LanguageConfigBuilder(currentLang));
+          }
+        }
+        continue;
+      }
+
+      if (currentLang === "" || inParamsTable) continue;
+
+      const eq = line.indexOf("=");
+      if (eq < 0) continue;
+
+      const key = line.substring(0, eq).trim().toLowerInvariant();
+      const value = unquote(line.substring(eq + 1).trim());
+
+      let builder = new LanguageConfigBuilder(currentLang);
+      const gotBuilder = langBuilders.tryGetValue(currentLang, builder);
+      if (gotBuilder) {
+        if (key === "languagename") builder.languageName = value;
+        else if (key === "languagedirection") builder.languageDirection = value;
+        else if (key === "contentdir") builder.contentDir = value;
+        else if (key === "weight") {
+          let parsed: int = 0;
+          if (Int32.tryParse(value, parsed)) builder.weight = parsed;
+        }
+      }
+    }
+
+    // Convert builders to configs
+    const newLangs = new List<LanguageConfig>();
+    const keysIt = langBuilders.keys.getEnumerator();
+    while (keysIt.moveNext()) {
+      let builder = new LanguageConfigBuilder("");
+      if (langBuilders.tryGetValue(keysIt.current, builder)) {
+        newLangs.add(builder.toConfig());
+      }
+    }
+
+    config.languages = sortLanguages(newLangs.toArray());
+    if (config.languages.length > 0) {
+      const selected = config.languages[0]!;
+      config.contentDir = selected.contentDir;
+      config.languageCode = selected.lang;
+    }
+
+    return config;
+  }
+
+  // Handle languages.*.toml (per-language files, e.g., languages.en.toml)
   if (lowerFileName.startsWith("languages.") && lowerFileName.endsWith(".toml")) {
-    const langCode = lowerFileName.substring("languages.".length, lowerFileName.length - 5);
+    const prefixLen = "languages.".length;
+    const suffixLen = ".toml".length;
+    const extractLen = lowerFileName.length - prefixLen - suffixLen;
+    if (extractLen <= 0) return config;
+    const langCode = lowerFileName.substring(prefixLen, extractLen);
     if (langCode === "") return config;
 
     // Find or create language entry
@@ -293,7 +369,7 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
       if (line === "" || line.startsWith("#")) continue;
 
       if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
-        table = line.substring(1, line.length - 1).trim().toLowerInvariant();
+        table = line.substring(1, line.length - 2).trim().toLowerInvariant();
         continue;
       }
 
@@ -407,7 +483,7 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
       if (line === "" || line.startsWith("#")) continue;
 
       if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
-        table = line.substring(1, line.length - 1).trim().toLowerInvariant();
+        table = line.substring(1, line.length - 2).trim().toLowerInvariant();
         continue;
       }
 
