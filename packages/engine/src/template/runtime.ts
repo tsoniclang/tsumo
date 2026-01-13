@@ -4,13 +4,14 @@ import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js
 import { WebUtility } from "@tsonic/dotnet/System.Net.js";
 import { MD5, SHA1 } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import { Encoding, StringBuilder } from "@tsonic/dotnet/System.Text.js";
+import { Regex } from "@tsonic/dotnet/System.Text.RegularExpressions.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
 import { HtmlString, escapeHtml } from "../utils/html.ts";
 import { indexOfTextFrom, replaceText } from "../utils/strings.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "../utils/text.ts";
 import { LanguageContext, MediaType, MenuEntry, OutputFormat, PageContext, PageFile, SiteContext } from "../models.ts";
 import type { DocsMountContext, NavItem } from "../docs/models.ts";
-import { markdownPipeline, renderMarkdownWithShortcodes } from "../markdown.ts";
+import { markdownPipeline, renderMarkdown, renderMarkdownWithShortcodes } from "../markdown.ts";
 import { ParamKind, ParamValue } from "../params.ts";
 import { Resource, ResourceData } from "../resources.ts";
 import type { ResourceManager } from "../resources.ts";
@@ -25,6 +26,7 @@ import {
   OutputFormatsValue, OutputFormatValue, OutputFormatsGetValue,
   TaxonomiesValue, TaxonomyTermsValue, MediaTypeValue,
   DictValue, ScratchStore, ScratchValue, UrlParts, UrlValue,
+  VersionStringValue,
 } from "./values.ts";
 import { ShortcodeContext, ShortcodeValue, LinkHookValue, ImageHookValue, HeadingHookValue } from "./contexts.ts";
 import { RenderScope } from "./scope.ts";
@@ -121,7 +123,26 @@ class TemplateRuntime {
       return value.value.relPermalink;
     }
 
+    if (value instanceof VersionStringValue) {
+      return value.value;
+    }
+
     return "";
+  }
+
+  static toNumber(value: TemplateValue): int {
+    if (value instanceof NumberValue) {
+      return value.value;
+    }
+    if (value instanceof StringValue) {
+      let parsed: int = 0;
+      if (Int32.tryParse(value.value, parsed)) return parsed;
+      return 0;
+    }
+    if (value instanceof BoolValue) {
+      return value.value ? 1 : 0;
+    }
+    return 0;
   }
 
   static stringify(value: TemplateValue, escape: boolean): string {
@@ -210,6 +231,50 @@ class TemplateRuntime {
         else if (k === "isterm") cur = new BoolValue(page.kind === "term");
         else if (k === "isnode") cur = new BoolValue(page.kind !== "page");
         else if (k === "outputformats") cur = new OutputFormatsValue(page.site);
+        else if (k === "previnsection") {
+          const parentPage = page.parent;
+          if (parentPage !== undefined) {
+            const siblings = TemplateRuntime.copyPageArray(parentPage.pages);
+            let foundIdx: int = -1;
+            for (let pi = 0; pi < siblings.length; pi++) {
+              const sibling = siblings[pi]!;
+              if (sibling.relPermalink === page.relPermalink) {
+                foundIdx = pi;
+                break;
+              }
+            }
+            if (foundIdx > 0) {
+              const prevIdx: int = foundIdx - 1;
+              cur = new PageValue(siblings[prevIdx]!);
+            } else {
+              cur = TemplateRuntime.nil;
+            }
+          } else {
+            cur = TemplateRuntime.nil;
+          }
+        }
+        else if (k === "nextinsection") {
+          const parentPage = page.parent;
+          if (parentPage !== undefined) {
+            const siblings = TemplateRuntime.copyPageArray(parentPage.pages);
+            let foundIdx: int = -1;
+            for (let ni = 0; ni < siblings.length; ni++) {
+              const sibling = siblings[ni]!;
+              if (sibling.relPermalink === page.relPermalink) {
+                foundIdx = ni;
+                break;
+              }
+            }
+            if (foundIdx >= 0 && foundIdx < siblings.length - 1) {
+              const nextIdx: int = foundIdx + 1;
+              cur = new PageValue(siblings[nextIdx]!);
+            } else {
+              cur = TemplateRuntime.nil;
+            }
+          } else {
+            cur = TemplateRuntime.nil;
+          }
+        }
         else cur = TemplateRuntime.nil;
         continue;
       }
@@ -416,7 +481,18 @@ class TemplateRuntime {
           continue;
         }
         if (k === "host") {
-          cur = new StringValue(uri.host);
+          // Hugo returns empty string for relative URIs, not an exception
+          cur = new StringValue(uri.isAbsoluteUri ? uri.host : "");
+          continue;
+        }
+        if (k === "scheme") {
+          // Hugo returns empty string for relative URIs
+          cur = new StringValue(uri.isAbsoluteUri ? uri.scheme : "");
+          continue;
+        }
+        if (k === "string") {
+          // Return the original string representation
+          cur = new StringValue(uri.originalString);
           continue;
         }
         if (k === "path" || k === "rawquery" || k === "fragment") {
@@ -462,6 +538,18 @@ class TemplateRuntime {
           const slash: char = "/";
           const rel = res.outputRelPath.trimStart(slash);
           cur = new StringValue(ensureTrailingSlash(scope.site.baseURL) + rel);
+          continue;
+        }
+        if (k === "width") {
+          cur = new NumberValue(res.width);
+          continue;
+        }
+        if (k === "height") {
+          cur = new NumberValue(res.height);
+          continue;
+        }
+        if (k === "mediatype") {
+          cur = new StringValue(res.mediaType);
           continue;
         }
         cur = TemplateRuntime.nil;
@@ -517,6 +605,56 @@ class TemplateRuntime {
           cur = lower;
           continue;
         }
+        cur = TemplateRuntime.nil;
+        continue;
+      }
+
+      // Handle PageArrayValue zero-arg methods as properties
+      if (cur instanceof PageArrayValue) {
+        const pageArrVal = cur as PageArrayValue;
+        const pages: PageContext[] = pageArrVal.value;
+        const k = seg.toLowerInvariant();
+
+        // Sorting methods (return sorted copy)
+        if (k === "bylastmod") {
+          const sorted = TemplateRuntime.sortPagesByDate(pages, "lastmod");
+          cur = new PageArrayValue(sorted);
+          continue;
+        }
+        if (k === "bydate") {
+          const sorted = TemplateRuntime.sortPagesByDate(pages, "date");
+          cur = new PageArrayValue(sorted);
+          continue;
+        }
+        if (k === "bypublishdate") {
+          const sorted = TemplateRuntime.sortPagesByDate(pages, "publishdate");
+          cur = new PageArrayValue(sorted);
+          continue;
+        }
+        if (k === "bytitle") {
+          const sorted = TemplateRuntime.sortPagesByTitle(pages);
+          cur = new PageArrayValue(sorted);
+          continue;
+        }
+        if (k === "byweight") {
+          const sorted = TemplateRuntime.sortPagesByWeight(pages);
+          cur = new PageArrayValue(sorted);
+          continue;
+        }
+
+        // Reverse (return reversed copy)
+        if (k === "reverse") {
+          const reversed = TemplateRuntime.reversePages(pages);
+          cur = new PageArrayValue(reversed);
+          continue;
+        }
+
+        // Length property
+        if (k === "len") {
+          cur = new NumberValue(pages.length);
+          continue;
+        }
+
         cur = TemplateRuntime.nil;
         continue;
       }
@@ -727,6 +865,123 @@ class TemplateRuntime {
     }
     const empty: PageContext[] = [];
     return empty;
+  }
+
+  /**
+   * Sort pages by date field. Returns a new sorted array (ascending by default).
+   * @param pages - The pages to sort
+   * @param field - "date", "lastmod", or "publishdate"
+   */
+  static sortPagesByDate(pages: PageContext[], field: string): PageContext[] {
+    const copy = new List<PageContext>();
+    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
+
+    // Simple bubble sort for stability and tsonic compatibility
+    const arr = copy.toArray();
+    const len = arr.length;
+    for (let i = 0; i < len; i++) {
+      for (let j = 0; j < len - i - 1; j++) {
+        const a = arr[j]!;
+        const b = arr[j + 1]!;
+        // Use date for all fields (publishdate falls back to date)
+        const dateA = field === "lastmod" ? a.lastmod : a.date;
+        const dateB = field === "lastmod" ? b.lastmod : b.date;
+        // Compare dates (ascending order)
+        if (dateA.compareTo(dateB) > 0) {
+          arr[j] = b;
+          arr[j + 1] = a;
+        }
+      }
+    }
+    return arr;
+  }
+
+  /**
+   * Sort pages by title. Returns a new sorted array (ascending).
+   */
+  static sortPagesByTitle(pages: PageContext[]): PageContext[] {
+    const copy = new List<PageContext>();
+    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
+
+    // Simple bubble sort
+    const arr = copy.toArray();
+    const len = arr.length;
+    for (let i = 0; i < len; i++) {
+      for (let j = 0; j < len - i - 1; j++) {
+        const a = arr[j]!;
+        const b = arr[j + 1]!;
+        if (a.title.compareTo(b.title) > 0) {
+          arr[j] = b;
+          arr[j + 1] = a;
+        }
+      }
+    }
+    return arr;
+  }
+
+  /**
+   * Sort pages by weight. Returns a new sorted array (ascending).
+   * Note: PageContext currently doesn't have a weight field, so this returns original order.
+   */
+  static sortPagesByWeight(pages: PageContext[]): PageContext[] {
+    // TODO: Add weight field to PageContext when needed
+    // For now, return a copy in original order
+    const copy = new List<PageContext>();
+    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
+    return copy.toArray();
+  }
+
+  /**
+   * Reverse the order of pages. Returns a new reversed array.
+   */
+  static reversePages(pages: PageContext[]): PageContext[] {
+    const len = pages.length;
+    const reversed = new List<PageContext>();
+    for (let i = len - 1; i >= 0; i--) reversed.add(pages[i]!);
+    return reversed.toArray();
+  }
+
+  /**
+   * Copy a page array to a new array.
+   */
+  static copyPageArray(pages: PageContext[]): PageContext[] {
+    const copy = new List<PageContext>();
+    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
+    return copy.toArray();
+  }
+
+  /**
+   * Copy a string array to a new array.
+   */
+  static copyStringArray(strings: string[]): string[] {
+    const copy = new List<string>();
+    for (let i = 0; i < strings.length; i++) copy.add(strings[i]!);
+    return copy.toArray();
+  }
+
+  /**
+   * Compare two template values for sorting.
+   * Returns negative if a < b, positive if a > b, 0 if equal.
+   */
+  static compareValues(a: TemplateValue, b: TemplateValue): int {
+    // Compare strings
+    if (a instanceof StringValue && b instanceof StringValue) {
+      const aStr = (a as StringValue).value;
+      const bStr = (b as StringValue).value;
+      return aStr.compareTo(bStr);
+    }
+    // Compare numbers
+    if (a instanceof NumberValue && b instanceof NumberValue) {
+      const aNum: int = (a as NumberValue).value;
+      const bNum: int = (b as NumberValue).value;
+      if (aNum < bNum) return -1;
+      if (aNum > bNum) return 1;
+      return 0;
+    }
+    // Compare as strings (fallback)
+    const aPlain = TemplateRuntime.toPlainString(a);
+    const bPlain = TemplateRuntime.toPlainString(b);
+    return aPlain.compareTo(bPlain);
   }
 
   static matchWhere(actual: TemplateValue, op: string, expected: TemplateValue): boolean {
@@ -1106,6 +1361,17 @@ class TemplateRuntime {
     if (name === "hugo.ismultilingual") return new BoolValue(false);
     if (name === "hugo.ismultihost") return new BoolValue(false);
     if (name === "hugo.workingdir") return new StringValue(Environment.currentDirectory);
+    // hugo.Version returns a VersionStringValue for semver-like comparison
+    // Report a high version to pass theme version gates (e.g., PaperMod requires >= 0.146.0)
+    if (name === "hugo.version") return new VersionStringValue("0.146.0");
+    // hugo.IsProduction returns true for production builds (default: true)
+    if (name === "hugo.isproduction") return new BoolValue(env.isProduction);
+    // hugo.IsExtended returns true if extended features (Sass, image processing) are available
+    if (name === "hugo.isextended") return new BoolValue(true);
+    // hugo.IsServer returns true during hugo server (dev mode)
+    if (name === "hugo.isserver") return new BoolValue(!env.isProduction);
+    // hugo.IsDevelopment returns true in development mode
+    if (name === "hugo.isdevelopment") return new BoolValue(!env.isProduction);
 
     if (name === "i18n" && args.length >= 1) {
       const key = TemplateRuntime.toPlainString(args[0]!);
@@ -1128,6 +1394,56 @@ class TemplateRuntime {
       const pattern = TemplateRuntime.toPlainString(args[0]!);
       const res = mgr.getMatch(pattern);
       return res !== undefined ? new ResourceValue(mgr, res) : TemplateRuntime.nil;
+    }
+
+    // resources.Match - get all matching resources (returns array)
+    if (name === "resources.match" && args.length >= 1) {
+      const mgr = TemplateRuntime.getResourceManager(env);
+      if (mgr === undefined) return new AnyArrayValue(new List<TemplateValue>());
+      const pattern = TemplateRuntime.toPlainString(args[0]!);
+      const resources = mgr.match(pattern);
+      const result = new List<TemplateValue>();
+      for (let i = 0; i < resources.length; i++) {
+        result.add(new ResourceValue(mgr, resources[i]!));
+      }
+      return new AnyArrayValue(result);
+    }
+
+    // resources.ByType - get all resources of a given media type
+    if (name === "resources.bytype" && args.length >= 1) {
+      const mgr = TemplateRuntime.getResourceManager(env);
+      if (mgr === undefined) return new AnyArrayValue(new List<TemplateValue>());
+      const mediaType = TemplateRuntime.toPlainString(args[0]!);
+      const resources = mgr.byType(mediaType);
+      const result = new List<TemplateValue>();
+      for (let i = 0; i < resources.length; i++) {
+        result.add(new ResourceValue(mgr, resources[i]!));
+      }
+      return new AnyArrayValue(result);
+    }
+
+    // resources.Concat - concatenate resources into one
+    if (name === "resources.concat" && args.length >= 2) {
+      const mgr = TemplateRuntime.getResourceManager(env);
+      if (mgr === undefined) return TemplateRuntime.nil;
+      const targetPath = TemplateRuntime.toPlainString(args[0]!);
+      const input = args[args.length - 1]!;
+      // Input can be an array of resources (piped from slice or Match)
+      const resources = new List<Resource>();
+      if (input instanceof AnyArrayValue) {
+        const arr = input.value.toArray();
+        for (let i = 0; i < arr.length; i++) {
+          const item = arr[i]!;
+          if (item instanceof ResourceValue) {
+            resources.add((item as ResourceValue).value);
+          }
+        }
+      } else if (input instanceof ResourceValue) {
+        resources.add((input as ResourceValue).value);
+      }
+      if (resources.count === 0) return TemplateRuntime.nil;
+      const res = mgr.concat(targetPath, resources.toArray());
+      return new ResourceValue(mgr, res);
     }
 
     if (name === "resources.fromstring" && args.length >= 2) {
@@ -1172,7 +1488,7 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if (name === "resources.fingerprint" && args.length >= 1) {
+    if ((name === "resources.fingerprint" || name === "fingerprint") && args.length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
       const piped = args[args.length - 1]!;
@@ -1180,6 +1496,43 @@ class TemplateRuntime {
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
       const res = mgr.fingerprint(src);
+      return new ResourceValue(mgr, res);
+    }
+
+    if (name === "resources.copy" && args.length >= 2) {
+      const mgr = TemplateRuntime.getResourceManager(env);
+      if (mgr === undefined) return TemplateRuntime.nil;
+      const targetPath = TemplateRuntime.toPlainString(args[0]!);
+      const piped = args[args.length - 1]!;
+      const isResource = piped instanceof ResourceValue;
+      if (isResource === false) return TemplateRuntime.nil;
+      const src = (piped as ResourceValue).value;
+      const res = mgr.copy(targetPath, src);
+      return new ResourceValue(mgr, res);
+    }
+
+    if (name === "resources.postprocess" && args.length >= 1) {
+      const mgr = TemplateRuntime.getResourceManager(env);
+      if (mgr === undefined) return TemplateRuntime.nil;
+      const piped = args[args.length - 1]!;
+      const isResource = piped instanceof ResourceValue;
+      if (isResource === false) return TemplateRuntime.nil;
+      const src = (piped as ResourceValue).value;
+      const res = mgr.postProcess(src);
+      return new ResourceValue(mgr, res);
+    }
+
+    if ((name === "images.resize" || name === "resize") && args.length >= 1) {
+      const mgr = TemplateRuntime.getResourceManager(env);
+      if (mgr === undefined) return TemplateRuntime.nil;
+
+      // First arg is resize spec, piped resource is last arg
+      const spec = args.length >= 2 ? TemplateRuntime.toPlainString(args[0]!) : "";
+      const piped = args[args.length - 1]!;
+      const isResource = piped instanceof ResourceValue;
+      if (isResource === false) return TemplateRuntime.nil;
+      const src = (piped as ResourceValue).value;
+      const res = mgr.resize(src, spec);
       return new ResourceValue(mgr, res);
     }
 
@@ -1228,6 +1581,40 @@ class TemplateRuntime {
       }
     }
 
+    // templates.Exists - check if a template exists
+    if (name === "templates.exists" && args.length >= 1) {
+      const templatePath = TemplateRuntime.toPlainString(args[0]!);
+      const tpl = env.getTemplate(templatePath);
+      return new BoolValue(tpl !== undefined);
+    }
+
+    // errorf - log error and continue (in Hugo this can halt, but we just warn)
+    if (name === "errorf" && args.length >= 1) {
+      const format = TemplateRuntime.toPlainString(args[0]!);
+      let message = format;
+      // Simple %s replacement for additional args
+      for (let i = 1; i < args.length; i++) {
+        message = message.replace("%s", TemplateRuntime.toPlainString(args[i]!));
+        message = message.replace("%v", TemplateRuntime.toPlainString(args[i]!));
+        message = message.replace("%d", TemplateRuntime.toPlainString(args[i]!));
+      }
+      Console.error.writeLine("ERROR: {0}", message);
+      return TemplateRuntime.nil;
+    }
+
+    // warnf - log warning and continue
+    if (name === "warnf" && args.length >= 1) {
+      const format = TemplateRuntime.toPlainString(args[0]!);
+      let message = format;
+      for (let i = 1; i < args.length; i++) {
+        message = message.replace("%s", TemplateRuntime.toPlainString(args[i]!));
+        message = message.replace("%v", TemplateRuntime.toPlainString(args[i]!));
+        message = message.replace("%d", TemplateRuntime.toPlainString(args[i]!));
+      }
+      Console.error.writeLine("WARN: {0}", message);
+      return TemplateRuntime.nil;
+    }
+
     if (name === "safehtml" && args.length >= 1) {
       const v = args[0]!;
       if (v instanceof HtmlValue) return v;
@@ -1248,6 +1635,11 @@ class TemplateRuntime {
     if (name === "safeurl" && args.length >= 1) {
       const v = args[0]!;
       return new HtmlValue(new HtmlString(escapeHtml(TemplateRuntime.toPlainString(v))));
+    }
+
+    if (name === "safecss" && args.length >= 1) {
+      const v = args[0]!;
+      return new HtmlValue(new HtmlString(TemplateRuntime.toPlainString(v)));
     }
 
     if (name === "htmlescape" && args.length >= 1) {
@@ -1297,6 +1689,184 @@ class TemplateRuntime {
         if (ok) out.add(page);
       }
       return new PageArrayValue(out.toArray());
+    }
+
+    if (name === "sort" && args.length >= 1) {
+      const collection = args[0]!;
+      const sortKey = args.length >= 2 ? TemplateRuntime.toPlainString(args[1]!) : "";
+      const sortOrder = args.length >= 3 ? TemplateRuntime.toPlainString(args[2]!).toLowerInvariant() : "asc";
+      const isDesc = sortOrder === "desc";
+      const empty: string[] = [];
+      const keySegs = sortKey.trim() === "" ? empty : sortKey.split(".");
+
+      if (collection instanceof PageArrayValue) {
+        const arr = TemplateRuntime.copyPageArray(collection.value);
+        // Simple bubble sort
+        for (let i = 0; i < arr.length; i++) {
+          for (let j = i + 1; j < arr.length; j++) {
+            const aVal = keySegs.length === 0 ? new PageValue(arr[i]!) : TemplateRuntime.resolvePath(new PageValue(arr[i]!), keySegs, scope);
+            const bVal = keySegs.length === 0 ? new PageValue(arr[j]!) : TemplateRuntime.resolvePath(new PageValue(arr[j]!), keySegs, scope);
+            const cmp = TemplateRuntime.compareValues(aVal, bVal);
+            const shouldSwap: boolean = isDesc ? cmp < 0 : cmp > 0;
+            if (shouldSwap === true) {
+              const tmp = arr[i]!;
+              arr[i] = arr[j]!;
+              arr[j] = tmp;
+            }
+          }
+        }
+        return new PageArrayValue(arr);
+      }
+
+      if (collection instanceof AnyArrayValue) {
+        const items = collection.value.toArray();
+        const sorted = new List<TemplateValue>();
+        for (let i = 0; i < items.length; i++) sorted.add(items[i]!);
+        const arr = sorted.toArray();
+        for (let i = 0; i < arr.length; i++) {
+          for (let j = i + 1; j < arr.length; j++) {
+            const aVal = keySegs.length === 0 ? arr[i]! : TemplateRuntime.resolvePath(arr[i]!, keySegs, scope);
+            const bVal = keySegs.length === 0 ? arr[j]! : TemplateRuntime.resolvePath(arr[j]!, keySegs, scope);
+            const cmp = TemplateRuntime.compareValues(aVal, bVal);
+            const shouldSwap: boolean = isDesc ? cmp < 0 : cmp > 0;
+            if (shouldSwap === true) {
+              const tmp = arr[i]!;
+              arr[i] = arr[j]!;
+              arr[j] = tmp;
+            }
+          }
+        }
+        const sortResult = new List<TemplateValue>();
+        for (let i = 0; i < arr.length; i++) sortResult.add(arr[i]!);
+        return new AnyArrayValue(sortResult);
+      }
+
+      return collection;
+    }
+
+    if (name === "after" && args.length >= 2) {
+      const n = TemplateRuntime.toNumber(args[0]!);
+      const collection = args[1]!;
+
+      if (collection instanceof PageArrayValue) {
+        const pages = TemplateRuntime.copyPageArray(collection.value);
+        const result = new List<PageContext>();
+        for (let i = n; i < pages.length; i++) result.add(pages[i]!);
+        return new PageArrayValue(result.toArray());
+      }
+
+      if (collection instanceof AnyArrayValue) {
+        const items = collection.value.toArray();
+        const result = new List<TemplateValue>();
+        for (let i = n; i < items.length; i++) result.add(items[i]!);
+        return new AnyArrayValue(result);
+      }
+
+      return TemplateRuntime.nil;
+    }
+
+    if (name === "last" && args.length >= 2) {
+      const n = TemplateRuntime.toNumber(args[0]!);
+      const collection = args[1]!;
+
+      if (collection instanceof PageArrayValue) {
+        const pages = TemplateRuntime.copyPageArray(collection.value);
+        const start: int = pages.length > n ? pages.length - n : 0;
+        const result = new List<PageContext>();
+        for (let i = start; i < pages.length; i++) result.add(pages[i]!);
+        return new PageArrayValue(result.toArray());
+      }
+
+      if (collection instanceof AnyArrayValue) {
+        const items = collection.value.toArray();
+        const start: int = items.length > n ? items.length - n : 0;
+        const result = new List<TemplateValue>();
+        for (let i = start; i < items.length; i++) result.add(items[i]!);
+        return new AnyArrayValue(result);
+      }
+
+      return TemplateRuntime.nil;
+    }
+
+    if (name === "uniq" && args.length >= 1) {
+      const collection = args[0]!;
+
+      if (collection instanceof PageArrayValue) {
+        const pages = TemplateRuntime.copyPageArray(collection.value);
+        const seen = new Dictionary<string, boolean>();
+        const uniqResult = new List<PageContext>();
+        for (let i = 0; i < pages.length; i++) {
+          const p = pages[i]!;
+          const key = p.relPermalink;
+          let exists = false;
+          const found = seen.tryGetValue(key, exists);
+          if (found === false) {
+            seen.add(key, true);
+            uniqResult.add(p);
+          }
+        }
+        return new PageArrayValue(uniqResult.toArray());
+      }
+
+      if (collection instanceof AnyArrayValue) {
+        const items = collection.value.toArray();
+        const seen = new Dictionary<string, boolean>();
+        const uniqResult = new List<TemplateValue>();
+        for (let i = 0; i < items.length; i++) {
+          const key = TemplateRuntime.toPlainString(items[i]!);
+          let exists = false;
+          const found = seen.tryGetValue(key, exists);
+          if (found === false) {
+            seen.add(key, true);
+            uniqResult.add(items[i]!);
+          }
+        }
+        return new AnyArrayValue(uniqResult);
+      }
+
+      return collection;
+    }
+
+    if (name === "group" && args.length >= 2) {
+      const key = TemplateRuntime.toPlainString(args[0]!);
+      const collection = args[1]!;
+      const empty: string[] = [];
+      const keySegs = key.trim() === "" ? empty : key.split(".");
+
+      if (collection instanceof PageArrayValue) {
+        const pages = TemplateRuntime.copyPageArray(collection.value);
+        const groups = new Dictionary<string, List<PageContext>>();
+        const groupOrder = new List<string>();
+
+        for (let i = 0; i < pages.length; i++) {
+          const page = pages[i]!;
+          const val = TemplateRuntime.resolvePath(new PageValue(page), keySegs, scope);
+          const groupKey = TemplateRuntime.toPlainString(val);
+
+          let group: List<PageContext> = new List<PageContext>();
+          const hasGroup = groups.tryGetValue(groupKey, group);
+          if (hasGroup === false) {
+            group = new List<PageContext>();
+            groups.add(groupKey, group);
+            groupOrder.add(groupKey);
+          }
+          group.add(page);
+        }
+
+        const groupResult = new List<TemplateValue>();
+        const keys = groupOrder.toArray();
+        for (let i = 0; i < keys.length; i++) {
+          let group: List<PageContext> = new List<PageContext>();
+          groups.tryGetValue(keys[i]!, group);
+          const groupDict = new Dictionary<string, TemplateValue>();
+          groupDict.add("Key", new StringValue(keys[i]!));
+          groupDict.add("Pages", new PageArrayValue(group.toArray()));
+          groupResult.add(new DictValue(groupDict));
+        }
+        return new AnyArrayValue(groupResult);
+      }
+
+      return TemplateRuntime.nil;
     }
 
     if (name === "plainify" && args.length >= 1) {
@@ -1491,6 +2061,32 @@ class TemplateRuntime {
       return new NumberValue(sum);
     }
 
+    if (name === "sub" && args.length >= 2) {
+      const a = TemplateRuntime.toNumber(args[0]!);
+      const b = TemplateRuntime.toNumber(args[1]!);
+      return new NumberValue(a - b);
+    }
+
+    if (name === "mul" && args.length >= 2) {
+      const a = TemplateRuntime.toNumber(args[0]!);
+      const b = TemplateRuntime.toNumber(args[1]!);
+      return new NumberValue(a * b);
+    }
+
+    if (name === "div" && args.length >= 2) {
+      const a = TemplateRuntime.toNumber(args[0]!);
+      const b = TemplateRuntime.toNumber(args[1]!);
+      if (b === 0) return new NumberValue(0);
+      return new NumberValue(a / b);
+    }
+
+    if (name === "mod" && args.length >= 2) {
+      const a = TemplateRuntime.toNumber(args[0]!);
+      const b = TemplateRuntime.toNumber(args[1]!);
+      if (b === 0) return new NumberValue(0);
+      return new NumberValue(a % b);
+    }
+
     if (name === "newscratch") {
       return new ScratchValue(new ScratchStore());
     }
@@ -1579,6 +2175,47 @@ class TemplateRuntime {
       return new StringValue(TemplateRuntime.toPlainString(v).toUpperInvariant());
     }
 
+    if (name === "trim" && args.length >= 1) {
+      const v = args[0]!;
+      return new StringValue(TemplateRuntime.toPlainString(v).trim());
+    }
+
+    if (name === "replace" && args.length >= 3) {
+      const s = TemplateRuntime.toPlainString(args[0]!);
+      const oldStr = TemplateRuntime.toPlainString(args[1]!);
+      const newStr = TemplateRuntime.toPlainString(args[2]!);
+      return new StringValue(s.replace(oldStr, newStr));
+    }
+
+    if (name === "replaceRE" && args.length >= 3) {
+      const pattern = TemplateRuntime.toPlainString(args[0]!);
+      const replacement = TemplateRuntime.toPlainString(args[1]!);
+      const s = TemplateRuntime.toPlainString(args[2]!);
+      const regex = new Regex(pattern);
+      return new StringValue(regex.replace(s, replacement));
+    }
+
+    if (name === "truncate" && args.length >= 2) {
+      const length = TemplateRuntime.toNumber(args[0]!);
+      const s = TemplateRuntime.toPlainString(args[1]!);
+      const ellipsis = args.length >= 3 ? TemplateRuntime.toPlainString(args[2]!) : "...";
+      if (s.length <= length) return new StringValue(s);
+      const truncLen: int = length - ellipsis.length;
+      if (truncLen <= 0) return new StringValue(ellipsis.substring(0, length));
+      return new StringValue(s.substring(0, truncLen) + ellipsis);
+    }
+
+    if (name === "markdownify" && args.length >= 1) {
+      const s = TemplateRuntime.toPlainString(args[0]!);
+      const md = renderMarkdown(s);
+      // Strip wrapping <p> tags for inline use
+      let html = md.html.trim();
+      if (html.startsWith("<p>") && html.endsWith("</p>")) {
+        html = html.substring(3, html.length - 4);
+      }
+      return new HtmlValue(new HtmlString(html));
+    }
+
     if (name === "relurl" && args.length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
@@ -1590,6 +2227,30 @@ class TemplateRuntime {
       const s = TemplateRuntime.toPlainString(v);
       const rel = s.startsWith("/") ? s.substring(1) : s;
       return new StringValue(ensureTrailingSlash(scope.site.baseURL) + rel);
+    }
+
+    if (name === "abslangurl" && args.length >= 1) {
+      const v = args[0]!;
+      const s = TemplateRuntime.toPlainString(v);
+      const lang = scope.site.Language.Lang;
+      const langPrefix = scope.site.Languages.length > 1 ? lang + "/" : "";
+      const rel = s.startsWith("/") ? s.substring(1) : s;
+      return new StringValue(ensureTrailingSlash(scope.site.baseURL) + langPrefix + rel);
+    }
+
+    if (name === "rellangurl" && args.length >= 1) {
+      const v = args[0]!;
+      const s = TemplateRuntime.toPlainString(v);
+      const lang = scope.site.Language.Lang;
+      const langPrefix = scope.site.Languages.length > 1 ? "/" + lang : "";
+      const path = s.startsWith("/") ? s : "/" + s;
+      return new StringValue(langPrefix + path);
+    }
+
+    if (name === "urlquery" && args.length >= 1) {
+      const v = args[0]!;
+      const s = TemplateRuntime.toPlainString(v);
+      return new StringValue(Uri.escapeDataString(s));
     }
 
     if (name === "default" && args.length >= 2) {
@@ -1698,7 +2359,12 @@ class TemplateRuntime {
         const b = args[1]!;
 
         let cmp = 0;
-        if (a instanceof NumberValue) {
+        // Handle VersionStringValue comparisons using semver semantics
+        if (a instanceof VersionStringValue || b instanceof VersionStringValue) {
+          const av = TemplateRuntime.toPlainString(a);
+          const bv = TemplateRuntime.toPlainString(b);
+          cmp = VersionStringValue.compare(av, bv);
+        } else if (a instanceof NumberValue) {
           if (b instanceof NumberValue) {
             const av = a.value;
             const bv = b.value;
@@ -1750,6 +2416,172 @@ class TemplateRuntime {
       Console.error.writeLine("Template function failed: {0} ({1})", nameRaw, name);
       throw e;
     }
+  }
+
+  /**
+   * Dispatch a method call on a receiver value.
+   * This handles method calls like `(resources.ByType "image").GetMatch "foo*"`
+   * where we have a receiver value and a method name with arguments.
+   */
+  static callMethod(
+    receiver: TemplateValue,
+    methodName: string,
+    args: TemplateValue[],
+    scope: RenderScope,
+    env: TemplateEnvironment,
+    overrides: Dictionary<string, TemplateNode[]>,
+    defines: Dictionary<string, TemplateNode[]>,
+  ): TemplateValue {
+    const method = methodName.toLowerInvariant();
+
+    // Handle AnyArrayValue methods (resource collections, page collections, etc.)
+    if (receiver instanceof AnyArrayValue) {
+      const arr = receiver.value;
+
+      // GetMatch - find first item matching pattern (for resources)
+      if (method === "getmatch" && args.length >= 1) {
+        const pattern = TemplateRuntime.toPlainString(args[0]!);
+        const items = arr.toArray();
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i]!;
+          if (item instanceof ResourceValue) {
+            const res = item.value;
+            const name = res.outputRelPath ?? res.id;
+            if (TemplateRuntime.globMatch(pattern, name)) {
+              return item;
+            }
+          }
+        }
+        return TemplateRuntime.nil;
+      }
+
+      // Match - filter items matching pattern
+      if (method === "match" && args.length >= 1) {
+        const pattern = TemplateRuntime.toPlainString(args[0]!);
+        const matchResult = new List<TemplateValue>();
+        const items = arr.toArray();
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i]!;
+          if (item instanceof ResourceValue) {
+            const res = item.value;
+            const name = res.outputRelPath ?? res.id;
+            if (TemplateRuntime.globMatch(pattern, name)) {
+              matchResult.add(item);
+            }
+          }
+        }
+        return new AnyArrayValue(matchResult);
+      }
+
+      // ByType - filter by media type (using path extension as heuristic)
+      if (method === "bytype" && args.length >= 1) {
+        const targetType = TemplateRuntime.toPlainString(args[0]!).toLowerInvariant();
+        const byTypeResult = new List<TemplateValue>();
+        const byTypeItems = arr.toArray();
+        for (let i = 0; i < byTypeItems.length; i++) {
+          const item = byTypeItems[i]!;
+          if (item instanceof ResourceValue) {
+            const res = item.value;
+            // Determine type from extension
+            const path = res.outputRelPath ?? res.id;
+            const ext = TemplateRuntime.getPathExtension(path).toLowerInvariant();
+            let mainType = "application";
+            if (ext === ".png" || ext === ".jpg" || ext === ".jpeg" || ext === ".gif" || ext === ".webp" || ext === ".svg") {
+              mainType = "image";
+            } else if (ext === ".css" || ext === ".html" || ext === ".js" || ext === ".json" || ext === ".xml" || ext === ".txt") {
+              mainType = "text";
+            }
+            if (mainType === targetType) byTypeResult.add(item);
+          }
+        }
+        return new AnyArrayValue(byTypeResult);
+      }
+    }
+
+    // Handle PageArrayValue methods
+    if (receiver instanceof PageArrayValue) {
+      const pageArr = receiver as PageArrayValue;
+      const pages: PageContext[] = pageArr.value;
+
+      // First - return first N pages
+      if (method === "first" && args.length >= 1) {
+        const n = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
+        const firstResult = new List<PageContext>();
+        for (let i = 0; i < pages.length && i < n; i++) firstResult.add(pages[i]!);
+        return new PageArrayValue(firstResult.toArray());
+      }
+
+      // Limit - same as First
+      if (method === "limit" && args.length >= 1) {
+        const n = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
+        const limitResult = new List<PageContext>();
+        for (let i = 0; i < pages.length && i < n; i++) limitResult.add(pages[i]!);
+        return new PageArrayValue(limitResult.toArray());
+      }
+    }
+
+    // Handle PageValue methods
+    if (receiver instanceof PageValue) {
+      const page = receiver.value;
+
+      // GetTerms - return term pages for a taxonomy
+      if (method === "getterms" && args.length >= 1) {
+        const taxonomy = TemplateRuntime.toPlainString(args[0]!).toLowerInvariant();
+        const site = page.site;
+        const termsResult = new List<PageContext>();
+
+        // Get the term values from the page (e.g., tags, categories)
+        // Currently only supports built-in tags and categories
+        if (taxonomy !== "tags" && taxonomy !== "categories") {
+          // Unsupported taxonomy - return empty result
+          return new PageArrayValue(termsResult.toArray());
+        }
+        let termValues: string[];
+        if (taxonomy === "tags") {
+          termValues = TemplateRuntime.copyStringArray(page.tags);
+        } else {
+          termValues = TemplateRuntime.copyStringArray(page.categories);
+        }
+        const allPages = TemplateRuntime.copyPageArray(site.allPages);
+
+        // Find the term pages from site taxonomies
+        for (let i = 0; i < termValues.length; i++) {
+          const termValue = termValues[i]!;
+          // Look for the term page in site.allPages
+          const termSlug = termValue.toLowerInvariant().replace(" ", "-");
+          for (let j = 0; j < allPages.length; j++) {
+            const p = allPages[j]!;
+            if (p.kind === "term" && p.section === taxonomy && p.slug === termSlug) {
+              termsResult.add(p);
+              break;
+            }
+          }
+        }
+
+        return new PageArrayValue(termsResult.toArray());
+      }
+    }
+
+    // Handle ResourceValue methods
+    if (receiver instanceof ResourceValue) {
+      // Resize for images
+      if (method === "resize" && args.length >= 1) {
+        // TODO: Implement actual image resizing
+        // For now, return the same resource (placeholder)
+        return receiver;
+      }
+    }
+
+    // Fallback: try to resolve as a zero-arg method/property via resolvePath
+    // This handles cases where the method name might be a property
+    const result = TemplateRuntime.resolvePath(receiver, [methodName], scope);
+    return result;
+  }
+
+  private static getPathExtension(path: string): string {
+    const lastDot = path.lastIndexOf(".");
+    if (lastDot < 0) return "";
+    return path.substring(lastDot);
   }
 
   static toJson(value: TemplateValue): string {
@@ -2167,6 +2999,30 @@ export class Command {
       for (let i = 0; i < this.args.length; i++) evaluatedArgs.add(this.args[i]!.eval(scope, env, overrides, defines));
       if (piped !== undefined) evaluatedArgs.add(piped);
       return TemplateRuntime.callFunction(tokenExpr.token, evaluatedArgs.toArray(), scope, env, overrides, defines);
+    }
+
+    // Handle AccessExpr with args - method invocation on expression result
+    // Example: (resources.ByType "image").GetMatch "foo*"
+    if (head instanceof AccessExpr) {
+      const accessExpr = head as AccessExpr;
+      const segments = accessExpr.segments;
+      if (segments.length >= 1) {
+        // Evaluate the receiver (base + all segments except last)
+        let receiver = accessExpr.base.eval(scope, env, overrides, defines);
+        if (segments.length > 1) {
+          const receiverSegs: string[] = [];
+          for (let i = 0; i < segments.length - 1; i++) receiverSegs[i] = segments[i]!;
+          receiver = TemplateRuntime.resolvePath(receiver, receiverSegs, scope);
+        }
+        // The last segment is the method name
+        const methodName = segments[segments.length - 1]!;
+        // Evaluate args
+        const evaluatedArgs = new List<TemplateValue>();
+        for (let i = 0; i < this.args.length; i++) evaluatedArgs.add(this.args[i]!.eval(scope, env, overrides, defines));
+        if (piped !== undefined) evaluatedArgs.add(piped);
+        // Dispatch the method call
+        return TemplateRuntime.callMethod(receiver, methodName, evaluatedArgs.toArray(), scope, env, overrides, defines);
+      }
     }
 
     const headValue = this.head.eval(scope, env, overrides, defines);

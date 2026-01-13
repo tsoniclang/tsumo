@@ -8,5 +8,8 @@
     "build": "tsonic build",
     "build:aot": "tsonic build -c tsonic.aot.json",
     "dev": "tsonic run -- --help"
+  },
+  "devDependencies": {
+    "@tsumo/engine": "^0.0.0"
   }
 }

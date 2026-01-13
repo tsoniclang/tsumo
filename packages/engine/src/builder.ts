@@ -355,7 +355,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     : Path.combine(siteDir, request.destinationDir);
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
-  const env = new BuildEnvironment(siteDir, themeDir, outDir);
+  const env = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts);
 
   if (request.cleanDestinationDir) {
     deleteDirRecursive(outDir);
@@ -536,11 +536,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   // Resolve pageRef for menu entries
   resolveMenuPageRefs(site);
 
-  const baseCandidates = ["_default/baseof.html"];
+  const baseCandidates = ["_default/baseof.html", "baseof.html"];
 
-  const homeCandidates = ["index.html", "_default/list.html"];
-  const listCandidates = ["_default/list.html"];
-  const singleCandidates = ["_default/single.html"];
+  const homeCandidates = ["index.html", "home.html", "_default/home.html", "_default/list.html"];
+  const listCandidates = ["list.html", "_default/list.html"];
+  const singleCandidates = ["single.html", "_default/single.html"];
 
   const homeTpl = selectTemplate(env, homeCandidates) ?? homeCandidates[1]!;
   const listTpl = selectTemplate(env, listCandidates) ?? listCandidates[0]!;
