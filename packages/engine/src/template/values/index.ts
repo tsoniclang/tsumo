@@ -12,3 +12,4 @@ export { MediaTypeValue } from "./media.ts";
 export { DictValue } from "./dict.ts";
 export { ScratchStore, ScratchValue } from "./scratch.ts";
 export { UrlParts, UrlValue } from "./url.ts";
+export { VersionStringValue } from "./version.ts";

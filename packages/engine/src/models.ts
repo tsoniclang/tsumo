@@ -9,6 +9,7 @@ export {
   SiteConfig,
   SiteContext,
   PageContext,
+  ModuleMount,
 } from "./models/index.ts";
 
 export { BuildRequest, ServeRequest, BuildResult } from "./build.ts";

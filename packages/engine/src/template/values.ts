@@ -14,4 +14,5 @@ export {
   DictValue,
   ScratchStore, ScratchValue,
   UrlParts, UrlValue,
+  VersionStringValue,
 } from "./values/index.ts";

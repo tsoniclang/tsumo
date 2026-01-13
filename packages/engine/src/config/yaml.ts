@@ -155,3 +155,59 @@ export const parseYamlConfig = (text: string): SiteConfig => {
 
   return config;
 };
+
+/**
+ * Merge YAML config into an existing SiteConfig.
+ * For split configs, this handles hugo.yaml, params.yaml, etc.
+ */
+export const mergeYamlIntoConfig = (config: SiteConfig, text: string, fileName: string): SiteConfig => {
+  const lowerFileName = fileName.toLowerInvariant();
+
+  // For base config files, parse and merge the key fields
+  if (lowerFileName === "hugo.yaml" || lowerFileName === "hugo.yml" || lowerFileName === "config.yaml" || lowerFileName === "config.yml") {
+    const parsed = parseYamlConfig(text);
+    if (parsed.title !== "Tsumo Site") config.title = parsed.title;
+    if (parsed.baseURL !== "") config.baseURL = parsed.baseURL;
+    if (parsed.languageCode !== "en-us") config.languageCode = parsed.languageCode;
+    if (parsed.theme !== undefined) config.theme = parsed.theme;
+    if (parsed.copyright !== undefined) config.copyright = parsed.copyright;
+    if (parsed.contentDir !== "content") config.contentDir = parsed.contentDir;
+
+    // Merge params
+    const paramsIt = parsed.Params.getEnumerator();
+    while (paramsIt.moveNext()) {
+      config.Params.remove(paramsIt.current.key);
+      config.Params.add(paramsIt.current.key, paramsIt.current.value);
+    }
+
+    // Merge menus
+    const menusIt = parsed.Menus.getEnumerator();
+    while (menusIt.moveNext()) {
+      config.Menus.remove(menusIt.current.key);
+      config.Menus.add(menusIt.current.key, menusIt.current.value);
+    }
+    return config;
+  }
+
+  // For params.yaml, parse all keys as params
+  if (lowerFileName === "params.yaml" || lowerFileName === "params.yml") {
+    const lines = text.replaceLineEndings("\n").split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i]!;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
+      if (raw.startsWith(" ")) continue; // Skip nested for now
+
+      if (line.contains(":")) {
+        const idx = line.indexOf(":");
+        const key = line.substring(0, idx).trim();
+        const val = unquote(line.substring(idx + 1).trim());
+        config.Params.remove(key);
+        config.Params.add(key, ParamValue.parseScalar(val));
+      }
+    }
+    return config;
+  }
+
+  return config;
+};

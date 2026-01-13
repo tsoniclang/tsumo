@@ -7,7 +7,9 @@
   "outputName": "Tsumo.Engine",
   "output": {
     "type": "library",
-    "targetFrameworks": ["net10.0"],
+    "targetFrameworks": [
+      "net10.0"
+    ],
     "generateDocumentation": false,
     "includeSymbols": false,
     "packable": false
@@ -17,7 +19,16 @@
     "invariantGlobalization": true
   },
   "dotnet": {
-    "typeRoots": ["../../node_modules/@tsonic/globals"],
-    "libraries": ["../markdig/vendor/net10.0/Markdig.dll"]
+    "typeRoots": [
+      "../../node_modules/@tsonic/globals"
+    ],
+    "libraries": ["lib/Markdig.dll"],
+    "packageReferences": [
+      {
+        "id": "PhotoSauce.MagicScaler",
+        "version": "0.14.2",
+        "types": "@tsumo/magicscaler"
+      }
+    ]
   }
 }

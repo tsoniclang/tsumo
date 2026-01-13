@@ -16,6 +16,10 @@
     "bindings": "node ./scripts/generate-bindings.mjs"
   },
   "dependencies": {
-    "@tsumo/markdig": "file:../markdig"
+    "@tsonic/tsbindgen": "^0.7.21"
+  },
+  "devDependencies": {
+    "@tsumo/magicscaler": "^0.0.0",
+    "@tsumo/markdig": "^0.0.0"
   }
 }

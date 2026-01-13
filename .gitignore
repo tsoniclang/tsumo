@@ -41,8 +41,11 @@ build/Release
 node_modules/
 jspm_packages/
 
-# Tsonic outputs
+# Tsonic outputs (per tsonic guidance)
+# Commit: tsonic.json, src/**, lib/
+# Gitignore: node_modules/, .tsonic/, generated/, out/, dist/
 generated/
+.tsonic/
 out/
 dist/
 
@@ -50,9 +53,6 @@ dist/
 public/
 public-aot/
 .tmp/
-
-# Vendored build outputs
-packages/markdig/vendor/
 
 # Local agent/task scratch
 .analysis/

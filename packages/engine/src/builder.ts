@@ -355,7 +355,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     : Path.combine(siteDir, request.destinationDir);
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
-  const env = new BuildEnvironment(siteDir, themeDir, outDir);
+  const env = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts);
 
   if (request.cleanDestinationDir) {
     deleteDirRecursive(outDir);
@@ -536,14 +536,14 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   // Resolve pageRef for menu entries
   resolveMenuPageRefs(site);
 
-  const baseCandidates = ["_default/baseof.html"];
+  const baseCandidates = ["_default/baseof.html", "baseof.html"];
 
-  const homeCandidates = ["index.html", "_default/list.html"];
-  const listCandidates = ["_default/list.html"];
-  const singleCandidates = ["_default/single.html"];
+  const homeCandidates = ["index.html", "home.html", "_default/home.html", "_default/list.html", "list.html"];
+  const listCandidates = ["list.html", "_default/list.html"];
+  const singleCandidates = ["single.html", "_default/single.html"];
 
-  const homeTpl = selectTemplate(env, homeCandidates) ?? homeCandidates[1]!;
   const listTpl = selectTemplate(env, listCandidates) ?? listCandidates[0]!;
+  const homeTpl = selectTemplate(env, homeCandidates) ?? listTpl;
   const singleTpl = selectTemplate(env, singleCandidates) ?? singleCandidates[0]!;
   const baseTpl = selectTemplate(env, baseCandidates);
 
@@ -988,8 +988,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const mainPath = selectTemplate(env, layoutCandidates) ?? singleTpl;
     const basePath = selectTemplate(
       env,
-      templateType !== "" ? [`${templateType}/baseof.html`, `${p.section}/baseof.html`, "_default/baseof.html"] : ["_default/baseof.html"],
-    );
+      templateType !== ""
+        ? [`${templateType}/baseof.html`, `${p.section}/baseof.html`, "_default/baseof.html", "baseof.html"]
+        : ["_default/baseof.html", "baseof.html"],
+    ) ?? baseTpl;
 
     const html = renderWithBase(env, basePath, mainPath, ctx);
     writeTextFile(Path.combine(outDir, p.outputRelPath), html);
