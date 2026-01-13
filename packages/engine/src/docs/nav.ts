@@ -233,33 +233,35 @@ const parseNavJson = (
   routesByRelPathLower: Dictionary<string, string>,
 ): NavItem[] => {
   const doc = JsonDocument.parse(jsonText);
-  const root = doc.rootElement;
+  try {
+    const root = doc.rootElement;
 
-  let hasItems = false;
-  let itemsEl: JsonElement = root;
-  if (root.valueKind === JsonValueKind.array) {
-    hasItems = true;
-    itemsEl = root;
-  } else if (root.valueKind === JsonValueKind.object_) {
-    const props = root.enumerateObject().getEnumerator();
-    while (props.moveNext()) {
-      const p = props.current;
-      if (p.name.toLowerInvariant() === "items") {
-        hasItems = true;
-        itemsEl = p.value;
-        break;
+    let hasItems = false;
+    let itemsEl: JsonElement = root;
+    if (root.valueKind === JsonValueKind.array) {
+      hasItems = true;
+      itemsEl = root;
+    } else if (root.valueKind === JsonValueKind.object_) {
+      const props = root.enumerateObject().getEnumerator();
+      while (props.moveNext()) {
+        const p = props.current;
+        if (p.name.toLowerInvariant() === "items") {
+          hasItems = true;
+          itemsEl = p.value;
+          break;
+        }
       }
     }
+
+    if (!hasItems) {
+      const empty: NavItem[] = [];
+      return empty;
+    }
+
+    return parseNavJsonItems(mount, navDirKey, routesByRelPathLower, itemsEl);
+  } finally {
+    doc.dispose();
   }
-
-  doc.dispose();
-
-  if (!hasItems) {
-    const empty: NavItem[] = [];
-    return empty;
-  }
-
-  return parseNavJsonItems(mount, navDirKey, routesByRelPathLower, itemsEl);
 };
 
 function parseNavJsonItems(
