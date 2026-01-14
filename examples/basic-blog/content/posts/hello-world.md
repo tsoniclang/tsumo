@@ -30,7 +30,7 @@ This site is built by `tsumo`, a Hugo-inspired engine written in Tsonic TypeScri
 
 Try ~~old~~ new.
 
-https://tsonic.dev
+https://tsonic.org
 
 ```bash
 tsumo build
