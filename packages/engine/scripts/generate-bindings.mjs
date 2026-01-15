@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -135,6 +135,32 @@ const args = [
 for (const rt of runtimes) args.push("--ref-dir", rt.dir);
 args.push("--ref-dir", join(projectRoot, "dist", targetFramework));
 args.push("--ref-dir", markdigDllDir);
+
+const addVendorRefDirs = (pkgRoot) => {
+  const vendorDir = join(pkgRoot, "vendor");
+  if (!existsSync(vendorDir)) return;
+
+  const entries = readdirSync(vendorDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => join(vendorDir, e.name));
+
+  if (entries.length === 0) {
+    args.push("--ref-dir", vendorDir);
+    return;
+  }
+
+  for (const dir of entries) args.push("--ref-dir", dir);
+};
+
+for (const pkg of config.dotnet?.packageReferences ?? []) {
+  if (!pkg?.types) continue;
+  try {
+    const depRoot = resolvePkgRoot(pkg.types);
+    addVendorRefDirs(depRoot);
+  } catch {
+    // Ignore missing bindings packages for internal binding generation.
+  }
+}
 
 const gen = spawnSync("dotnet", [tsbindgenDll, ...args], { stdio: "inherit" });
 process.exit(gen.status ?? 1);
