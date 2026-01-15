@@ -19,13 +19,13 @@ export class LoadedDocsConfig {
 
 const readString = (doc: JsonDocument, propName: string): string | undefined => {
   const root = doc.rootElement;
-  if (root.valueKind !== JsonValueKind.object_) return undefined;
+  if (root.valueKind !== JsonValueKind.object) return undefined;
   const propNameLower = propName.toLowerInvariant();
   const props = root.enumerateObject().getEnumerator();
   while (props.moveNext()) {
     const p = props.current;
     if (p.name.toLowerInvariant() === propNameLower) {
-      if (p.value.valueKind === JsonValueKind.string_) return p.value.getString();
+      if (p.value.valueKind === JsonValueKind.string) return p.value.getString();
       return undefined;
     }
   }
@@ -34,14 +34,14 @@ const readString = (doc: JsonDocument, propName: string): string | undefined => 
 
 const readBool = (doc: JsonDocument, propName: string): boolean | undefined => {
   const root = doc.rootElement;
-  if (root.valueKind !== JsonValueKind.object_) return undefined;
+  if (root.valueKind !== JsonValueKind.object) return undefined;
   const propNameLower = propName.toLowerInvariant();
   const props = root.enumerateObject().getEnumerator();
   while (props.moveNext()) {
     const p = props.current;
     if (p.name.toLowerInvariant() !== propNameLower) continue;
-    if (p.value.valueKind === JsonValueKind.true_) return true;
-    if (p.value.valueKind === JsonValueKind.false_) return false;
+    if (p.value.valueKind === JsonValueKind.true) return true;
+    if (p.value.valueKind === JsonValueKind.false) return false;
     return undefined;
   }
   return undefined;
@@ -60,7 +60,7 @@ const resolveSourceDir = (siteDir: string, raw: string): string => {
 const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
   const empty: DocsMountConfig[] = [];
   const root = doc.rootElement;
-  if (root.valueKind !== JsonValueKind.object_) return empty;
+  if (root.valueKind !== JsonValueKind.object) return empty;
 
   const props = root.enumerateObject().getEnumerator();
   while (props.moveNext()) {
@@ -72,7 +72,7 @@ const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
     const it = p.value.enumerateArray().getEnumerator();
     while (it.moveNext()) {
       const el = it.current;
-      if (el.valueKind !== JsonValueKind.object_) continue;
+      if (el.valueKind !== JsonValueKind.object) continue;
 
       let name: string | undefined = undefined;
       let source: string | undefined = undefined;
@@ -88,13 +88,13 @@ const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
         const key = prop.name.toLowerInvariant();
         const v = prop.value;
 
-        if (key === "name" && v.valueKind === JsonValueKind.string_) name = v.getString();
-        else if (key === "source" && v.valueKind === JsonValueKind.string_) source = v.getString();
-        else if (key === "prefix" && v.valueKind === JsonValueKind.string_) prefix = v.getString();
-        else if ((key === "repo" || key === "repourl") && v.valueKind === JsonValueKind.string_) repoUrl = v.getString();
-        else if ((key === "branch" || key === "repobranch") && v.valueKind === JsonValueKind.string_) repoBranch = v.getString() ?? repoBranch;
-        else if ((key === "repopath" || key === "subdir") && v.valueKind === JsonValueKind.string_) repoPath = v.getString();
-        else if ((key === "nav" || key === "navpath") && v.valueKind === JsonValueKind.string_) navPath = v.getString();
+        if (key === "name" && v.valueKind === JsonValueKind.string) name = v.getString();
+        else if (key === "source" && v.valueKind === JsonValueKind.string) source = v.getString();
+        else if (key === "prefix" && v.valueKind === JsonValueKind.string) prefix = v.getString();
+        else if ((key === "repo" || key === "repourl") && v.valueKind === JsonValueKind.string) repoUrl = v.getString();
+        else if ((key === "branch" || key === "repobranch") && v.valueKind === JsonValueKind.string) repoBranch = v.getString() ?? repoBranch;
+        else if ((key === "repopath" || key === "subdir") && v.valueKind === JsonValueKind.string) repoPath = v.getString();
+        else if ((key === "nav" || key === "navpath") && v.valueKind === JsonValueKind.string) navPath = v.getString();
       }
 
       if (source === undefined || prefix === undefined) continue;

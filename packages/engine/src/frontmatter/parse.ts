@@ -333,7 +333,7 @@ const parseJsonElementStringArray = (el: JsonElement): string[] | undefined => {
   const it = el.enumerateArray().getEnumerator();
   while (it.moveNext()) {
     const cur = it.current;
-    if (cur.valueKind === JsonValueKind.string_) {
+    if (cur.valueKind === JsonValueKind.string) {
       const v = cur.getString();
       if (v !== undefined) items.add(v);
     }
@@ -346,44 +346,44 @@ const parseJson = (json: string): FrontMatter => {
   const doc = JsonDocument.parse(json);
   const root = doc.rootElement;
 
-  if (root.valueKind === JsonValueKind.object_) {
+  if (root.valueKind === JsonValueKind.object) {
     const props = root.enumerateObject().getEnumerator();
     while (props.moveNext()) {
       const p = props.current;
       const key = p.name.toLowerInvariant();
       const v = p.value;
 
-      if (key === "title" && v.valueKind === JsonValueKind.string_) {
+      if (key === "title" && v.valueKind === JsonValueKind.string) {
         fm.title = v.getString();
         continue;
       }
 
-      if (key === "description" && v.valueKind === JsonValueKind.string_) {
+      if (key === "description" && v.valueKind === JsonValueKind.string) {
         fm.description = v.getString();
         continue;
       }
 
-      if (key === "slug" && v.valueKind === JsonValueKind.string_) {
+      if (key === "slug" && v.valueKind === JsonValueKind.string) {
         fm.slug = v.getString();
         continue;
       }
 
-      if (key === "layout" && v.valueKind === JsonValueKind.string_) {
+      if (key === "layout" && v.valueKind === JsonValueKind.string) {
         fm.layout = v.getString();
         continue;
       }
 
-      if (key === "type" && v.valueKind === JsonValueKind.string_) {
+      if (key === "type" && v.valueKind === JsonValueKind.string) {
         fm.type = v.getString();
         continue;
       }
 
-      if (key === "draft" && (v.valueKind === JsonValueKind.true_ || v.valueKind === JsonValueKind.false_)) {
+      if (key === "draft" && (v.valueKind === JsonValueKind.true || v.valueKind === JsonValueKind.false)) {
         fm.draft = v.getBoolean();
         continue;
       }
 
-      if (key === "date" && v.valueKind === JsonValueKind.string_) {
+      if (key === "date" && v.valueKind === JsonValueKind.string) {
         let parsed: DateTime = DateTime.minValue;
         const ok = DateTime.tryParse(v.getString() ?? "", parsed);
         if (ok) fm.date = parsed;
@@ -402,21 +402,21 @@ const parseJson = (json: string): FrontMatter => {
         continue;
       }
 
-      if (key === "params" && v.valueKind === JsonValueKind.object_) {
+      if (key === "params" && v.valueKind === JsonValueKind.object) {
         const pp = v.enumerateObject().getEnumerator();
         while (pp.moveNext()) {
           const prop = pp.current;
           const val = prop.value;
-          if (val.valueKind === JsonValueKind.string_) {
+          if (val.valueKind === JsonValueKind.string) {
             const s = val.getString();
             if (s !== undefined) {
               fm.Params.remove(prop.name);
               fm.Params.add(prop.name, ParamValue.string(s));
             }
-          } else if (val.valueKind === JsonValueKind.true_ || val.valueKind === JsonValueKind.false_) {
+          } else if (val.valueKind === JsonValueKind.true || val.valueKind === JsonValueKind.false) {
             fm.Params.remove(prop.name);
             fm.Params.add(prop.name, ParamValue.bool(val.getBoolean()));
-          } else if (val.valueKind === JsonValueKind.number_) {
+          } else if (val.valueKind === JsonValueKind.number) {
             fm.Params.remove(prop.name);
             fm.Params.add(prop.name, ParamValue.number(val.getInt32()));
           }
@@ -424,7 +424,7 @@ const parseJson = (json: string): FrontMatter => {
         continue;
       }
 
-      if (key === "menu" && v.valueKind === JsonValueKind.object_) {
+      if (key === "menu" && v.valueKind === JsonValueKind.object) {
         const menuItems = new List<FrontMatterMenu>();
         const menuProps = v.enumerateObject().getEnumerator();
         while (menuProps.moveNext()) {
@@ -434,25 +434,25 @@ const parseJson = (json: string): FrontMatter => {
 
           const entry = new FrontMatterMenu(menuName);
 
-          if (menuVal.valueKind === JsonValueKind.object_) {
+          if (menuVal.valueKind === JsonValueKind.object) {
             const entryProps = menuVal.enumerateObject().getEnumerator();
             while (entryProps.moveNext()) {
               const ep = entryProps.current;
               const epKey = ep.name.toLowerInvariant();
               const epVal = ep.value;
-              if (epKey === "weight" && epVal.valueKind === JsonValueKind.number_) {
+              if (epKey === "weight" && epVal.valueKind === JsonValueKind.number) {
                 entry.weight = epVal.getInt32();
-              } else if (epKey === "name" && epVal.valueKind === JsonValueKind.string_) {
+              } else if (epKey === "name" && epVal.valueKind === JsonValueKind.string) {
                 entry.name = epVal.getString() ?? "";
-              } else if (epKey === "parent" && epVal.valueKind === JsonValueKind.string_) {
+              } else if (epKey === "parent" && epVal.valueKind === JsonValueKind.string) {
                 entry.parent = epVal.getString() ?? "";
-              } else if (epKey === "identifier" && epVal.valueKind === JsonValueKind.string_) {
+              } else if (epKey === "identifier" && epVal.valueKind === JsonValueKind.string) {
                 entry.identifier = epVal.getString() ?? "";
-              } else if (epKey === "pre" && epVal.valueKind === JsonValueKind.string_) {
+              } else if (epKey === "pre" && epVal.valueKind === JsonValueKind.string) {
                 entry.pre = epVal.getString() ?? "";
-              } else if (epKey === "post" && epVal.valueKind === JsonValueKind.string_) {
+              } else if (epKey === "post" && epVal.valueKind === JsonValueKind.string) {
                 entry.post = epVal.getString() ?? "";
-              } else if (epKey === "title" && epVal.valueKind === JsonValueKind.string_) {
+              } else if (epKey === "title" && epVal.valueKind === JsonValueKind.string) {
                 entry.title = epVal.getString() ?? "";
               }
             }

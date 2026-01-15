@@ -23,64 +23,64 @@ export const parseJsonConfig = (text: string): SiteConfig => {
   const doc = JsonDocument.parse(text);
   const root = doc.rootElement;
 
-  if (root.valueKind === JsonValueKind.object_) {
+  if (root.valueKind === JsonValueKind.object) {
     const props = root.enumerateObject().getEnumerator();
     while (props.moveNext()) {
       const p = props.current;
       const key = p.name.toLowerInvariant();
       const v = p.value;
 
-      if (key === "title" && v.valueKind === JsonValueKind.string_) {
+      if (key === "title" && v.valueKind === JsonValueKind.string) {
         title = v.getString() ?? title;
         continue;
       }
-      if (key === "baseurl" && v.valueKind === JsonValueKind.string_) {
+      if (key === "baseurl" && v.valueKind === JsonValueKind.string) {
         baseURL = v.getString() ?? baseURL;
         continue;
       }
-      if (key === "languagecode" && v.valueKind === JsonValueKind.string_) {
+      if (key === "languagecode" && v.valueKind === JsonValueKind.string) {
         languageCode = v.getString() ?? languageCode;
         hasLanguageCode = true;
         continue;
       }
-      if (key === "contentdir" && v.valueKind === JsonValueKind.string_) {
+      if (key === "contentdir" && v.valueKind === JsonValueKind.string) {
         contentDir = v.getString() ?? contentDir;
         continue;
       }
-      if (key === "theme" && v.valueKind === JsonValueKind.string_) {
+      if (key === "theme" && v.valueKind === JsonValueKind.string) {
         theme = v.getString();
         continue;
       }
-      if (key === "copyright" && v.valueKind === JsonValueKind.string_) {
+      if (key === "copyright" && v.valueKind === JsonValueKind.string) {
         copyright = v.getString();
         continue;
       }
-      if (key === "params" && v.valueKind === JsonValueKind.object_) {
+      if (key === "params" && v.valueKind === JsonValueKind.object) {
         const pp = v.enumerateObject().getEnumerator();
         while (pp.moveNext()) {
           const prop = pp.current;
           const val = prop.value;
-          if (val.valueKind === JsonValueKind.string_) {
+          if (val.valueKind === JsonValueKind.string) {
             const s = val.getString();
             if (s !== undefined) {
               params.remove(prop.name);
               params.add(prop.name, ParamValue.string(s));
             }
-          } else if (val.valueKind === JsonValueKind.true_ || val.valueKind === JsonValueKind.false_) {
+          } else if (val.valueKind === JsonValueKind.true || val.valueKind === JsonValueKind.false) {
             params.remove(prop.name);
             params.add(prop.name, ParamValue.bool(val.getBoolean()));
-          } else if (val.valueKind === JsonValueKind.number_) {
+          } else if (val.valueKind === JsonValueKind.number) {
             params.remove(prop.name);
             params.add(prop.name, ParamValue.number(val.getInt32()));
           }
         }
       }
 
-      if (key === "languages" && v.valueKind === JsonValueKind.object_) {
+      if (key === "languages" && v.valueKind === JsonValueKind.object) {
         const lp = v.enumerateObject().getEnumerator();
         while (lp.moveNext()) {
           const langProp = lp.current;
-          if (langProp.value.valueKind !== JsonValueKind.object_) continue;
+          if (langProp.value.valueKind !== JsonValueKind.object) continue;
           const lang = langProp.name;
 
           let languageName = lang;
@@ -93,10 +93,10 @@ export const parseJsonConfig = (text: string): SiteConfig => {
             const c = cfgProps.current;
             const ck = c.name.toLowerInvariant();
             const cv = c.value;
-            if (ck === "languagename" && cv.valueKind === JsonValueKind.string_) languageName = cv.getString() ?? languageName;
-            else if (ck === "languagedirection" && cv.valueKind === JsonValueKind.string_) languageDirection = cv.getString() ?? languageDirection;
-            else if (ck === "contentdir" && cv.valueKind === JsonValueKind.string_) langContentDir = cv.getString() ?? langContentDir;
-            else if (ck === "weight" && cv.valueKind === JsonValueKind.number_) weight = cv.getInt32();
+            if (ck === "languagename" && cv.valueKind === JsonValueKind.string) languageName = cv.getString() ?? languageName;
+            else if (ck === "languagedirection" && cv.valueKind === JsonValueKind.string) languageDirection = cv.getString() ?? languageDirection;
+            else if (ck === "contentdir" && cv.valueKind === JsonValueKind.string) langContentDir = cv.getString() ?? langContentDir;
+            else if (ck === "weight" && cv.valueKind === JsonValueKind.number) weight = cv.getInt32();
           }
 
           languages.add(new LanguageConfig(lang, languageName, languageDirection, langContentDir, weight));
@@ -104,7 +104,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
       }
 
       // Parse menu entries
-      if (key === "menu" && v.valueKind === JsonValueKind.object_) {
+      if (key === "menu" && v.valueKind === JsonValueKind.object) {
         const menuProps = v.enumerateObject().getEnumerator();
         while (menuProps.moveNext()) {
           const menuProp = menuProps.current;
@@ -122,7 +122,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
           const menuItems = menuProp.value.enumerateArray().getEnumerator();
           while (menuItems.moveNext()) {
             const item = menuItems.current;
-            if (item.valueKind !== JsonValueKind.object_) continue;
+            if (item.valueKind !== JsonValueKind.object) continue;
 
             const builder = new MenuEntryBuilder(menuName);
             const itemProps = item.enumerateObject().getEnumerator();
@@ -130,15 +130,15 @@ export const parseJsonConfig = (text: string): SiteConfig => {
               const ip = itemProps.current;
               const ik = ip.name.toLowerInvariant();
               const iv = ip.value;
-              if (ik === "name" && iv.valueKind === JsonValueKind.string_) builder.name = iv.getString() ?? "";
-              else if (ik === "url" && iv.valueKind === JsonValueKind.string_) builder.url = iv.getString() ?? "";
-              else if (ik === "pageref" && iv.valueKind === JsonValueKind.string_) builder.pageRef = iv.getString() ?? "";
-              else if (ik === "title" && iv.valueKind === JsonValueKind.string_) builder.title = iv.getString() ?? "";
-              else if (ik === "parent" && iv.valueKind === JsonValueKind.string_) builder.parent = iv.getString() ?? "";
-              else if (ik === "identifier" && iv.valueKind === JsonValueKind.string_) builder.identifier = iv.getString() ?? "";
-              else if (ik === "pre" && iv.valueKind === JsonValueKind.string_) builder.pre = iv.getString() ?? "";
-              else if (ik === "post" && iv.valueKind === JsonValueKind.string_) builder.post = iv.getString() ?? "";
-              else if (ik === "weight" && iv.valueKind === JsonValueKind.number_) builder.weight = iv.getInt32();
+              if (ik === "name" && iv.valueKind === JsonValueKind.string) builder.name = iv.getString() ?? "";
+              else if (ik === "url" && iv.valueKind === JsonValueKind.string) builder.url = iv.getString() ?? "";
+              else if (ik === "pageref" && iv.valueKind === JsonValueKind.string) builder.pageRef = iv.getString() ?? "";
+              else if (ik === "title" && iv.valueKind === JsonValueKind.string) builder.title = iv.getString() ?? "";
+              else if (ik === "parent" && iv.valueKind === JsonValueKind.string) builder.parent = iv.getString() ?? "";
+              else if (ik === "identifier" && iv.valueKind === JsonValueKind.string) builder.identifier = iv.getString() ?? "";
+              else if (ik === "pre" && iv.valueKind === JsonValueKind.string) builder.pre = iv.getString() ?? "";
+              else if (ik === "post" && iv.valueKind === JsonValueKind.string) builder.post = iv.getString() ?? "";
+              else if (ik === "weight" && iv.valueKind === JsonValueKind.number) builder.weight = iv.getInt32();
             }
             entries.add(builder);
           }
