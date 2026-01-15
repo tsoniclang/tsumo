@@ -52,6 +52,7 @@ dist/
 # Site output
 public/
 public-aot/
+public-test/
 .tmp/
 
 # Local agent/task scratch
