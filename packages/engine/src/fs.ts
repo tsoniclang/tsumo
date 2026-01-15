@@ -20,7 +20,7 @@ export const writeTextFile = (path: string, content: string): void => {
 
 export const deleteDirRecursive = (path: string): void => {
   if (!Directory.exists(path)) return;
-  Directory.delete_(path, true);
+  Directory.delete(path, true);
 };
 
 export const listFilesRecursive = (rootDir: string, searchPattern: string): string[] => {
