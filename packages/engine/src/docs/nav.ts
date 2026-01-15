@@ -241,7 +241,7 @@ const parseNavJson = (
     if (root.valueKind === JsonValueKind.array) {
       hasItems = true;
       itemsEl = root;
-    } else if (root.valueKind === JsonValueKind.object_) {
+    } else if (root.valueKind === JsonValueKind.object) {
       const props = root.enumerateObject().getEnumerator();
       while (props.moveNext()) {
         const p = props.current;
@@ -280,7 +280,7 @@ function parseNavJsonItems(
   let order: int = 1;
   while (it.moveNext()) {
     const cur = it.current;
-    if (cur.valueKind !== JsonValueKind.object_) continue;
+    if (cur.valueKind !== JsonValueKind.object) continue;
 
     let title: string | undefined = undefined;
     let url: string | undefined = undefined;
@@ -293,9 +293,9 @@ function parseNavJsonItems(
       const p = props.current;
       const k = p.name.toLowerInvariant();
       const v = p.value;
-      if (k === "title" && v.valueKind === JsonValueKind.string_) title = v.getString();
-      else if (k === "url" && v.valueKind === JsonValueKind.string_) url = v.getString();
-      else if (k === "path" && v.valueKind === JsonValueKind.string_) path = v.getString();
+      if (k === "title" && v.valueKind === JsonValueKind.string) title = v.getString();
+      else if (k === "url" && v.valueKind === JsonValueKind.string) url = v.getString();
+      else if (k === "path" && v.valueKind === JsonValueKind.string) path = v.getString();
       else if (k === "children") {
         hasChildren = true;
         childrenEl = v;
