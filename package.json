@@ -6,19 +6,19 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run -w @tsumo/markdig bindings && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli build",
-    "typecheck": "npm run -w @tsumo/markdig bindings && npm run -w @tsumo/engine typecheck && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli typecheck"
+    "build": "npm run -w @tsumo/markdig bindings && npm run -w @tsumo/magicscaler bindings && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli build",
+    "typecheck": "npm run -w @tsumo/markdig bindings && npm run -w @tsumo/magicscaler bindings && npm run -w @tsumo/engine typecheck && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli typecheck"
   },
   "devDependencies": {
-    "@tsonic/backend": "file:../tsonic/packages/backend",
-    "@tsonic/cli": "file:../tsonic/packages/cli",
-    "@tsonic/core": "file:../tsonic/node_modules/@tsonic/core",
-    "@tsonic/dotnet": "file:../tsonic/node_modules/@tsonic/dotnet",
-    "@tsonic/emitter": "file:../tsonic/packages/emitter",
-    "@tsonic/frontend": "file:../tsonic/packages/frontend",
-    "@tsonic/globals": "file:../tsonic/node_modules/@tsonic/globals",
-    "@tsonic/tsbindgen": "file:../tsbindgen",
-    "typescript": "file:../tsonic/node_modules/typescript"
+    "@tsonic/backend": "0.0.27",
+    "@tsonic/cli": "0.0.27",
+    "@tsonic/core": "0.6.3",
+    "@tsonic/dotnet": "0.8.10",
+    "@tsonic/emitter": "0.0.27",
+    "@tsonic/frontend": "0.0.27",
+    "@tsonic/globals": "0.3.11",
+    "@tsonic/tsbindgen": "0.7.25",
+    "typescript": "5.9.2"
   },
   "engines": {
     "node": ">=22.0.0"
