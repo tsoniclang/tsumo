@@ -1,6 +1,6 @@
 import { Console, Environment, Int32 } from "@tsonic/dotnet/System.js";
 import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { Tsumo, BuildRequest, ServeRequest } from "@tsumo/engine/Tsumo.Engine.js";
+import { Tsumo, BuildRequest, ServeRequest } from "tsumo-engine-types/Tsumo.Engine.js";
 import type { int } from "@tsonic/core/types.js";
 
 const VERSION = "0.0.0";

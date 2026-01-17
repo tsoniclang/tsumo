@@ -3,23 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "exports": {
-    "./package.json": "./package.json",
-    "./*.js": {
-      "types": "./dist/tsonic/bindings/*.d.ts",
-      "default": "./dist/tsonic/bindings/*.js"
-    }
-  },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
-    "build": "tsonic build",
-    "bindings": "node ./scripts/generate-bindings.mjs"
-  },
-  "dependencies": {
-    "@tsonic/tsbindgen": "^0.7.21"
-  },
-  "devDependencies": {
-    "@tsumo/magicscaler": "^0.0.0",
-    "@tsumo/markdig": "^0.0.0"
+    "restore": "tsonic restore",
+    "typecheck": "tsonic restore && tsc -p tsconfig.json",
+    "build": "tsonic build"
   }
 }

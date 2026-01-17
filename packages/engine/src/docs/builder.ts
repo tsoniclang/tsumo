@@ -8,7 +8,7 @@ import { parseContent } from "../frontmatter.ts";
 import { copyDirRecursive, deleteDirRecursive, ensureDir, readTextFile, writeTextFile } from "../fs.ts";
 import { BuildEnvironment } from "../env.ts";
 import { BuildRequest, BuildResult, PageContext, PageFile, SiteContext } from "../models.ts";
-import { Markdown } from "@tsumo/markdig/Markdig.js";
+import { Markdown } from "markdig-types/Markdig.js";
 import { markdownPipeline } from "../markdown.ts";
 import { HtmlString } from "../utils/html.ts";
 import { ensureTrailingSlash, humanizeSlug } from "../utils/text.ts";

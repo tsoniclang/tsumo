@@ -26,8 +26,7 @@
     "packageReferences": [
       {
         "id": "PhotoSauce.MagicScaler",
-        "version": "0.14.2",
-        "types": "@tsumo/magicscaler"
+        "version": "0.14.2"
       }
     ]
   }
