@@ -1,4 +1,4 @@
-import { Markdown } from "@tsumo/markdig/Markdig.js";
+import { Markdown } from "markdig-types/Markdig.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.ts";

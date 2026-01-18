@@ -7,7 +7,7 @@ import { Encoding } from "@tsonic/dotnet/System.Text.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
 import { replaceText } from "./utils/strings.ts";
-import { MagicImageProcessor, ProcessImageSettings } from "@tsumo/magicscaler/PhotoSauce.MagicScaler.js";
+import { MagicImageProcessor, ProcessImageSettings } from "photo-sauce-magic-scaler-types/PhotoSauce.MagicScaler.js";
 
 export class ResourceData {
   readonly Integrity: string;

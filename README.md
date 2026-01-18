@@ -33,7 +33,7 @@ tsumo is implemented in TypeScript and compiled to native code with Tsonic (TS �
 
 - `packages/engine` — core build + server engine (Tsonic library)
 - `packages/cli` — `tsumo` CLI (Tsonic executable)
-- `packages/markdig` — vendored Markdig build + tsbindgen bindings (GFM Markdown)
+- `packages/markdig` — vendored Markdig build (GFM Markdown)
 - `examples/basic-blog` — example site (Hugo-style layout)
 - `examples/docs-site` — docs-mode example (mounts + nav + search)
 

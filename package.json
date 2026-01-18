@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run -w @tsumo/markdig bindings && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli build",
-    "typecheck": "npm run -w @tsumo/markdig bindings && npm run -w @tsumo/engine typecheck && npm run -w @tsumo/engine build && npm run -w @tsumo/engine bindings && npm run -w tsumo-cli typecheck"
+    "build": "npm run -w @tsumo/engine build && npm run -w tsumo-cli build",
+    "typecheck": "npm run -w @tsumo/engine typecheck && npm run -w tsumo-cli typecheck"
   },
   "devDependencies": {
     "@tsonic/backend": "file:../tsonic/packages/backend",

@@ -1,4 +1,4 @@
-import { Markdown } from "@tsumo/markdig/Markdig.js";
+import { Markdown } from "markdig-types/Markdig.js";
 import type { int } from "@tsonic/core/types.js";
 import { indexOfText, indexOfTextIgnoreCase } from "../utils/strings.ts";
 import { MarkdownResult } from "./result.ts";

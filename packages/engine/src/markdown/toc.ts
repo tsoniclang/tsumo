@@ -1,6 +1,6 @@
-import { Markdown } from "@tsumo/markdig/Markdig.js";
-import { HtmlAttributesExtensions } from "@tsumo/markdig/Markdig.Renderers.Html.js";
-import type { ContainerBlock, HeadingBlock } from "@tsumo/markdig/Markdig.Syntax.js";
+import { Markdown } from "markdig-types/Markdig.js";
+import { HtmlAttributesExtensions } from "markdig-types/Markdig.Renderers.Html.js";
+import type { ContainerBlock, HeadingBlock } from "markdig-types/Markdig.Syntax.js";
 import type {
   AutolinkInline,
   CodeInline,
@@ -9,7 +9,7 @@ import type {
   Inline,
   LineBreakInline,
   LiteralInline,
-} from "@tsumo/markdig/Markdig.Syntax.Inlines.js";
+} from "markdig-types/Markdig.Syntax.Inlines.js";
 import { List, Stack } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { int } from "@tsonic/core/types.js";
