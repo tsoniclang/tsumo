@@ -1,16 +1,16 @@
 import { Console, Environment, Int32 } from "@tsonic/dotnet/System.js";
 import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { Tsumo, BuildRequest, ServeRequest } from "tsumo-engine-types/Tsumo.Engine.js";
+import { Tsumo, BuildRequest, ServeRequest } from "@tsumo/engine/Tsumo.Engine.js";
 import type { int } from "@tsonic/core/types.js";
 
 const VERSION = "0.0.0";
 
 const logLine = (message: string): void => {
-  Console.writeLine("{0}", message);
+  Console.WriteLine("{0}", message);
 };
 
 const logErrorLine = (message: string): void => {
-  Console.error.writeLine("{0}", message);
+  Console.Error.WriteLine("{0}", message);
 };
 
 const usage = (): void => {
@@ -42,17 +42,17 @@ const usage = (): void => {
 
 const parseInt = (value: string): int | undefined => {
   let parsed: int = 0;
-  const ok = Int32.tryParse(value, parsed);
+  const ok = Int32.TryParse(value, parsed);
   return ok ? parsed : undefined;
 };
 
 export function main(): void {
-  const argv = Environment.getCommandLineArgs();
+  const argv = Environment.GetCommandLineArgs();
   const argsList = new List<string>();
-  for (let i = 1; i < argv.length; i++) argsList.add(argv[i]!);
-  const args = argsList.toArray();
+  for (let i = 1; i < argv.Length; i++) argsList.Add(argv[i]!);
+  const args = argsList.ToArray();
 
-  const first = args.length > 0 ? args[0]! : "";
+  const first = args.Length > 0 ? args[0]! : "";
   if (first === "-h" || first === "--help" || first === "help") {
     usage();
     return;
@@ -63,13 +63,13 @@ export function main(): void {
     return;
   }
 
-  const cmd = first === "" || first.startsWith("-") ? "build" : first;
+  const cmd = first === "" || first.StartsWith("-") ? "build" : first;
 
   if (cmd === "new") {
-    if (args.length >= 2 && args[1] === "site") {
-      if (args.length < 3) {
+    if (args.Length >= 2 && args[1] === "site") {
+      if (args.Length < 3) {
         logErrorLine("Missing <dir> for `tsumo new site`");
-        Environment.exitCode = 2;
+        Environment.ExitCode = 2;
         return;
       }
       const dir = args[2]!;
@@ -78,16 +78,16 @@ export function main(): void {
       return;
     }
 
-    if (args.length < 2) {
+    if (args.Length < 2) {
       logErrorLine("Missing <path.md> for `tsumo new`");
-      Environment.exitCode = 2;
+      Environment.ExitCode = 2;
       return;
     }
 
-    let contentSourceDir = Environment.currentDirectory;
-    for (let i = 2; i < args.length; i++) {
+    let contentSourceDir = Environment.CurrentDirectory;
+    for (let i = 2; i < args.Length; i++) {
       const a = args[i]!;
-      if ((a === "--source" || a === "-s") && i + 1 < args.length) {
+      if ((a === "--source" || a === "-s") && i + 1 < args.Length) {
         contentSourceDir = args[i + 1]!;
         i++;
       }
@@ -99,7 +99,7 @@ export function main(): void {
   }
 
   if (cmd === "server" || cmd === "serve") {
-    let serveSourceDir = Environment.currentDirectory;
+    let serveSourceDir = Environment.CurrentDirectory;
     let serveDestinationDir = "public";
     let serveBaseURL: string | undefined = undefined;
     let serveThemesDir: string | undefined = undefined;
@@ -109,29 +109,29 @@ export function main(): void {
     let serveBuildDrafts = false;
     let serveClean = true;
 
-    for (let i = 1; i < args.length; i++) {
+    for (let i = 1; i < args.Length; i++) {
       const a = args[i]!;
-      if ((a === "--source" || a === "-s") && i + 1 < args.length) {
+      if ((a === "--source" || a === "-s") && i + 1 < args.Length) {
         serveSourceDir = args[i + 1]!;
         i++;
-      } else if ((a === "--destination" || a === "-d") && i + 1 < args.length) {
+      } else if ((a === "--destination" || a === "-d") && i + 1 < args.Length) {
         serveDestinationDir = args[i + 1]!;
         i++;
-      } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.length) {
+      } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.Length) {
         serveBaseURL = args[i + 1]!;
         i++;
-      } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.length) {
+      } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.Length) {
         serveThemesDir = args[i + 1]!;
         i++;
-      } else if ((a === "--host" || a === "--bind") && i + 1 < args.length) {
+      } else if ((a === "--host" || a === "--bind") && i + 1 < args.Length) {
         serveHost = args[i + 1]!;
         i++;
-      } else if ((a === "--port" || a === "-p") && i + 1 < args.length) {
+      } else if ((a === "--port" || a === "-p") && i + 1 < args.Length) {
         const portText = args[i + 1]!;
         const p = parseInt(portText);
         if (p === undefined) {
           logErrorLine(`Invalid port: ${portText}`);
-          Environment.exitCode = 2;
+          Environment.ExitCode = 2;
           return;
         }
         servePort = p;
@@ -168,11 +168,11 @@ export function main(): void {
   } else {
     logErrorLine(`Unknown command: ${cmd}`);
     usage();
-    Environment.exitCode = 2;
+    Environment.ExitCode = 2;
     return;
   }
 
-  let buildSourceDir = Environment.currentDirectory;
+  let buildSourceDir = Environment.CurrentDirectory;
   let buildDestinationDir = "public";
   let buildBaseURL: string | undefined = undefined;
   let buildThemesDir: string | undefined = undefined;
@@ -180,18 +180,18 @@ export function main(): void {
   let cleanDestinationDir = true;
 
   const buildArgStart = first === "build" || first === "gen" || first === "generate" ? 1 : 0;
-  for (let i = buildArgStart; i < args.length; i++) {
+  for (let i = buildArgStart; i < args.Length; i++) {
     const a = args[i]!;
-    if ((a === "--source" || a === "-s") && i + 1 < args.length) {
+    if ((a === "--source" || a === "-s") && i + 1 < args.Length) {
       buildSourceDir = args[i + 1]!;
       i++;
-    } else if ((a === "--destination" || a === "-d") && i + 1 < args.length) {
+    } else if ((a === "--destination" || a === "-d") && i + 1 < args.Length) {
       buildDestinationDir = args[i + 1]!;
       i++;
-    } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.length) {
+    } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.Length) {
       buildBaseURL = args[i + 1]!;
       i++;
-    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.length) {
+    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.Length) {
       buildThemesDir = args[i + 1]!;
       i++;
     } else if (a === "-D" || a === "--buildDrafts" || a === "--buildDrafts") {

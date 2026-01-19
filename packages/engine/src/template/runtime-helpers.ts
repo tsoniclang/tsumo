@@ -26,13 +26,13 @@ export const isTruthy = (value: TemplateValue): boolean => {
     return value.value.value !== "";
   }
 
-  if (value instanceof DictValue) return value.value.count > 0;
-  if (value instanceof PageArrayValue) return value.value.length > 0;
-  if (value instanceof StringArrayValue) return value.value.length > 0;
-  if (value instanceof SitesArrayValue) return value.value.length > 0;
-  if (value instanceof DocsMountArrayValue) return value.value.length > 0;
-  if (value instanceof NavArrayValue) return value.value.length > 0;
-  if (value instanceof AnyArrayValue) return value.value.count > 0;
+  if (value instanceof DictValue) return value.value.Count > 0;
+  if (value instanceof PageArrayValue) return value.value.Length > 0;
+  if (value instanceof StringArrayValue) return value.value.Length > 0;
+  if (value instanceof SitesArrayValue) return value.value.Length > 0;
+  if (value instanceof DocsMountArrayValue) return value.value.Length > 0;
+  if (value instanceof NavArrayValue) return value.value.Length > 0;
+  if (value instanceof AnyArrayValue) return value.value.Count > 0;
 
   return true;
 };
@@ -50,7 +50,7 @@ export const stringify = (value: TemplateValue, escape: boolean): string => {
     return value.value ? "true" : "false";
   }
   if (value instanceof NumberValue) {
-    return value.value.toString();
+    return value.value.ToString();
   }
   return "";
 };
@@ -69,7 +69,7 @@ export const toPlainString = (value: TemplateValue): string => {
   }
 
   if (value instanceof NumberValue) {
-    return value.value.toString();
+    return value.value.ToString();
   }
 
   if (value instanceof PageValue) {

@@ -24,25 +24,25 @@ export class RenderScope {
     let cur: RenderScope | undefined = this;
     while (cur !== undefined) {
       let value: TemplateValue = new NilValue();
-      if (cur.vars.tryGetValue(name, value)) return value;
+      if (cur.vars.TryGetValue(name, value)) return value;
       cur = cur.parent;
     }
     return undefined;
   }
 
   declareVar(name: string, value: TemplateValue): void {
-    this.vars.remove(name);
-    this.vars.add(name, value);
+    this.vars.Remove(name);
+    this.vars.Add(name, value);
   }
 
   assignVar(name: string, value: TemplateValue): void {
     let cur: RenderScope | undefined = this;
     while (cur !== undefined) {
       let existing: TemplateValue = new NilValue();
-      const has = cur.vars.tryGetValue(name, existing);
+      const has = cur.vars.TryGetValue(name, existing);
       if (has) {
-        cur.vars.remove(name);
-        cur.vars.add(name, value);
+        cur.vars.Remove(name);
+        cur.vars.Add(name, value);
         return;
       }
       cur = cur.parent;

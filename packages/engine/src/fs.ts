@@ -1,46 +1,46 @@
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 
-export const dirExists = (path: string): boolean => Directory.exists(path);
+export const dirExists = (path: string): boolean => Directory.Exists(path);
 
-export const fileExists = (path: string): boolean => File.exists(path);
+export const fileExists = (path: string): boolean => File.Exists(path);
 
 export const ensureDir = (path: string): void => {
-  Directory.createDirectory(path);
+  Directory.CreateDirectory(path);
 };
 
-export const readTextFile = (path: string): string => File.readAllText(path);
+export const readTextFile = (path: string): string => File.ReadAllText(path);
 
 export const writeTextFile = (path: string, content: string): void => {
-  const dir = Path.getDirectoryName(path);
+  const dir = Path.GetDirectoryName(path);
   if (dir !== undefined && dir !== "") {
-    Directory.createDirectory(dir);
+    Directory.CreateDirectory(dir);
   }
-  File.writeAllText(path, content);
+  File.WriteAllText(path, content);
 };
 
 export const deleteDirRecursive = (path: string): void => {
-  if (!Directory.exists(path)) return;
-  Directory.delete(path, true);
+  if (!Directory.Exists(path)) return;
+  Directory.Delete(path, true);
 };
 
 export const listFilesRecursive = (rootDir: string, searchPattern: string): string[] => {
-  if (!Directory.exists(rootDir)) return [];
-  return Directory.getFiles(rootDir, searchPattern, SearchOption.allDirectories);
+  if (!Directory.Exists(rootDir)) return [];
+  return Directory.GetFiles(rootDir, searchPattern, SearchOption.AllDirectories);
 };
 
 export const copyDirRecursive = (srcDir: string, destDir: string): void => {
-  if (!Directory.exists(srcDir)) return;
-  Directory.createDirectory(destDir);
+  if (!Directory.Exists(srcDir)) return;
+  Directory.CreateDirectory(destDir);
 
-  const files = Directory.getFiles(srcDir, "*", SearchOption.allDirectories);
-  for (let i = 0; i < files.length; i++) {
+  const files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
+  for (let i = 0; i < files.Length; i++) {
     const srcFile = files[i]!;
-    const rel = Path.getRelativePath(srcDir, srcFile);
-    const destFile = Path.combine(destDir, rel);
-    const destFileDir = Path.getDirectoryName(destFile);
+    const rel = Path.GetRelativePath(srcDir, srcFile);
+    const destFile = Path.Combine(destDir, rel);
+    const destFileDir = Path.GetDirectoryName(destFile);
     if (destFileDir !== undefined && destFileDir !== "") {
-      Directory.createDirectory(destFileDir);
+      Directory.CreateDirectory(destFileDir);
     }
-    File.copy(srcFile, destFile, true);
+    File.Copy(srcFile, destFile, true);
   }
 };

@@ -6,65 +6,65 @@ import type { char, int } from "@tsonic/core/types.js";
 import { DocsMountConfig, NavItem } from "./models.ts";
 import { splitUrlSuffix } from "./url.ts";
 
-const normalizeSlashes = (path: string): string => path.replace("\\", "/");
+const normalizeSlashes = (path: string): string => path.Replace("\\", "/");
 
 const isExternalUrl = (url: string): boolean => {
-  const lower = url.trim().toLowerInvariant();
-  return lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("mailto:") || lower.startsWith("tel:") || lower.startsWith("//");
+  const lower = url.Trim().ToLowerInvariant();
+  return lower.StartsWith("http://") || lower.StartsWith("https://") || lower.StartsWith("mailto:") || lower.StartsWith("tel:") || lower.StartsWith("//");
 };
 
 const isMarkdownPath = (path: string): boolean => {
-  const lower = path.trim().toLowerInvariant();
-  return lower.endsWith(".md") || lower.endsWith(".markdown");
+  const lower = path.Trim().ToLowerInvariant();
+  return lower.EndsWith(".md") || lower.EndsWith(".markdown");
 };
 
 const normalizeRelativePath = (baseDirKey: string, targetPath: string): string | undefined => {
-  const base = baseDirKey.trim();
+  const base = baseDirKey.Trim();
   const start = new List<string>();
   if (base !== "") {
-    const baseParts = base.split("/");
-    for (let i = 0; i < baseParts.length; i++) {
-      const seg = baseParts[i]!.trim();
-      if (seg !== "") start.add(seg);
+    const baseParts = base.Split("/");
+    for (let i = 0; i < baseParts.Length; i++) {
+      const seg = baseParts[i]!.Trim();
+      if (seg !== "") start.Add(seg);
     }
   }
 
-  const target = normalizeSlashes(targetPath.trim());
-  const parts = target.split("/");
+  const target = normalizeSlashes(targetPath.Trim());
+  const parts = target.Split("/");
 
-  for (let i = 0; i < parts.length; i++) {
+  for (let i = 0; i < parts.Length; i++) {
     const raw = parts[i]!;
-    const seg = raw.trim();
+    const seg = raw.Trim();
     if (seg === "" || seg === ".") continue;
     if (seg === "..") {
-      if (start.count === 0) return undefined;
-      start.removeAt(start.count - 1);
+      if (start.Count === 0) return undefined;
+      start.RemoveAt(start.Count - 1);
       continue;
     }
-    start.add(seg);
+    start.Add(seg);
   }
 
-  const arr = start.toArray();
-  if (arr.length === 0) return "";
+  const arr = start.ToArray();
+  if (arr.Length === 0) return "";
   let out = arr[0]!;
-  for (let i = 1; i < arr.length; i++) out += "/" + arr[i]!;
+  for (let i = 1; i < arr.Length; i++) out += "/" + arr[i]!;
   return out;
 };
 
 const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): string | undefined => {
   if (mount.repoUrl === undefined) return undefined;
   const slash: char = "/";
-  const repo = mount.repoUrl.trim().trimEnd(slash);
+  const repo = mount.repoUrl.Trim().TrimEnd(slash);
   if (repo === "") return undefined;
-  const branch = mount.repoBranch.trim() === "" ? "main" : mount.repoBranch.trim();
-  const rel = repoRelPath.trim().trimStart(slash);
+  const branch = mount.repoBranch.Trim() === "" ? "main" : mount.repoBranch.Trim();
+  const rel = repoRelPath.Trim().TrimStart(slash);
   if (rel === "") return undefined;
   return `${repo}/blob/${branch}/${rel}`;
 };
 
 const tryGetRouteUrl = (routesByRelPathLower: Dictionary<string, string>, key: string): string | undefined => {
   let v = "";
-  const ok = routesByRelPathLower.tryGetValue(key, v);
+  const ok = routesByRelPathLower.TryGetValue(key, v);
   return ok ? v : undefined;
 };
 
@@ -74,34 +74,34 @@ const resolveMarkdownNavLink = (
   linkTarget: string,
   routesByRelPathLower: Dictionary<string, string>,
 ): string | undefined => {
-  const targetRaw = linkTarget.trim();
+  const targetRaw = linkTarget.Trim();
   if (targetRaw === "") return undefined;
   if (isExternalUrl(targetRaw)) return targetRaw;
-  if (targetRaw.startsWith("#")) return targetRaw;
+  if (targetRaw.StartsWith("#")) return targetRaw;
 
   const split = splitUrlSuffix(targetRaw);
-  const pathPart = split.path.trim();
+  const pathPart = split.path.Trim();
   const suffix = split.suffix;
   if (pathPart === "") return undefined;
 
   const slash: char = "/";
   const repoPathRaw = mount.repoPath;
   let repoPath = "";
-  if (repoPathRaw !== undefined && repoPathRaw.trim() !== "") {
-    repoPath = repoPathRaw.trim().trimStart(slash).trimEnd(slash);
+  if (repoPathRaw !== undefined && repoPathRaw.Trim() !== "") {
+    repoPath = repoPathRaw.Trim().TrimStart(slash).TrimEnd(slash);
   }
   const hasRepoPath = repoPath !== "";
   let resolvedRel: string | undefined = undefined;
 
-  if (pathPart.startsWith("/")) {
-    resolvedRel = pathPart.trimStart(slash);
+  if (pathPart.StartsWith("/")) {
+    resolvedRel = pathPart.TrimStart(slash);
   } else {
     resolvedRel = normalizeRelativePath(navDirKey, pathPart);
   }
 
   if (resolvedRel === undefined) {
     if (!hasRepoPath) return undefined;
-    const baseDir = navDirKey.trim() === "" ? repoPath : `${repoPath}/${navDirKey}`;
+    const baseDir = navDirKey.Trim() === "" ? repoPath : `${repoPath}/${navDirKey}`;
     const repoResolvedEscape = normalizeRelativePath(baseDir, pathPart);
     if (repoResolvedEscape === undefined) return undefined;
     const ghUrlEscape = computeGitHubBlobUrl(mount, repoResolvedEscape);
@@ -113,7 +113,7 @@ const resolveMarkdownNavLink = (
     return targetRaw;
   }
 
-  const key = resolvedRel.toLowerInvariant();
+  const key = resolvedRel.ToLowerInvariant();
   const mapped = tryGetRouteUrl(routesByRelPathLower, key);
   if (mapped !== undefined) return mapped + suffix;
 
@@ -136,13 +136,13 @@ class InlineLink {
 }
 
 const parseInlineMarkdownLink = (line: string): InlineLink | undefined => {
-  const open = line.indexOf("[");
-  const mid = line.indexOf("](");
+  const open = line.IndexOf("[");
+  const mid = line.IndexOf("](");
   if (open < 0 || mid < 0 || mid <= open) return undefined;
-  const close = line.indexOf(")", mid + 2);
+  const close = line.IndexOf(")", mid + 2);
   if (close < 0) return undefined;
-  const title = line.substring(open + 1, mid - (open + 1)).trim();
-  const target = line.substring(mid + 2, close - (mid + 2)).trim();
+  const title = line.Substring(open + 1, mid - (open + 1)).Trim();
+  const target = line.Substring(mid + 2, close - (mid + 2)).Trim();
   if (title === "" || target === "") return undefined;
   return new InlineLink(title, target);
 };
@@ -165,7 +165,7 @@ const parseTocMarkdown = (
   navDirKey: string,
   routesByRelPathLower: Dictionary<string, string>,
 ): NavItem[] => {
-  const lines = markdown.replaceLineEndings("\n").split("\n");
+  const lines = markdown.ReplaceLineEndings("\n").Split("\n");
 
   let inToc = false;
   const groups = new List<NavGroupBuild>();
@@ -173,25 +173,25 @@ const parseTocMarkdown = (
   let currentGroup: NavGroupBuild | undefined = undefined;
   let order: int = 1;
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.Length; i++) {
     const raw = lines[i]!;
-    const line = raw.trim();
+    const line = raw.Trim();
     if (line === "") continue;
 
-    const lower = line.toLowerInvariant();
+    const lower = line.ToLowerInvariant();
 
     if (!inToc) {
       if (lower === "## table of contents") inToc = true;
       continue;
     }
 
-    if (line.startsWith("## ") && lower !== "## table of contents") break;
+    if (line.StartsWith("## ") && lower !== "## table of contents") break;
 
-    if (line.startsWith("### ")) {
-      const title = line.substring(4).trim();
+    if (line.StartsWith("### ")) {
+      const title = line.Substring(4).Trim();
       if (title !== "") {
         currentGroup = new NavGroupBuild(title, order);
-        groups.add(currentGroup);
+        groups.Add(currentGroup);
         order++;
       }
       continue;
@@ -207,23 +207,23 @@ const parseTocMarkdown = (
     const item = new NavItem(parsed.title, resolved, empty, false, false, order);
     order++;
 
-    if (currentGroup !== undefined) currentGroup.children.add(item);
-    else rootItems.add(item);
+    if (currentGroup !== undefined) currentGroup.children.Add(item);
+    else rootItems.Add(item);
   }
 
   const out = new List<NavItem>();
 
-  const groupArr = groups.toArray();
-  for (let i = 0; i < groupArr.length; i++) {
+  const groupArr = groups.ToArray();
+  for (let i = 0; i < groupArr.Length; i++) {
     const g = groupArr[i]!;
-    const groupItem = new NavItem(g.title, "", g.children.toArray(), true, false, g.order);
-    out.add(groupItem);
+    const groupItem = new NavItem(g.title, "", g.children.ToArray(), true, false, g.order);
+    out.Add(groupItem);
   }
 
-  const rootArr = rootItems.toArray();
-  for (let i = 0; i < rootArr.length; i++) out.add(rootArr[i]!);
+  const rootArr = rootItems.ToArray();
+  for (let i = 0; i < rootArr.Length; i++) out.Add(rootArr[i]!);
 
-  return out.toArray();
+  return out.ToArray();
 };
 
 const parseNavJson = (
@@ -232,22 +232,22 @@ const parseNavJson = (
   jsonText: string,
   routesByRelPathLower: Dictionary<string, string>,
 ): NavItem[] => {
-  const doc = JsonDocument.parse(jsonText);
+  const doc = JsonDocument.Parse(jsonText);
   try {
-    const root = doc.rootElement;
+    const root = doc.RootElement;
 
     let hasItems = false;
     let itemsEl: JsonElement = root;
-    if (root.valueKind === JsonValueKind.array) {
+    if (root.ValueKind === JsonValueKind.Array) {
       hasItems = true;
       itemsEl = root;
-    } else if (root.valueKind === JsonValueKind.object) {
-      const props = root.enumerateObject().getEnumerator();
-      while (props.moveNext()) {
-        const p = props.current;
-        if (p.name.toLowerInvariant() === "items") {
+    } else if (root.ValueKind === JsonValueKind.Object) {
+      const props = root.EnumerateObject().GetEnumerator();
+      while (props.MoveNext()) {
+        const p = props.Current;
+        if (p.Name.ToLowerInvariant() === "items") {
           hasItems = true;
-          itemsEl = p.value;
+          itemsEl = p.Value;
           break;
         }
       }
@@ -260,7 +260,7 @@ const parseNavJson = (
 
     return parseNavJsonItems(mount, navDirKey, routesByRelPathLower, itemsEl);
   } finally {
-    doc.dispose();
+    doc.Dispose();
   }
 };
 
@@ -270,17 +270,17 @@ function parseNavJsonItems(
   routesByRelPathLower: Dictionary<string, string>,
   el: JsonElement,
 ): NavItem[] {
-  if (el.valueKind !== JsonValueKind.array) {
+  if (el.ValueKind !== JsonValueKind.Array) {
     const empty: NavItem[] = [];
     return empty;
   }
 
   const items = new List<NavItem>();
-  const it = el.enumerateArray().getEnumerator();
+  const it = el.EnumerateArray().GetEnumerator();
   let order: int = 1;
-  while (it.moveNext()) {
-    const cur = it.current;
-    if (cur.valueKind !== JsonValueKind.object) continue;
+  while (it.MoveNext()) {
+    const cur = it.Current;
+    if (cur.ValueKind !== JsonValueKind.Object) continue;
 
     let title: string | undefined = undefined;
     let url: string | undefined = undefined;
@@ -288,14 +288,14 @@ function parseNavJsonItems(
     let hasChildren = false;
     let childrenEl: JsonElement = cur;
 
-    const props = cur.enumerateObject().getEnumerator();
-    while (props.moveNext()) {
-      const p = props.current;
-      const k = p.name.toLowerInvariant();
-      const v = p.value;
-      if (k === "title" && v.valueKind === JsonValueKind.string) title = v.getString();
-      else if (k === "url" && v.valueKind === JsonValueKind.string) url = v.getString();
-      else if (k === "path" && v.valueKind === JsonValueKind.string) path = v.getString();
+    const props = cur.EnumerateObject().GetEnumerator();
+    while (props.MoveNext()) {
+      const p = props.Current;
+      const k = p.Name.ToLowerInvariant();
+      const v = p.Value;
+      if (k === "title" && v.ValueKind === JsonValueKind.String) title = v.GetString();
+      else if (k === "url" && v.ValueKind === JsonValueKind.String) url = v.GetString();
+      else if (k === "path" && v.ValueKind === JsonValueKind.String) path = v.GetString();
       else if (k === "children") {
         hasChildren = true;
         childrenEl = v;
@@ -314,41 +314,41 @@ function parseNavJsonItems(
 
     if (title === undefined || finalUrl === undefined) continue;
 
-    items.add(new NavItem(title, finalUrl, children, children.length > 0, false, order));
+    items.Add(new NavItem(title, finalUrl, children, children.Length > 0, false, order));
     order++;
   }
 
-  return items.toArray();
+  return items.ToArray();
 }
 
 const joinUrlPath = (parts: string[]): string => {
-  if (parts.length === 0) return "";
+  if (parts.Length === 0) return "";
   let out = parts[0]!;
-  for (let i = 1; i < parts.length; i++) out += "/" + parts[i]!;
+  for (let i = 1; i < parts.Length; i++) out += "/" + parts[i]!;
   return out;
 };
 
 export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Dictionary<string, string>): NavItem[] => {
-  const navRaw = mount.navPath !== undefined && mount.navPath.trim() !== "" ? mount.navPath.trim() : "README.md";
-  const navFile = Path.isPathRooted(navRaw) ? navRaw : Path.combine(mount.sourceDir, navRaw);
-  if (!File.exists(navFile)) {
+  const navRaw = mount.navPath !== undefined && mount.navPath.Trim() !== "" ? mount.navPath.Trim() : "README.md";
+  const navFile = Path.IsPathRooted(navRaw) ? navRaw : Path.Combine(mount.sourceDir, navRaw);
+  if (!File.Exists(navFile)) {
     const empty: NavItem[] = [];
     return empty;
   }
 
-  const rel = normalizeSlashes(Path.getRelativePath(mount.sourceDir, navFile));
-  if (rel === "" || rel.startsWith("..")) {
+  const rel = normalizeSlashes(Path.GetRelativePath(mount.sourceDir, navFile));
+  if (rel === "" || rel.StartsWith("..")) {
     throw new Exception(`Mount nav must be inside sourceDir: ${navFile}`);
   }
 
-  const parts = rel.split("/");
+  const parts = rel.Split("/");
   const dirParts = new List<string>();
-  for (let i = 0; i < parts.length - 1; i++) dirParts.add(parts[i]!);
-  const navDirKey = joinUrlPath(dirParts.toArray());
+  for (let i = 0; i < parts.Length - 1; i++) dirParts.Add(parts[i]!);
+  const navDirKey = joinUrlPath(dirParts.ToArray());
 
-  const text = File.readAllText(navFile);
+  const text = File.ReadAllText(navFile);
 
-  if (navFile.toLowerInvariant().endsWith(".json")) {
+  if (navFile.ToLowerInvariant().EndsWith(".json")) {
     return parseNavJson(mount, navDirKey, text, routesByRelPathLower);
   }
 

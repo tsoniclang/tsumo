@@ -13,70 +13,70 @@ import { contentTypeForPath } from "./utils/mime.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
 
 const logLine = (message: string): void => {
-  Console.writeLine("{0}", message);
+  Console.WriteLine("{0}", message);
 };
 
 const logErrorLine = (message: string): void => {
-  Console.error.writeLine("{0}", message);
+  Console.Error.WriteLine("{0}", message);
 };
 
 const sendText = (response: HttpListenerResponse, statusCode: int, contentType: string, body: string): void => {
-  response.statusCode = statusCode;
-  response.contentType = contentType;
+  response.StatusCode = statusCode;
+  response.ContentType = contentType;
 
-  const buffer = Encoding.UTF8.getBytes(body);
-  const bufferLength = Encoding.UTF8.getByteCount(body);
-  response.contentLength64 = bufferLength;
+  const buffer = Encoding.UTF8.GetBytes(body);
+  const bufferLength = Encoding.UTF8.GetByteCount(body);
+  response.ContentLength64 = bufferLength;
 
-  const output = response.outputStream;
-  output.write(buffer, 0, bufferLength);
-  output.close();
-  response.close();
+  const output = response.OutputStream;
+  output.Write(buffer, 0, bufferLength);
+  output.Close();
+  response.Close();
 };
 
 const sendBytes = (response: HttpListenerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
-  response.statusCode = statusCode;
-  response.contentType = contentType;
-  response.contentLength64 = bytes.length;
-  const output = response.outputStream;
-  output.write(bytes, 0, bytes.length);
-  output.close();
-  response.close();
+  response.StatusCode = statusCode;
+  response.ContentType = contentType;
+  response.ContentLength64 = bytes.Length;
+  const output = response.OutputStream;
+  output.Write(bytes, 0, bytes.Length);
+  output.Close();
+  response.Close();
 };
 
 const resolveRequestPath = (outDir: string, requestPath: string): string | undefined => {
-  const outFull = Path.getFullPath(outDir);
-  const outPrefix = outFull.endsWith(Path.directorySeparatorChar) ? outFull : outFull + Path.directorySeparatorChar;
+  const outFull = Path.GetFullPath(outDir);
+  const outPrefix = outFull.EndsWith(Path.DirectorySeparatorChar) ? outFull : outFull + Path.DirectorySeparatorChar;
   const slash: char = "/";
-  const rel = requestPath.trimStart(slash).replace(slash, Path.directorySeparatorChar);
+  const rel = requestPath.TrimStart(slash).Replace(slash, Path.DirectorySeparatorChar);
 
-  if (rel === "" || requestPath.endsWith("/")) {
-    const p = Path.getFullPath(Path.combine(outFull, rel, "index.html"));
-    if (p.startsWith(outPrefix) && File.exists(p)) return p;
+  if (rel === "" || requestPath.EndsWith("/")) {
+    const p = Path.GetFullPath(Path.Combine(outFull, rel, "index.html"));
+    if (p.StartsWith(outPrefix) && File.Exists(p)) return p;
     return undefined;
   }
 
-  const direct = Path.getFullPath(Path.combine(outFull, rel));
-  if (direct.startsWith(outPrefix) && File.exists(direct)) return direct;
+  const direct = Path.GetFullPath(Path.Combine(outFull, rel));
+  if (direct.StartsWith(outPrefix) && File.Exists(direct)) return direct;
 
-  if (!Path.hasExtension(rel)) {
-    const p = Path.getFullPath(Path.combine(outFull, rel, "index.html"));
-    if (p.startsWith(outPrefix) && File.exists(p)) return p;
+  if (!Path.HasExtension(rel)) {
+    const p = Path.GetFullPath(Path.Combine(outFull, rel, "index.html"));
+    if (p.StartsWith(outPrefix) && File.Exists(p)) return p;
   }
 
   return undefined;
 };
 
 const handleRequest = (outDir: string, ctx: HttpListenerContext): void => {
-  const request = ctx.request;
-  const response = ctx.response;
-  const url = request.url;
+  const request = ctx.Request;
+  const response = ctx.Response;
+  const url = request.Url;
   if (url === undefined) {
     sendText(response, 400, "text/plain; charset=utf-8", "Bad Request");
     return;
   }
 
-  const path = url.absolutePath;
+  const path = url.AbsolutePath;
   const filePath = resolveRequestPath(outDir, path);
   if (filePath === undefined) {
     sendText(response, 404, "text/plain; charset=utf-8", "Not Found");
@@ -84,60 +84,60 @@ const handleRequest = (outDir: string, ctx: HttpListenerContext): void => {
   }
 
   const ct = contentTypeForPath(filePath);
-  if (ct.startsWith("text/") || ct.startsWith("application/json") || ct.startsWith("application/xml")) {
-    const body = File.readAllText(filePath);
+  if (ct.StartsWith("text/") || ct.StartsWith("application/json") || ct.StartsWith("application/xml")) {
+    const body = File.ReadAllText(filePath);
     sendText(response, 200, ct, body);
     return;
   }
 
-  const bytes = File.readAllBytes(filePath);
+  const bytes = File.ReadAllBytes(filePath);
   sendBytes(response, 200, ct, bytes);
 };
 
 const createWatcher = (path: string, filter: string, includeSubdirectories: boolean): FileSystemWatcher | undefined => {
-  if (!Directory.exists(path)) return undefined;
+  if (!Directory.Exists(path)) return undefined;
   const w = new FileSystemWatcher(path);
-  w.includeSubdirectories = includeSubdirectories;
-  w.filter = filter;
-  w.enableRaisingEvents = true;
+  w.IncludeSubdirectories = includeSubdirectories;
+  w.Filter = filter;
+  w.EnableRaisingEvents = true;
   return w;
 };
 
 const watchLoop = (req: ServeRequest, outDir: string): void => {
-  const siteDir = Path.getFullPath(req.siteDir);
+  const siteDir = Path.GetFullPath(req.siteDir);
   const watchers = new List<FileSystemWatcher>();
 
   const docsConfig = loadDocsConfig(siteDir);
 
   if (docsConfig === undefined) {
-    const content = createWatcher(Path.combine(siteDir, "content"), "*.*", true);
-    if (content !== undefined) watchers.add(content);
-    const archetypes = createWatcher(Path.combine(siteDir, "archetypes"), "*.*", true);
-    if (archetypes !== undefined) watchers.add(archetypes);
+    const content = createWatcher(Path.Combine(siteDir, "content"), "*.*", true);
+    if (content !== undefined) watchers.Add(content);
+    const archetypes = createWatcher(Path.Combine(siteDir, "archetypes"), "*.*", true);
+    if (archetypes !== undefined) watchers.Add(archetypes);
   } else {
     const mounts = docsConfig.config.mounts;
-    for (let i = 0; i < mounts.length; i++) {
+    for (let i = 0; i < mounts.Length; i++) {
       const m = mounts[i]!;
       const w = createWatcher(m.sourceDir, "*.*", true);
-      if (w !== undefined) watchers.add(w);
+      if (w !== undefined) watchers.Add(w);
     }
     const docsCfg = createWatcher(siteDir, "tsumo.docs.json", false);
-    if (docsCfg !== undefined) watchers.add(docsCfg);
+    if (docsCfg !== undefined) watchers.Add(docsCfg);
   }
 
-  const layouts = createWatcher(Path.combine(siteDir, "layouts"), "*.*", true);
-  if (layouts !== undefined) watchers.add(layouts);
-  const staticDir = createWatcher(Path.combine(siteDir, "static"), "*.*", true);
-  if (staticDir !== undefined) watchers.add(staticDir);
+  const layouts = createWatcher(Path.Combine(siteDir, "layouts"), "*.*", true);
+  if (layouts !== undefined) watchers.Add(layouts);
+  const staticDir = createWatcher(Path.Combine(siteDir, "static"), "*.*", true);
+  if (staticDir !== undefined) watchers.Add(staticDir);
 
-  const watcherArr = watchers.toArray();
-  if (watcherArr.length === 0) return;
+  const watcherArr = watchers.ToArray();
+  if (watcherArr.Length === 0) return;
 
   while (true) {
     let changed = false;
-    for (let i = 0; i < watcherArr.length; i++) {
-      const res = watcherArr[i]!.waitForChanged(WatcherChangeTypes.all, 250);
-      if (!res.timedOut) {
+    for (let i = 0; i < watcherArr.Length; i++) {
+      const res = watcherArr[i]!.WaitForChanged(WatcherChangeTypes.All, 250);
+      if (!res.TimedOut) {
         changed = true;
         break;
       }
@@ -155,19 +155,19 @@ const watchLoop = (req: ServeRequest, outDir: string): void => {
 };
 
 export const serveSite = (req: ServeRequest): void => {
-  const host = req.host.trim() === "" ? "localhost" : req.host.trim();
+  const host = req.host.Trim() === "" ? "localhost" : req.host.Trim();
   const port = req.port;
   const prefix = `http://${host}:${port}/`;
 
-  if (req.baseURL === undefined || req.baseURL.trim() === "") {
+  if (req.baseURL === undefined || req.baseURL.Trim() === "") {
     req.baseURL = ensureTrailingSlash(prefix);
   }
 
   const result = buildSite(req);
 
   const listener = new HttpListener();
-  listener.prefixes.add(prefix);
-  listener.start();
+  listener.Prefixes.Add(prefix);
+  listener.Start();
 
   logLine("");
   logLine("=================================");
@@ -179,11 +179,11 @@ export const serveSite = (req: ServeRequest): void => {
   logLine("Press Ctrl+C to stop");
 
   if (req.watch) {
-    Task.run(() => watchLoop(req, result.outputDir));
+    Task.Run(() => watchLoop(req, result.outputDir));
   }
 
   while (true) {
-    const ctx = listener.getContext();
-    Task.run(() => handleRequest(result.outputDir, ctx));
+    const ctx = listener.GetContext();
+    Task.Run(() => handleRequest(result.outputDir, ctx));
   }
 };

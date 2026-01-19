@@ -27,16 +27,16 @@ export const renderMarkdownWithShortcodes = (
 
   // Filter markdown-notation shortcodes and process them first
   const mdCalls = new List<ShortcodeCall>();
-  for (let i = 0; i < calls.length; i++) {
+  for (let i = 0; i < calls.Length; i++) {
     const call = calls[i]!;
-    if (call.isMarkdown) mdCalls.add(call);
+    if (call.isMarkdown) mdCalls.Add(call);
   }
 
-  if (mdCalls.count > 0) {
+  if (mdCalls.Count > 0) {
     // Sort descending by startIndex
-    const mdArr = mdCalls.toArray();
-    for (let i = 0; i < mdArr.length; i++) {
-      for (let j = i + 1; j < mdArr.length; j++) {
+    const mdArr = mdCalls.ToArray();
+    for (let i = 0; i < mdArr.Length; i++) {
+      for (let j = i + 1; j < mdArr.Length; j++) {
         if (mdArr[j]!.startIndex > mdArr[i]!.startIndex) {
           const tmp = mdArr[i]!;
           mdArr[i] = mdArr[j]!;
@@ -45,7 +45,7 @@ export const renderMarkdownWithShortcodes = (
       }
     }
 
-    for (let i = 0; i < mdArr.length; i++) {
+    for (let i = 0; i < mdArr.Length; i++) {
       const call = mdArr[i]!;
       const replacement = processShortcodes(
         call.inner !== "" ? call.inner : "",
@@ -75,8 +75,8 @@ export const renderMarkdownWithShortcodes = (
         const scope = new RenderScope(shortcodeValue, shortcodeValue, site, env, undefined);
         const emptyOverrides = new Dictionary<string, TemplateNode[]>();
         template.renderInto(sb, scope, env, emptyOverrides);
-        const output = sb.toString();
-        textAfterMarkdownShortcodes = textAfterMarkdownShortcodes.substring(0, call.startIndex) + output + textAfterMarkdownShortcodes.substring(call.endIndex);
+        const output = sb.ToString();
+        textAfterMarkdownShortcodes = textAfterMarkdownShortcodes.Substring(0, call.startIndex) + output + textAfterMarkdownShortcodes.Substring(call.endIndex);
       }
     }
   }
@@ -94,38 +94,38 @@ export const renderMarkdownWithShortcodes = (
   let plainText: string;
 
   if (moreIndex >= 0) {
-    const before = textAfterMarkdownShortcodes.substring(0, moreIndex);
-    const after = textAfterMarkdownShortcodes.substring(moreIndex + summaryMarkerLength);
+    const before = textAfterMarkdownShortcodes.Substring(0, moreIndex);
+    const after = textAfterMarkdownShortcodes.Substring(moreIndex + summaryMarkerLength);
     const full = before + after;
     // Use hook-aware rendering if hooks are present, otherwise use standard rendering
     if (hookCtx.hasAnyHooks()) {
       html = renderMarkdownWithHooks(full, hookCtx);
-      summaryHtml = renderMarkdownWithHooks(before, hookCtx).trim();
+      summaryHtml = renderMarkdownWithHooks(before, hookCtx).Trim();
     } else {
-      html = Markdown.toHtml(full, markdownPipeline);
-      summaryHtml = Markdown.toHtml(before, markdownPipeline).trim();
+      html = Markdown.ToHtml(full, markdownPipeline);
+      summaryHtml = Markdown.ToHtml(before, markdownPipeline).Trim();
     }
-    plainText = Markdown.toPlainText(full, markdownPipeline);
+    plainText = Markdown.ToPlainText(full, markdownPipeline);
   } else {
     if (hookCtx.hasAnyHooks()) {
       html = renderMarkdownWithHooks(textAfterMarkdownShortcodes, hookCtx);
     } else {
-      html = Markdown.toHtml(textAfterMarkdownShortcodes, markdownPipeline);
+      html = Markdown.ToHtml(textAfterMarkdownShortcodes, markdownPipeline);
     }
-    plainText = Markdown.toPlainText(textAfterMarkdownShortcodes, markdownPipeline);
+    plainText = Markdown.ToPlainText(textAfterMarkdownShortcodes, markdownPipeline);
     const summarySource = firstBlock(textAfterMarkdownShortcodes);
     if (summarySource === "") {
       summaryHtml = "";
     } else if (hookCtx.hasAnyHooks()) {
-      summaryHtml = renderMarkdownWithHooks(summarySource, hookCtx).trim();
+      summaryHtml = renderMarkdownWithHooks(summarySource, hookCtx).Trim();
     } else {
-      summaryHtml = Markdown.toHtml(summarySource, markdownPipeline).trim();
+      summaryHtml = Markdown.ToHtml(summarySource, markdownPipeline).Trim();
     }
   }
 
   // Step 5: Process standard-notation shortcodes ({{< ... >}}) AFTER markdown rendering
   const htmlCalls = parseShortcodes(html);
-  if (htmlCalls.length > 0) {
+  if (htmlCalls.Length > 0) {
     html = processShortcodes(html, page, site, env, ordinalTracker, undefined, recursionGuard);
   }
 

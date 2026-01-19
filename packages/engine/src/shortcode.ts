@@ -48,14 +48,14 @@ class ParseState {
 
   peek(offset: int): string {
     const idx = this.pos + offset;
-    return idx < this.text.length ? this.text.substring(idx, 1) : "";
+    return idx < this.text.Length ? this.text.Substring(idx, 1) : "";
   }
 
   peekString(length: int): string {
-    const remaining = this.text.length - this.pos;
+    const remaining = this.text.Length - this.pos;
     if (remaining <= 0) return "";
     const sliceLength = length < remaining ? length : remaining;
-    return this.text.substring(this.pos, sliceLength);
+    return this.text.Substring(this.pos, sliceLength);
   }
 
   advance(count: int): void {
@@ -63,7 +63,7 @@ class ParseState {
   }
 
   atEnd(): boolean {
-    return this.pos >= this.text.length;
+    return this.pos >= this.text.Length;
   }
 
   skipWhitespace(): void {
@@ -82,18 +82,18 @@ const isInCodeBlock = (text: string, pos: int): boolean => {
   let i = 0;
 
   while (i < pos) {
-    const c = text.substring(i, 1);
+    const c = text.Substring(i, 1);
 
     if (!inFence) {
       if (c === "`" || c === "~") {
       let len = 1;
-      while (i + len < text.length && text.substring(i + len, 1) === c) len++;
+      while (i + len < text.Length && text.Substring(i + len, 1) === c) len++;
       if (len >= 3) {
         inFence = true;
         fenceChar = c;
         fenceLen = len;
         i += len;
-        while (i < text.length && text.substring(i, 1) !== "\n") i++;
+        while (i < text.Length && text.Substring(i, 1) !== "\n") i++;
         continue;
       }
     }
@@ -101,7 +101,7 @@ const isInCodeBlock = (text: string, pos: int): boolean => {
 
     if (inFence && c === fenceChar) {
       let len = 1;
-      while (i + len < text.length && text.substring(i + len, 1) === c) len++;
+      while (i + len < text.Length && text.Substring(i + len, 1) === c) len++;
       if (len >= fenceLen) {
         inFence = false;
         fenceChar = "";
@@ -157,7 +157,7 @@ const parseParams = (argsText: string): { params: Dictionary<string, ParamValue>
   const positional = new List<string>();
   let isNamed = false;
 
-  const state = new ParseState(argsText.trim());
+  const state = new ParseState(argsText.Trim());
 
   while (!state.atEnd()) {
     state.skipWhitespace();
@@ -193,20 +193,20 @@ const parseParams = (argsText: string): { params: Dictionary<string, ParamValue>
       } else {
         value = parseUnquotedValue(state);
       }
-      params.remove(key);
-      params.add(key, ParamValue.parseScalar(value));
+      params.Remove(key);
+      params.Add(key, ParamValue.parseScalar(value));
     } else {
       if (key === "") {
         const q = state.peek(0);
         if (q === "\"" || q === "'") key = parseQuotedString(state);
       }
       if (key !== "") {
-        positional.add(key);
+        positional.Add(key);
       }
     }
   }
 
-  return { params, positional: positional.toArray(), isNamed };
+  return { params, positional: positional.ToArray(), isNamed };
 };
 
 const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: boolean): { inner: string; endPos: int } | undefined => {
@@ -218,24 +218,24 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
   let pos = startPos;
   let innerStart = startPos;
 
-  while (pos < text.length) {
-    const remaining = text.substring(pos);
+  while (pos < text.Length) {
+    const remaining = text.Substring(pos);
 
-    if (remaining.startsWith(openTag)) {
-      const afterOpen = text.substring(pos + openTag.length).trimStart();
-      if (afterOpen.startsWith(name + " ") || afterOpen.startsWith(name + ">") || afterOpen.startsWith(name + "%")) {
+    if (remaining.StartsWith(openTag)) {
+      const afterOpen = text.Substring(pos + openTag.Length).TrimStart();
+      if (afterOpen.StartsWith(name + " ") || afterOpen.StartsWith(name + ">") || afterOpen.StartsWith(name + "%")) {
         depth++;
       }
     }
 
-    if (remaining.startsWith(closeTagPrefix) || remaining.startsWith(closeTagPrefix2)) {
+    if (remaining.StartsWith(closeTagPrefix) || remaining.StartsWith(closeTagPrefix2)) {
       depth--;
       if (depth === 0) {
-        const inner = text.substring(innerStart, pos - innerStart);
+        const inner = text.Substring(innerStart, pos - innerStart);
         const endSuffix = isMarkdown ? "%}}" : ">}}";
         const closeEnd = indexOfTextFrom(text, endSuffix, pos);
         if (closeEnd < 0) return undefined;
-        return { inner, endPos: closeEnd + endSuffix.length };
+        return { inner, endPos: closeEnd + endSuffix.Length };
       }
     }
 
@@ -249,7 +249,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
   const results = new List<ShortcodeCall>();
   let pos = 0;
 
-  while (pos < text.length) {
+  while (pos < text.Length) {
     const openAngle = indexOfTextFrom(text, "{{<", pos);
     const openPercent = indexOfTextFrom(text, "{{%", pos);
 
@@ -275,7 +275,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
       continue;
     }
 
-    const after3 = text.substring(openPos + 3, 1);
+    const after3 = text.Substring(openPos + 3, 1);
     if (after3 === "*") {
       pos = openPos + 4;
       continue;
@@ -295,24 +295,24 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
       continue;
     }
 
-    const content = text.substring(openPos + 3, closePos - (openPos + 3));
+    const content = text.Substring(openPos + 3, closePos - (openPos + 3));
 
     const selfClosePattern = isMarkdown ? "/%" : "/>";
     const selfCloseIdx = lastIndexOfText(content, selfClosePattern);
     let isSelfClosing = false;
-    if (selfCloseIdx >= 0) isSelfClosing = content.substring(selfCloseIdx).trim() === selfClosePattern;
+    if (selfCloseIdx >= 0) isSelfClosing = content.Substring(selfCloseIdx).Trim() === selfClosePattern;
 
     let tagContent = content;
     if (isSelfClosing === true) {
-      tagContent = content.substring(0, selfCloseIdx).trim();
+      tagContent = content.Substring(0, selfCloseIdx).Trim();
     }
 
-    const firstSpace = tagContent.indexOf(" ");
-    const name = firstSpace >= 0 ? tagContent.substring(0, firstSpace).trim() : tagContent.trim();
-    const argsText = firstSpace >= 0 ? tagContent.substring(firstSpace + 1) : "";
+    const firstSpace = tagContent.IndexOf(" ");
+    const name = firstSpace >= 0 ? tagContent.Substring(0, firstSpace).Trim() : tagContent.Trim();
+    const argsText = firstSpace >= 0 ? tagContent.Substring(firstSpace + 1) : "";
 
-    if (name === "" || name.startsWith("/")) {
-      pos = closePos + closeSuffix.length;
+    if (name === "" || name.StartsWith("/")) {
+      pos = closePos + closeSuffix.Length;
       continue;
     }
 
@@ -328,14 +328,14 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         isMarkdown,
         true,
         openPos,
-        closePos + closeSuffix.length,
+        closePos + closeSuffix.Length,
       );
-      results.add(call);
-      pos = closePos + closeSuffix.length;
+      results.Add(call);
+      pos = closePos + closeSuffix.Length;
       continue;
     }
 
-    const tagEndPos = closePos + closeSuffix.length;
+    const tagEndPos = closePos + closeSuffix.Length;
     const closeResult = findClosingTag(text, name, tagEndPos, isMarkdown);
 
     if (closeResult !== undefined) {
@@ -350,7 +350,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         openPos,
         closeResult.endPos,
       );
-      results.add(call);
+      results.Add(call);
       pos = closeResult.endPos;
     } else {
       const call = new ShortcodeCall(
@@ -364,25 +364,25 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         openPos,
         tagEndPos,
       );
-      results.add(call);
+      results.Add(call);
       pos = tagEndPos;
     }
   }
 
-  return results.toArray();
+  return results.ToArray();
 };
 
 export const innerDeindent = (inner: string): string => {
-  const lines = inner.split("\n");
-  if (lines.length === 0) return inner;
+  const lines = inner.Split("\n");
+  if (lines.Length === 0) return inner;
 
   let minIndent: int = -1;
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.Length; i++) {
     const line = lines[i]!;
-    if (line.trim() === "") continue;
+    if (line.Trim() === "") continue;
     let indent = 0;
-    for (let j = 0; j < line.length; j++) {
-      const c = line.substring(j, 1);
+    for (let j = 0; j < line.Length; j++) {
+      const c = line.Substring(j, 1);
       if (c === " ") indent++;
       else if (c === "\t") indent += 4;
       else break;
@@ -393,16 +393,16 @@ export const innerDeindent = (inner: string): string => {
   if (minIndent <= 0) return inner;
 
   const result = new List<string>();
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.Length; i++) {
     const line = lines[i]!;
-    if (line.trim() === "") {
-      result.add(line);
+    if (line.Trim() === "") {
+      result.Add(line);
       continue;
     }
     let removed = 0;
     let startIdx = 0;
-    for (let j = 0; j < line.length && removed < minIndent; j++) {
-      const c = line.substring(j, 1);
+    for (let j = 0; j < line.Length && removed < minIndent; j++) {
+      const c = line.Substring(j, 1);
       if (c === " ") {
         removed++;
         startIdx++;
@@ -413,12 +413,12 @@ export const innerDeindent = (inner: string): string => {
         break;
       }
     }
-    result.add(line.substring(startIdx));
+    result.Add(line.Substring(startIdx));
   }
 
-  const arr = result.toArray();
+  const arr = result.ToArray();
   let out = "";
-  for (let i = 0; i < arr.length; i++) {
+  for (let i = 0; i < arr.Length; i++) {
     if (i > 0) out += "\n";
     out += arr[i]!;
   }

@@ -46,23 +46,23 @@ const escapeJsonString = (input: string): string => {
 
 const renderSearchIndexJson = (docs: SearchDoc[]): string => {
   const sb = new StringBuilder();
-  sb.append("[");
-  for (let i = 0; i < docs.length; i++) {
+  sb.Append("[");
+  for (let i = 0; i < docs.Length; i++) {
     const d = docs[i]!;
-    if (i > 0) sb.append(",");
-    sb.append("{");
-    sb.append("\"title\":\"");
-    sb.append(escapeJsonString(d.title));
-    sb.append("\",\"url\":\"");
-    sb.append(escapeJsonString(d.url));
-    sb.append("\",\"mount\":\"");
-    sb.append(escapeJsonString(d.mount));
-    sb.append("\",\"text\":\"");
-    sb.append(escapeJsonString(d.text));
-    sb.append("\"}");
+    if (i > 0) sb.Append(",");
+    sb.Append("{");
+    sb.Append("\"title\":\"");
+    sb.Append(escapeJsonString(d.title));
+    sb.Append("\",\"url\":\"");
+    sb.Append(escapeJsonString(d.url));
+    sb.Append("\",\"mount\":\"");
+    sb.Append(escapeJsonString(d.mount));
+    sb.Append("\",\"text\":\"");
+    sb.Append(escapeJsonString(d.text));
+    sb.Append("\"}");
   }
-  sb.append("]");
-  return sb.toString();
+  sb.Append("]");
+  return sb.ToString();
 };
 
 class DocsMarkdownRoute {
@@ -102,136 +102,136 @@ class DocsMarkdownRoute {
   }
 }
 
-const normalizeSlashes = (path: string): string => path.replace("\\", "/");
+const normalizeSlashes = (path: string): string => path.Replace("\\", "/");
 
-const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).split("/");
+const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).Split("/");
 
 const joinUrlPath = (parts: string[]): string => {
-  if (parts.length === 0) return "";
+  if (parts.Length === 0) return "";
   let out = parts[0]!;
-  for (let i = 1; i < parts.length; i++) out += "/" + parts[i]!;
+  for (let i = 1; i < parts.Length; i++) out += "/" + parts[i]!;
   return out;
 };
 
 const isIndexMarkdownFile = (fileName: string): boolean => {
-  const lower = fileName.toLowerInvariant();
+  const lower = fileName.ToLowerInvariant();
   return lower === "_index.md" || lower === "index.md" || lower === "readme.md";
 };
 
 const withoutMdExtension = (fileName: string): string => {
-  const lower = fileName.toLowerInvariant();
-  return lower.endsWith(".md") ? fileName.substring(0, fileName.length - 3) : fileName;
+  const lower = fileName.ToLowerInvariant();
+  return lower.EndsWith(".md") ? fileName.Substring(0, fileName.Length - 3) : fileName;
 };
 
 const mountPrefixSegments = (urlPrefix: string): string[] => {
   const slash: char = "/";
-  const trimmed = urlPrefix.trim().trimStart(slash).trimEnd(slash);
+  const trimmed = urlPrefix.Trim().TrimStart(slash).TrimEnd(slash);
   if (trimmed === "") {
     const empty: string[] = [];
     return empty;
   }
-  return trimmed.split("/");
+  return trimmed.Split("/");
 };
 
 const combineOsPath = (segments: string[]): string => {
-  if (segments.length === 0) return "";
+  if (segments.Length === 0) return "";
   let p = segments[0]!;
-  for (let i = 1; i < segments.length; i++) p = Path.combine(p, segments[i]!);
+  for (let i = 1; i < segments.Length; i++) p = Path.Combine(p, segments[i]!);
   return p;
 };
 
 const combineOutputRelPath = (segments: string[]): string => {
-  if (segments.length === 0) return "index.html";
+  if (segments.Length === 0) return "index.html";
   let p = segments[0]!;
-  for (let i = 1; i < segments.length; i++) {
-    p = Path.combine(p, segments[i]!);
+  for (let i = 1; i < segments.Length; i++) {
+    p = Path.Combine(p, segments[i]!);
   }
-  return Path.combine(p, "index.html");
+  return Path.Combine(p, "index.html");
 };
 
 const computeEditUrl = (mount: DocsMountConfig, relPath: string): string | undefined => {
   if (mount.repoUrl === undefined) return undefined;
   const slash: char = "/";
-  const repo = mount.repoUrl.trim().trimEnd(slash);
+  const repo = mount.repoUrl.Trim().TrimEnd(slash);
   if (repo === "") return undefined;
-  const branch = mount.repoBranch.trim() === "" ? "main" : mount.repoBranch.trim();
+  const branch = mount.repoBranch.Trim() === "" ? "main" : mount.repoBranch.Trim();
   const repoPath = mount.repoPath;
-  const rel = relPath.trimStart(slash);
-  if (repoPath === undefined || repoPath.trim() === "") {
+  const rel = relPath.TrimStart(slash);
+  if (repoPath === undefined || repoPath.Trim() === "") {
     return `${repo}/blob/${branch}/${rel}`;
   }
-  const rp = repoPath.trim().trimStart(slash).trimEnd(slash);
+  const rp = repoPath.Trim().TrimStart(slash).TrimEnd(slash);
   return `${repo}/blob/${branch}/${rp}/${rel}`;
 };
 
 const scanMount = (outDir: string, mount: DocsMountConfig): DocsMarkdownRoute[] => {
-  if (!Directory.exists(mount.sourceDir)) throw new Exception(`Docs mount not found: ${mount.sourceDir}`);
+  if (!Directory.Exists(mount.sourceDir)) throw new Exception(`Docs mount not found: ${mount.sourceDir}`);
 
   const prefixSegs = mountPrefixSegments(mount.urlPrefix);
-  const prefixOs = prefixSegs.length === 0 ? "" : combineOsPath(prefixSegs);
+  const prefixOs = prefixSegs.Length === 0 ? "" : combineOsPath(prefixSegs);
   const routes = new List<DocsMarkdownRoute>();
 
-  const files = Directory.getFiles(mount.sourceDir, "*", SearchOption.allDirectories);
-  for (let i = 0; i < files.length; i++) {
+  const files = Directory.GetFiles(mount.sourceDir, "*", SearchOption.AllDirectories);
+  for (let i = 0; i < files.Length; i++) {
     const srcFile = files[i]!;
-    const rel = normalizeSlashes(Path.getRelativePath(mount.sourceDir, srcFile));
-    if (rel === "" || rel.startsWith("..")) continue;
+    const rel = normalizeSlashes(Path.GetRelativePath(mount.sourceDir, srcFile));
+    if (rel === "" || rel.StartsWith("..")) continue;
 
-    const lower = srcFile.toLowerInvariant();
-    if (!lower.endsWith(".md")) {
+    const lower = srcFile.ToLowerInvariant();
+    if (!lower.EndsWith(".md")) {
       const slash: char = "/";
-      const relOs = rel.replace(slash, Path.directorySeparatorChar);
-      const destRel = prefixOs === "" ? relOs : Path.combine(prefixOs, relOs);
-      const destFile = Path.combine(outDir, destRel);
-      const destDir = Path.getDirectoryName(destFile);
-      if (destDir !== undefined && destDir !== "") Directory.createDirectory(destDir);
-      File.copy(srcFile, destFile, true);
+      const relOs = rel.Replace(slash, Path.DirectorySeparatorChar);
+      const destRel = prefixOs === "" ? relOs : Path.Combine(prefixOs, relOs);
+      const destFile = Path.Combine(outDir, destRel);
+      const destDir = Path.GetDirectoryName(destFile);
+      if (destDir !== undefined && destDir !== "") Directory.CreateDirectory(destDir);
+      File.Copy(srcFile, destFile, true);
       continue;
     }
 
     const parts = splitPath(rel);
-    const fileName = parts.length > 0 ? parts[parts.length - 1]! : rel;
+    const fileName = parts.Length > 0 ? parts[parts.Length - 1]! : rel;
     const dirPartsList = new List<string>();
-    for (let j = 0; j < parts.length - 1; j++) dirPartsList.add(parts[j]!);
-    const dirParts = dirPartsList.toArray();
+    for (let j = 0; j < parts.Length - 1; j++) dirPartsList.Add(parts[j]!);
+    const dirParts = dirPartsList.ToArray();
     const dirKey = joinUrlPath(dirParts);
 
     const isIndex = isIndexMarkdownFile(fileName);
     const urlSegs = new List<string>();
-    for (let j = 0; j < dirParts.length; j++) urlSegs.add(dirParts[j]!);
-    if (!isIndex) urlSegs.add(withoutMdExtension(fileName));
-    const urlSegments = urlSegs.toArray();
+    for (let j = 0; j < dirParts.Length; j++) urlSegs.Add(dirParts[j]!);
+    if (!isIndex) urlSegs.Add(withoutMdExtension(fileName));
+    const urlSegments = urlSegs.ToArray();
 
     const outSegs = new List<string>();
-    for (let j = 0; j < prefixSegs.length; j++) outSegs.add(prefixSegs[j]!);
-    for (let j = 0; j < urlSegments.length; j++) outSegs.add(urlSegments[j]!);
-    const outputSegments = outSegs.toArray();
+    for (let j = 0; j < prefixSegs.Length; j++) outSegs.Add(prefixSegs[j]!);
+    for (let j = 0; j < urlSegments.Length; j++) outSegs.Add(urlSegments[j]!);
+    const outputSegments = outSegs.ToArray();
 
     const urlParts = new List<string>();
-    urlParts.add(mount.urlPrefix);
-    for (let j = 0; j < urlSegments.length; j++) urlParts.add(urlSegments[j]!);
-    const relPermalink = combineUrl(urlParts.toArray());
+    urlParts.Add(mount.urlPrefix);
+    for (let j = 0; j < urlSegments.Length; j++) urlParts.Add(urlSegments[j]!);
+    const relPermalink = combineUrl(urlParts.ToArray());
     const outputRelPath = combineOutputRelPath(outputSegments);
 
-    routes.add(
+    routes.Add(
       new DocsMarkdownRoute(mount, srcFile, rel, dirKey, fileName, isIndex, urlSegments, outputSegments, relPermalink, outputRelPath),
     );
   }
 
-  return routes.toArray();
+  return routes.ToArray();
 };
 
 const addDirWithParents = (dirKey: string, dirSet: Dictionary<string, boolean>): void => {
-  let cur = dirKey.trim();
+  let cur = dirKey.Trim();
   while (true) {
-    dirSet.remove(cur);
-    dirSet.add(cur, true);
+    dirSet.Remove(cur);
+    dirSet.Add(cur, true);
     if (cur === "") return;
-    const idx = cur.lastIndexOf("/");
+    const idx = cur.LastIndexOf("/");
     if (idx < 0) {
       cur = "";
     } else {
-      cur = cur.substring(0, idx);
+      cur = cur.Substring(0, idx);
     }
   }
 };
@@ -241,7 +241,7 @@ const dirDepth = (dirKey: string): int => {
   let depth: int = 1;
   let pos = 0;
   while (true) {
-    const idx = dirKey.indexOf("/", pos);
+    const idx = dirKey.IndexOf("/", pos);
     if (idx < 0) break;
     depth++;
     pos = idx + 1;
@@ -250,13 +250,13 @@ const dirDepth = (dirKey: string): int => {
 };
 
 const parentDirKey = (dirKey: string): string => {
-  const idx = dirKey.lastIndexOf("/");
-  return idx < 0 ? "" : dirKey.substring(0, idx);
+  const idx = dirKey.LastIndexOf("/");
+  return idx < 0 ? "" : dirKey.Substring(0, idx);
 };
 
 const lastDirSegment = (dirKey: string): string => {
-  const idx = dirKey.lastIndexOf("/");
-  return idx < 0 ? dirKey : dirKey.substring(idx + 1);
+  const idx = dirKey.LastIndexOf("/");
+  return idx < 0 ? dirKey : dirKey.Substring(idx + 1);
 };
 
 function assignAncestry(page: PageContext, parent: PageContext | undefined, ancestors: PageContext[]): void {
@@ -265,37 +265,37 @@ function assignAncestry(page: PageContext, parent: PageContext | undefined, ance
   if (page.kind === "page") return;
 
   const kids = page.pages;
-  for (let i = 0; i < kids.length; i++) {
+  for (let i = 0; i < kids.Length; i++) {
     const child = kids[i]!;
     const nextAncestors = new List<PageContext>();
-    for (let j = 0; j < ancestors.length; j++) nextAncestors.add(ancestors[j]!);
-    nextAncestors.add(page);
-    assignAncestry(child, page, nextAncestors.toArray());
+    for (let j = 0; j < ancestors.Length; j++) nextAncestors.Add(ancestors[j]!);
+    nextAncestors.Add(page);
+    assignAncestry(child, page, nextAncestors.ToArray());
   }
 }
 
 export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfig): BuildResult => {
-  const siteDir = Path.getFullPath(request.siteDir);
+  const siteDir = Path.GetFullPath(request.siteDir);
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
 
-  if (request.baseURL !== undefined && request.baseURL.trim() !== "") {
-    config.baseURL = ensureTrailingSlash(request.baseURL.trim());
+  if (request.baseURL !== undefined && request.baseURL.Trim() !== "") {
+    config.baseURL = ensureTrailingSlash(request.baseURL.Trim());
   }
 
   const docsConfig = docsLoaded.config;
-  if (docsConfig.siteName.trim() !== "") config.title = docsConfig.siteName.trim();
+  if (docsConfig.siteName.Trim() !== "") config.title = docsConfig.siteName.Trim();
 
-  const outDir = Path.isPathRooted(request.destinationDir) ? request.destinationDir : Path.combine(siteDir, request.destinationDir);
+  const outDir = Path.IsPathRooted(request.destinationDir) ? request.destinationDir : Path.Combine(siteDir, request.destinationDir);
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
   const env = new BuildEnvironment(siteDir, themeDir, outDir);
   if (request.cleanDestinationDir) deleteDirRecursive(outDir);
   ensureDir(outDir);
 
   if (themeDir !== undefined) {
-    copyDirRecursive(Path.combine(themeDir, "static"), outDir);
+    copyDirRecursive(Path.Combine(themeDir, "static"), outDir);
   }
-  copyDirRecursive(Path.combine(siteDir, "static"), outDir);
+  copyDirRecursive(Path.Combine(siteDir, "static"), outDir);
 
   const emptyPages: PageContext[] = [];
   const emptyTranslations: PageContext[] = [];
@@ -313,36 +313,36 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   const searchDocs = new List<SearchDoc>();
 
   const mounts = docsConfig.mounts;
-  for (let mountIndex = 0; mountIndex < mounts.length; mountIndex++) {
+  for (let mountIndex = 0; mountIndex < mounts.Length; mountIndex++) {
     const mount = mounts[mountIndex]!;
     const routes = scanMount(outDir, mount);
     const routeMap = new Dictionary<string, string>();
-    for (let i = 0; i < routes.length; i++) {
+    for (let i = 0; i < routes.Length; i++) {
       const r = routes[i]!;
-      const key = r.relPath.toLowerInvariant();
-      routeMap.remove(key);
-      routeMap.add(key, r.relPermalink);
+      const key = r.relPath.ToLowerInvariant();
+      routeMap.Remove(key);
+      routeMap.Add(key, r.relPermalink);
     }
-    mountContexts.add(new DocsMountContext(mount.name, mount.urlPrefix, loadMountNav(mount, routeMap)));
+    mountContexts.Add(new DocsMountContext(mount.name, mount.urlPrefix, loadMountNav(mount, routeMap)));
 
     const prefixSegs = mountPrefixSegments(mount.urlPrefix);
-    const mountSection = prefixSegs.length > 0 ? prefixSegs[0]! : mount.name;
+    const mountSection = prefixSegs.Length > 0 ? prefixSegs[0]! : mount.name;
 
     const indexByDir = new Dictionary<string, DocsMarkdownRoute>();
     const leafRoutes = new List<DocsMarkdownRoute>();
-    for (let i = 0; i < routes.length; i++) {
+    for (let i = 0; i < routes.Length; i++) {
       const r = routes[i]!;
       if (r.isIndex) {
-        indexByDir.remove(r.dirKey);
-        indexByDir.add(r.dirKey, r);
+        indexByDir.Remove(r.dirKey);
+        indexByDir.Add(r.dirKey, r);
       } else {
-        leafRoutes.add(r);
+        leafRoutes.Add(r);
       }
     }
 
     const leafPagesByDir = new Dictionary<string, List<PageContext>>();
-    const leafArr = leafRoutes.toArray();
-    for (let i = 0; i < leafArr.length; i++) {
+    const leafArr = leafRoutes.ToArray();
+    for (let i = 0; i < leafArr.Length; i++) {
       const r = leafArr[i]!;
 
       const parsed = parseContent(readTextFile(r.sourcePath));
@@ -352,26 +352,26 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       const md = renderDocsMarkdown(parsed.body, new DocsLinkRewriteContext(mount, r.dirKey, routeMap, docsConfig.strictLinks));
       const content = new HtmlString(md.html);
       const summary = new HtmlString(md.summaryHtml);
-      const plainText = Markdown.toPlainText(parsed.body, markdownPipeline);
+      const plainText = Markdown.ToPlainText(parsed.body, markdownPipeline);
 
       const baseName = withoutMdExtension(r.fileName);
       const title = fm.title ?? humanizeSlug(baseName);
-      const dateUtc = fm.date ?? File.getLastWriteTimeUtc(r.sourcePath);
-      const dateString = dateUtc.toString("O");
-      const lastmodString = File.getLastWriteTimeUtc(r.sourcePath).toString("O");
-      const file = new PageFile(Path.getFullPath(r.sourcePath), r.dirKey === "" ? "" : r.dirKey + "/", baseName);
+      const dateUtc = fm.date ?? File.GetLastWriteTimeUtc(r.sourcePath);
+      const dateString = dateUtc.ToString("O");
+      const lastmodString = File.GetLastWriteTimeUtc(r.sourcePath).ToString("O");
+      const file = new PageFile(Path.GetFullPath(r.sourcePath), r.dirKey === "" ? "" : r.dirKey + "/", baseName);
 
       const params = fm.Params;
-      params.remove("mount");
-      params.add("mount", ParamValue.string(mount.name));
-      params.remove("mountPrefix");
-      params.add("mountPrefix", ParamValue.string(mount.urlPrefix));
-      params.remove("relPath");
-      params.add("relPath", ParamValue.string(r.relPath));
+      params.Remove("mount");
+      params.Add("mount", ParamValue.string(mount.name));
+      params.Remove("mountPrefix");
+      params.Add("mountPrefix", ParamValue.string(mount.urlPrefix));
+      params.Remove("relPath");
+      params.Add("relPath", ParamValue.string(r.relPath));
       const editUrl = computeEditUrl(mount, r.relPath);
       if (editUrl !== undefined) {
-        params.remove("editURL");
-        params.add("editURL", ParamValue.string(editUrl));
+        params.Remove("editURL");
+        params.Add("editURL", ParamValue.string(editUrl));
       }
 
       const ctx = new PageContext(
@@ -404,45 +404,45 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       );
 
       let list = new List<PageContext>();
-      const has = leafPagesByDir.tryGetValue(r.dirKey, list);
+      const has = leafPagesByDir.TryGetValue(r.dirKey, list);
       if (!has) {
         list = new List<PageContext>();
-        leafPagesByDir.remove(r.dirKey);
-        leafPagesByDir.add(r.dirKey, list);
+        leafPagesByDir.Remove(r.dirKey);
+        leafPagesByDir.Add(r.dirKey, list);
       }
-      list.add(ctx);
-      allPagesForOutput.add(ctx);
-      searchDocs.add(new SearchDoc(title, r.relPermalink, mount.name, plainText));
+      list.Add(ctx);
+      allPagesForOutput.Add(ctx);
+      searchDocs.Add(new SearchDoc(title, r.relPermalink, mount.name, plainText));
     }
 
     const dirSet = new Dictionary<string, boolean>();
     addDirWithParents("", dirSet);
-    const indexKeysIt = indexByDir.keys.getEnumerator();
-    while (indexKeysIt.moveNext()) addDirWithParents(indexKeysIt.current, dirSet);
-    const leafKeysIt = leafPagesByDir.keys.getEnumerator();
-    while (leafKeysIt.moveNext()) addDirWithParents(leafKeysIt.current, dirSet);
+    const indexKeysIt = indexByDir.Keys.GetEnumerator();
+    while (indexKeysIt.MoveNext()) addDirWithParents(indexKeysIt.Current, dirSet);
+    const leafKeysIt = leafPagesByDir.Keys.GetEnumerator();
+    while (leafKeysIt.MoveNext()) addDirWithParents(leafKeysIt.Current, dirSet);
 
     const childDirsByDir = new Dictionary<string, List<string>>();
-    const dirKeyIt = dirSet.keys.getEnumerator();
-    while (dirKeyIt.moveNext()) {
-      const dirKey = dirKeyIt.current;
+    const dirKeyIt = dirSet.Keys.GetEnumerator();
+    while (dirKeyIt.MoveNext()) {
+      const dirKey = dirKeyIt.Current;
       if (dirKey === "") continue;
       const parentKey = parentDirKey(dirKey);
       let list = new List<string>();
-      const hasParentList = childDirsByDir.tryGetValue(parentKey, list);
+      const hasParentList = childDirsByDir.TryGetValue(parentKey, list);
       if (!hasParentList) {
         list = new List<string>();
-        childDirsByDir.remove(parentKey);
-        childDirsByDir.add(parentKey, list);
+        childDirsByDir.Remove(parentKey);
+        childDirsByDir.Add(parentKey, list);
       }
-      list.add(dirKey);
+      list.Add(dirKey);
     }
 
     const dirKeysList = new List<string>();
-    const dirIt = dirSet.keys.getEnumerator();
-    while (dirIt.moveNext()) dirKeysList.add(dirIt.current);
-    dirKeysList.sort((a: string, b: string) => dirDepth(b) - dirDepth(a));
-    const dirKeys = dirKeysList.toArray();
+    const dirIt = dirSet.Keys.GetEnumerator();
+    while (dirIt.MoveNext()) dirKeysList.Add(dirIt.Current);
+    dirKeysList.Sort((a: string, b: string) => dirDepth(b) - dirDepth(a));
+    const dirKeys = dirKeysList.ToArray();
 
     const sectionByDir = new Dictionary<string, PageContext>();
     const pagePlaceholder = new PageContext(
@@ -473,41 +473,41 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       emptyPages,
     );
 
-    for (let i = 0; i < dirKeys.length; i++) {
+    for (let i = 0; i < dirKeys.Length; i++) {
       const dirKey = dirKeys[i]!;
 
       const childPages = new List<PageContext>();
 
       let childDirList = new List<string>();
-      const hasChildDirs = childDirsByDir.tryGetValue(dirKey, childDirList);
+      const hasChildDirs = childDirsByDir.TryGetValue(dirKey, childDirList);
       if (hasChildDirs) {
-        childDirList.sort((a: string, b: string) => a.compareTo(b));
-        const childDirKeys = childDirList.toArray();
-        for (let j = 0; j < childDirKeys.length; j++) {
+        childDirList.Sort((a: string, b: string) => a.CompareTo(b));
+        const childDirKeys = childDirList.ToArray();
+        for (let j = 0; j < childDirKeys.Length; j++) {
           const childKey = childDirKeys[j]!;
           let childSection = pagePlaceholder;
-          const hasChildSection = sectionByDir.tryGetValue(childKey, childSection);
-          if (hasChildSection) childPages.add(childSection);
+          const hasChildSection = sectionByDir.TryGetValue(childKey, childSection);
+          if (hasChildSection) childPages.Add(childSection);
         }
       }
 
       let leafList = new List<PageContext>();
-      const hasLeaf = leafPagesByDir.tryGetValue(dirKey, leafList);
+      const hasLeaf = leafPagesByDir.TryGetValue(dirKey, leafList);
       if (hasLeaf) {
-        leafList.sort((a: PageContext, b: PageContext) => a.title.compareTo(b.title));
-        const leafPages = leafList.toArray();
-        for (let j = 0; j < leafPages.length; j++) childPages.add(leafPages[j]!);
+        leafList.Sort((a: PageContext, b: PageContext) => a.title.CompareTo(b.title));
+        const leafPages = leafList.ToArray();
+        for (let j = 0; j < leafPages.Length; j++) childPages.Add(leafPages[j]!);
       }
 
-      const routeSegments: string[] = dirKey === "" ? emptyStrings : dirKey.split("/");
+      const routeSegments: string[] = dirKey === "" ? emptyStrings : dirKey.Split("/");
       const urlParts = new List<string>();
-      urlParts.add(mount.urlPrefix);
-      for (let j = 0; j < routeSegments.length; j++) urlParts.add(routeSegments[j]!);
-      const relPermalink = combineUrl(urlParts.toArray());
+      urlParts.Add(mount.urlPrefix);
+      for (let j = 0; j < routeSegments.Length; j++) urlParts.Add(routeSegments[j]!);
+      const relPermalink = combineUrl(urlParts.ToArray());
 
       const idxPlaceholder = new DocsMarkdownRoute(mount, "", "", "", "", true, emptyStrings, emptyStrings, "", "");
       let idxRoute = idxPlaceholder;
-      const hasIdx = indexByDir.tryGetValue(dirKey, idxRoute);
+      const hasIdx = indexByDir.TryGetValue(dirKey, idxRoute);
 
       const dirSlug = dirKey === "" ? mountSection : lastDirSegment(dirKey);
       let title = dirKey === "" ? mount.name : humanizeSlug(dirSlug);
@@ -535,30 +535,30 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
           summary = new HtmlString(md.summaryHtml);
           description = fm.description ?? "";
           title = fm.title ?? title;
-          const plainText = Markdown.toPlainText(parsed.body, markdownPipeline);
+          const plainText = Markdown.ToPlainText(parsed.body, markdownPipeline);
           plain = plainText;
-          searchDocs.add(new SearchDoc(title, relPermalink, mount.name, plainText));
-          const dateUtc = fm.date ?? File.getLastWriteTimeUtc(idxRoute.sourcePath);
-          dateString = dateUtc.toString("O");
-          lastmodString = File.getLastWriteTimeUtc(idxRoute.sourcePath).toString("O");
-          file = new PageFile(Path.getFullPath(idxRoute.sourcePath), dirKey === "" ? "" : dirKey + "/", "_index");
+          searchDocs.Add(new SearchDoc(title, relPermalink, mount.name, plainText));
+          const dateUtc = fm.date ?? File.GetLastWriteTimeUtc(idxRoute.sourcePath);
+          dateString = dateUtc.ToString("O");
+          lastmodString = File.GetLastWriteTimeUtc(idxRoute.sourcePath).ToString("O");
+          file = new PageFile(Path.GetFullPath(idxRoute.sourcePath), dirKey === "" ? "" : dirKey + "/", "_index");
           params = fm.Params;
-          params.remove("relPath");
-          params.add("relPath", ParamValue.string(idxRoute.relPath));
+          params.Remove("relPath");
+          params.Add("relPath", ParamValue.string(idxRoute.relPath));
           const editUrl = computeEditUrl(mount, idxRoute.relPath);
           if (editUrl !== undefined) {
-            params.remove("editURL");
-            params.add("editURL", ParamValue.string(editUrl));
+            params.Remove("editURL");
+            params.Add("editURL", ParamValue.string(editUrl));
           }
         }
       }
 
-      params.remove("mount");
-      params.add("mount", ParamValue.string(mount.name));
-      params.remove("mountPrefix");
-      params.add("mountPrefix", ParamValue.string(mount.urlPrefix));
-      params.remove("dirKey");
-      params.add("dirKey", ParamValue.string(dirKey));
+      params.Remove("mount");
+      params.Add("mount", ParamValue.string(mount.name));
+      params.Remove("mountPrefix");
+      params.Add("mountPrefix", ParamValue.string(mount.urlPrefix));
+      params.Remove("dirKey");
+      params.Add("dirKey", ParamValue.string(dirKey));
 
       const slug = dirSlug;
       const sectionCtx = new PageContext(
@@ -584,31 +584,31 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
         emptyTranslations,
         undefined,
         site,
-        childPages.toArray(),
+        childPages.ToArray(),
         undefined,
         emptyPages,
         layout,
       );
 
-      sectionByDir.remove(dirKey);
-      sectionByDir.add(dirKey, sectionCtx);
-      allPagesForOutput.add(sectionCtx);
+      sectionByDir.Remove(dirKey);
+      sectionByDir.Add(dirKey, sectionCtx);
+      allPagesForOutput.Add(sectionCtx);
     }
 
     let mountRoot = pagePlaceholder;
-    const hasMountRoot = sectionByDir.tryGetValue("", mountRoot);
+    const hasMountRoot = sectionByDir.TryGetValue("", mountRoot);
     if (hasMountRoot) {
-      mountRootPages.add(mountRoot);
+      mountRootPages.Add(mountRoot);
     }
   }
 
-  const mountRoots = mountRootPages.toArray();
+  const mountRoots = mountRootPages.ToArray();
   site.pages = mountRoots;
-  site.docsMounts = mountContexts.toArray();
+  site.docsMounts = mountContexts.ToArray();
 
   const chosenHome =
-    docsConfig.homeMount !== undefined && docsConfig.homeMount.trim() !== ""
-      ? docsConfig.homeMount.trim().toLowerInvariant()
+    docsConfig.homeMount !== undefined && docsConfig.homeMount.Trim() !== ""
+      ? docsConfig.homeMount.Trim().ToLowerInvariant()
       : undefined;
 
   let homeContent = new HtmlString("");
@@ -617,15 +617,15 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   let homeTitle = config.title;
 
   if (chosenHome !== undefined) {
-    for (let i = 0; i < mountRoots.length; i++) {
+    for (let i = 0; i < mountRoots.Length; i++) {
       const m = mountRoots[i]!;
       let mountNameParam = ParamValue.string("");
-      m.Params.tryGetValue("mount", mountNameParam);
+      m.Params.TryGetValue("mount", mountNameParam);
       let mountPrefixParam = ParamValue.string("");
-      m.Params.tryGetValue("mountPrefix", mountPrefixParam);
+      m.Params.TryGetValue("mountPrefix", mountPrefixParam);
       const mountName = mountNameParam.stringValue;
       const mountPrefix = mountPrefixParam.stringValue;
-      if (mountName.toLowerInvariant() === chosenHome || mountPrefix.toLowerInvariant() === chosenHome) {
+      if (mountName.ToLowerInvariant() === chosenHome || mountPrefix.ToLowerInvariant() === chosenHome) {
         homeTitle = m.title;
         homeContent = m.content;
         homeSummary = m.summary;
@@ -666,13 +666,13 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   assignAncestry(homeCtx, undefined, emptyPages);
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
-  writeTextFile(Path.combine(outDir, "index.html"), homeHtml);
+  writeTextFile(Path.Combine(outDir, "index.html"), homeHtml);
 
   let pagesBuilt: int = 1;
 
   // Render all docs pages (skip the home page, which is always /index.html).
-  const allPages = allPagesForOutput.toArray();
-  for (let i = 0; i < allPages.length; i++) {
+  const allPages = allPagesForOutput.ToArray();
+  for (let i = 0; i < allPages.Length; i++) {
     const page = allPages[i]!;
     if (page.relPermalink === "/") continue;
 
@@ -680,17 +680,17 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     const html = renderWithBase(env, baseTpl, tpl, page);
 
     const slash: char = "/";
-    const outRel = page.relPermalink.trimStart(slash).trimEnd(slash).replace(slash, Path.directorySeparatorChar);
-    const outFile = outRel === "" ? Path.combine(outDir, "index.html") : Path.combine(outDir, outRel, "index.html");
+    const outRel = page.relPermalink.TrimStart(slash).TrimEnd(slash).Replace(slash, Path.DirectorySeparatorChar);
+    const outFile = outRel === "" ? Path.Combine(outDir, "index.html") : Path.Combine(outDir, outRel, "index.html");
     writeTextFile(outFile, html);
     pagesBuilt++;
   }
 
   if (docsConfig.generateSearchIndex) {
-    const name = docsConfig.searchIndexFileName.trim();
+    const name = docsConfig.searchIndexFileName.Trim();
     if (name !== "") {
-      const json = renderSearchIndexJson(searchDocs.toArray());
-      writeTextFile(Path.combine(outDir, name), json);
+      const json = renderSearchIndexJson(searchDocs.ToArray());
+      writeTextFile(Path.Combine(outDir, name), json);
       pagesBuilt++;
     }
   }

@@ -112,90 +112,90 @@ class ListPageContent {
   }
 }
 
-const normalizeSlashes = (path: string): string => path.replace("\\", "/");
+const normalizeSlashes = (path: string): string => path.Replace("\\", "/");
 
-const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).split("/");
+const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).Split("/");
 
-const isBranchIndexFile = (name: string): boolean => name.toLowerInvariant() === "_index.md";
+const isBranchIndexFile = (name: string): boolean => name.ToLowerInvariant() === "_index.md";
 
-const isLeafBundleIndexFile = (name: string): boolean => name.toLowerInvariant() === "index.md";
+const isLeafBundleIndexFile = (name: string): boolean => name.ToLowerInvariant() === "index.md";
 
 const withoutMdExtension = (fileName: string): string => {
-  const lower = fileName.toLowerInvariant();
-  return lower.endsWith(".md") ? fileName.substring(0, fileName.length - 3) : fileName;
+  const lower = fileName.ToLowerInvariant();
+  return lower.EndsWith(".md") ? fileName.Substring(0, fileName.Length - 3) : fileName;
 };
 
 const buildPageFile = (dirKey: string, fileName: string, filePath: string): PageFile => {
   const slash: char = "/";
-  const dir = dirKey === "" ? "" : dirKey.trimEnd(slash) + "/";
-  return new PageFile(Path.getFullPath(filePath), dir, withoutMdExtension(fileName));
+  const dir = dirKey === "" ? "" : dirKey.TrimEnd(slash) + "/";
+  return new PageFile(Path.GetFullPath(filePath), dir, withoutMdExtension(fileName));
 };
 
 const joinUrlPath = (parts: string[]): string => {
-  if (parts.length === 0) return "";
+  if (parts.Length === 0) return "";
   let out = parts[0]!;
-  for (let i = 1; i < parts.length; i++) out += "/" + parts[i]!;
+  for (let i = 1; i < parts.Length; i++) out += "/" + parts[i]!;
   return out;
 };
 
 const containsSlash = (s: string): boolean => {
-  const idx = s.indexOf("/");
+  const idx = s.IndexOf("/");
   return idx >= 0;
 };
 
 const combineOutputRelPath = (urlParts: string[]): string => {
-  if (urlParts.length === 0) return "index.html";
+  if (urlParts.Length === 0) return "index.html";
   let p = urlParts[0]!;
-  for (let i = 1; i < urlParts.length; i++) {
-    p = Path.combine(p, urlParts[i]!);
+  for (let i = 1; i < urlParts.Length; i++) {
+    p = Path.Combine(p, urlParts[i]!);
   }
-  return Path.combine(p, "index.html");
+  return Path.Combine(p, "index.html");
 };
 
-const isBundleDir = (dir: string): boolean => File.exists(Path.combine(dir, "index.md")) || File.exists(Path.combine(dir, "_index.md"));
+const isBundleDir = (dir: string): boolean => File.Exists(Path.Combine(dir, "index.md")) || File.Exists(Path.Combine(dir, "_index.md"));
 
 const copyBundleResources = (srcDir: string, destDir: string): void => {
-  if (!Directory.exists(srcDir)) return;
-  Directory.createDirectory(destDir);
+  if (!Directory.Exists(srcDir)) return;
+  Directory.CreateDirectory(destDir);
 
-  const files = Directory.getFiles(srcDir, "*", SearchOption.topDirectoryOnly);
-  for (let i = 0; i < files.length; i++) {
+  const files = Directory.GetFiles(srcDir, "*", SearchOption.TopDirectoryOnly);
+  for (let i = 0; i < files.Length; i++) {
     const srcFile = files[i]!;
-    if (srcFile.toLowerInvariant().endsWith(".md")) continue;
-    const destFile = Path.combine(destDir, Path.getFileName(srcFile) ?? "");
-    File.copy(srcFile, destFile, true);
+    if (srcFile.ToLowerInvariant().EndsWith(".md")) continue;
+    const destFile = Path.Combine(destDir, Path.GetFileName(srcFile) ?? "");
+    File.Copy(srcFile, destFile, true);
   }
 
-  const dirs = Directory.getDirectories(srcDir, "*", SearchOption.topDirectoryOnly);
-  for (let i = 0; i < dirs.length; i++) {
+  const dirs = Directory.GetDirectories(srcDir, "*", SearchOption.TopDirectoryOnly);
+  for (let i = 0; i < dirs.Length; i++) {
     const child = dirs[i]!;
     if (isBundleDir(child)) continue;
-    if (Directory.getFiles(child, "*.md", SearchOption.topDirectoryOnly).length > 0) continue;
-    const childName = Path.getFileName(child);
+    if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).Length > 0) continue;
+    const childName = Path.GetFileName(child);
     if (childName === undefined || childName === "") continue;
-    copyBundleResources(child, Path.combine(destDir, childName));
+    copyBundleResources(child, Path.Combine(destDir, childName));
   }
 };
 
 // Find a page by its path reference
 const findPageByRef = (pages: PageContext[], pageRef: string): PageContext | undefined => {
   const slash: char = "/";
-  const normalizedRef = pageRef.trim().trimStart(slash).trimEnd(slash).toLowerInvariant();
+  const normalizedRef = pageRef.Trim().TrimStart(slash).TrimEnd(slash).ToLowerInvariant();
   if (normalizedRef === "") return undefined;
 
-  for (let i = 0; i < pages.length; i++) {
+  for (let i = 0; i < pages.Length; i++) {
     const page = pages[i]!;
-    const normalizedPermalink = page.relPermalink.trimStart(slash).trimEnd(slash).toLowerInvariant();
+    const normalizedPermalink = page.relPermalink.TrimStart(slash).TrimEnd(slash).ToLowerInvariant();
     if (normalizedPermalink === normalizedRef) return page;
   }
 
   // Also try matching by section/slug pattern
-  for (let i = 0; i < pages.length; i++) {
+  for (let i = 0; i < pages.Length; i++) {
     const page = pages[i]!;
     // Check if pageRef matches the slug
-    if (page.slug.toLowerInvariant() === normalizedRef) return page;
+    if (page.slug.ToLowerInvariant() === normalizedRef) return page;
     // Check section/slug pattern
-    const sectionSlug = (page.section + "/" + page.slug).toLowerInvariant();
+    const sectionSlug = (page.section + "/" + page.slug).ToLowerInvariant();
     if (sectionSlug === normalizedRef) return page;
   }
 
@@ -211,7 +211,7 @@ const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void =
     }
   }
   // Resolve children recursively
-  for (let i = 0; i < entry.children.length; i++) {
+  for (let i = 0; i < entry.children.Length; i++) {
     resolveMenuEntryPageRef(entry.children[i]!, pages);
   }
 };
@@ -220,18 +220,18 @@ const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void =
 const resolveMenuPageRefs = (site: SiteContext): void => {
   const pages = site.pages;
   const menus = site.Menus;
-  const menuKeys = menus.keys.getEnumerator();
-  while (menuKeys.moveNext()) {
-    const menuName = menuKeys.current;
+  const menuKeys = menus.Keys.GetEnumerator();
+  while (menuKeys.MoveNext()) {
+    const menuName = menuKeys.Current;
     let entries: MenuEntry[] = [];
-    const hasEntries = menus.tryGetValue(menuName, entries);
+    const hasEntries = menus.TryGetValue(menuName, entries);
     if (hasEntries) {
-      for (let i = 0; i < entries.length; i++) {
+      for (let i = 0; i < entries.Length; i++) {
         resolveMenuEntryPageRef(entries[i]!, pages);
       }
     }
   }
-  menuKeys.dispose();
+  menuKeys.Dispose();
 };
 
 // Menu helpers imported from menus.ts
@@ -243,29 +243,29 @@ const integrateFrontmatterMenus = (
   // Build a dictionary of pages keyed by lowercase filename for safe lookup
   const pagesByFilename = new Dictionary<string, PageContext>();
   const allPages = site.pages;
-  for (let i = 0; i < allPages.length; i++) {
+  for (let i = 0; i < allPages.Length; i++) {
     const page = allPages[i]!;
     if (page.File !== undefined) {
-      const key = page.File.Filename.toLowerInvariant();
-      pagesByFilename.remove(key);
-      pagesByFilename.add(key, page);
+      const key = page.File.Filename.ToLowerInvariant();
+      pagesByFilename.Remove(key);
+      pagesByFilename.Add(key, page);
     }
   }
 
   // Collect all frontmatter menu entries per menu name
   const frontmatterEntriesPerMenu = new Dictionary<string, List<MenuEntry>>();
 
-  for (let i = 0; i < pageBuilds.length; i++) {
+  for (let i = 0; i < pageBuilds.Length; i++) {
     const pageBuild = pageBuilds[i]!;
-    if (pageBuild.menus.length === 0) continue;
+    if (pageBuild.menus.Length === 0) continue;
 
     // Look up the page context by filename
-    const filenameKey = pageBuild.file.Filename.toLowerInvariant();
+    const filenameKey = pageBuild.file.Filename.ToLowerInvariant();
     let pageContext: PageContext = allPages[0]!;
-    const foundPage = pagesByFilename.tryGetValue(filenameKey, pageContext);
+    const foundPage = pagesByFilename.TryGetValue(filenameKey, pageContext);
     if (!foundPage) continue;
 
-    for (let j = 0; j < pageBuild.menus.length; j++) {
+    for (let j = 0; j < pageBuild.menus.Length; j++) {
       const fmMenu = pageBuild.menus[j]!;
       const menuName = fmMenu.menu;
 
@@ -286,27 +286,27 @@ const integrateFrontmatterMenus = (
 
       // Add to collection for this menu
       let entryList: List<MenuEntry> = new List<MenuEntry>();
-      const hasEntries = frontmatterEntriesPerMenu.tryGetValue(menuName, entryList);
+      const hasEntries = frontmatterEntriesPerMenu.TryGetValue(menuName, entryList);
       if (!hasEntries) {
         entryList = new List<MenuEntry>();
-        frontmatterEntriesPerMenu.add(menuName, entryList);
+        frontmatterEntriesPerMenu.Add(menuName, entryList);
       }
-      entryList.add(entry);
+      entryList.Add(entry);
     }
   }
 
   // For each menu with frontmatter entries, merge with existing config entries and rebuild hierarchy
   const menuNamesList = new List<string>();
-  const keysIt = frontmatterEntriesPerMenu.keys.getEnumerator();
-  while (keysIt.moveNext()) menuNamesList.add(keysIt.current);
-  keysIt.dispose();
-  const menuNames = menuNamesList.toArray();
-  for (let i = 0; i < menuNames.length; i++) {
+  const keysIt = frontmatterEntriesPerMenu.Keys.GetEnumerator();
+  while (keysIt.MoveNext()) menuNamesList.Add(keysIt.Current);
+  keysIt.Dispose();
+  const menuNames = menuNamesList.ToArray();
+  for (let i = 0; i < menuNames.Length; i++) {
     const menuName = menuNames[i]!;
 
     // Get existing menu entries (may already have hierarchy from config)
     let existingEntries: MenuEntry[] = [];
-    const hasExisting = site.Menus.tryGetValue(menuName, existingEntries);
+    const hasExisting = site.Menus.TryGetValue(menuName, existingEntries);
 
     // Flatten existing entries to break apart any hierarchy
     let flatExisting: MenuEntry[] = [];
@@ -316,43 +316,43 @@ const integrateFrontmatterMenus = (
 
     // Get frontmatter entries for this menu
     let fmEntryList: List<MenuEntry> = new List<MenuEntry>();
-    frontmatterEntriesPerMenu.tryGetValue(menuName, fmEntryList);
-    const fmEntries = fmEntryList.toArray();
+    frontmatterEntriesPerMenu.TryGetValue(menuName, fmEntryList);
+    const fmEntries = fmEntryList.ToArray();
 
     // Combine all entries into a flat list
     const combined = new List<MenuEntry>();
-    for (let j = 0; j < flatExisting.length; j++) {
+    for (let j = 0; j < flatExisting.Length; j++) {
       const entry = flatExisting[j]!;
-      combined.add(entry);
+      combined.Add(entry);
     }
-    for (let j = 0; j < fmEntries.length; j++) {
+    for (let j = 0; j < fmEntries.Length; j++) {
       const entry = fmEntries[j]!;
-      combined.add(entry);
+      combined.Add(entry);
     }
 
     // Rebuild hierarchy from combined flat list (order-independent)
-    const hierarchical = buildMenuHierarchy(combined.toArray());
+    const hierarchical = buildMenuHierarchy(combined.ToArray());
 
     // Update the site's menu
-    site.Menus.remove(menuName);
-    site.Menus.add(menuName, hierarchical);
+    site.Menus.Remove(menuName);
+    site.Menus.Add(menuName, hierarchical);
   }
 };
 
 export const buildSite = (request: BuildRequest): BuildResult => {
-  const siteDir = Path.getFullPath(request.siteDir);
+  const siteDir = Path.GetFullPath(request.siteDir);
   const docs = loadDocsConfig(siteDir);
   if (docs !== undefined) return buildDocsSite(request, docs);
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
 
-  if (request.baseURL !== undefined && request.baseURL.trim() !== "") {
-    config.baseURL = ensureTrailingSlash(request.baseURL.trim());
+  if (request.baseURL !== undefined && request.baseURL.Trim() !== "") {
+    config.baseURL = ensureTrailingSlash(request.baseURL.Trim());
   }
 
-  const outDir = Path.isPathRooted(request.destinationDir)
+  const outDir = Path.IsPathRooted(request.destinationDir)
     ? request.destinationDir
-    : Path.combine(siteDir, request.destinationDir);
+    : Path.Combine(siteDir, request.destinationDir);
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
   const env = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts);
@@ -363,68 +363,68 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   ensureDir(outDir);
 
   if (themeDir !== undefined) {
-    copyDirRecursive(Path.combine(themeDir, "static"), outDir);
+    copyDirRecursive(Path.Combine(themeDir, "static"), outDir);
   }
-  const staticDir = Path.combine(siteDir, "static");
+  const staticDir = Path.Combine(siteDir, "static");
   copyDirRecursive(staticDir, outDir);
 
-  const contentDir = Path.combine(siteDir, config.contentDir);
+  const contentDir = Path.Combine(siteDir, config.contentDir);
   const emptyFiles: string[] = [];
-  const mdFiles: string[] = Directory.exists(contentDir)
-    ? Directory.getFiles(contentDir, "*.md", SearchOption.allDirectories)
+  const mdFiles: string[] = Directory.Exists(contentDir)
+    ? Directory.GetFiles(contentDir, "*.md", SearchOption.AllDirectories)
     : emptyFiles;
 
   const pages = new List<ContentPageBuild>();
   const listIndex = new Dictionary<string, ListPageContent>();
 
-  for (let i = 0; i < mdFiles.length; i++) {
+  for (let i = 0; i < mdFiles.Length; i++) {
     const filePath = mdFiles[i]!;
-    const rel = normalizeSlashes(Path.getRelativePath(contentDir, filePath));
+    const rel = normalizeSlashes(Path.GetRelativePath(contentDir, filePath));
     const parts = splitPath(rel);
-    const fileName = parts.length > 0 ? parts[parts.length - 1]! : rel;
+    const fileName = parts.Length > 0 ? parts[parts.Length - 1]! : rel;
 
     const dirPartsList = new List<string>();
-    for (let j = 0; j < parts.length - 1; j++) dirPartsList.add(parts[j]!);
-    const dirParts = dirPartsList.toArray();
+    for (let j = 0; j < parts.Length - 1; j++) dirPartsList.Add(parts[j]!);
+    const dirParts = dirPartsList.ToArray();
     const dirRel = joinUrlPath(dirParts);
 
     const parsed = parseContent(readTextFile(filePath));
     const fm = parsed.frontMatter;
 
-    const dateUtc = fm.date ?? File.getLastWriteTimeUtc(filePath);
-    const dateString = dateUtc.toString("O");
-    const lastmodString = File.getLastWriteTimeUtc(filePath).toString("O");
+    const dateUtc = fm.date ?? File.GetLastWriteTimeUtc(filePath);
+    const dateString = dateUtc.ToString("O");
+    const lastmodString = File.GetLastWriteTimeUtc(filePath).ToString("O");
 
     const pageParams = fm.Params;
     const file = buildPageFile(dirRel, fileName, filePath);
 
     if (isBranchIndexFile(fileName)) {
-      const srcDir = Path.getDirectoryName(filePath) ?? contentDir;
-      listIndex.remove(dirRel);
-      listIndex.add(dirRel, new ListPageContent(fm.title, parsed.body, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
+      const srcDir = Path.GetDirectoryName(filePath) ?? contentDir;
+      listIndex.Remove(dirRel);
+      listIndex.Add(dirRel, new ListPageContent(fm.title, parsed.body, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
       continue;
     }
 
-    const section = dirParts.length > 0 ? dirParts[0]! : "";
+    const section = dirParts.Length > 0 ? dirParts[0]! : "";
     let pageType = fm.type;
-    if (pageType === undefined || pageType.trim() === "") {
+    if (pageType === undefined || pageType.Trim() === "") {
       pageType = section !== "" ? section : "page";
     }
 
-    const isLeafBundle = isLeafBundleIndexFile(fileName) && dirParts.length > 0;
-    const defaultLeafName = isLeafBundle ? dirParts[dirParts.length - 1]! : withoutMdExtension(fileName);
+    const isLeafBundle = isLeafBundleIndexFile(fileName) && dirParts.Length > 0;
+    const defaultLeafName = isLeafBundle ? dirParts[dirParts.Length - 1]! : withoutMdExtension(fileName);
     const title = fm.title ?? humanizeSlug(defaultLeafName);
 
     const slug = fm.slug ?? slugify(defaultLeafName);
     const urlPartsList = new List<string>();
     if (isLeafBundle === true) {
-      for (let j = 0; j < dirParts.length - 1; j++) urlPartsList.add(dirParts[j]!);
-      urlPartsList.add(slug);
+      for (let j = 0; j < dirParts.Length - 1; j++) urlPartsList.Add(dirParts[j]!);
+      urlPartsList.Add(slug);
     } else {
-      for (let j = 0; j < dirParts.length; j++) urlPartsList.add(dirParts[j]!);
-      urlPartsList.add(slug);
+      for (let j = 0; j < dirParts.Length; j++) urlPartsList.Add(dirParts[j]!);
+      urlPartsList.Add(slug);
     }
-    const urlParts = urlPartsList.toArray();
+    const urlParts = urlPartsList.ToArray();
 
     const relPermalink = combineUrl(urlParts);
     const outputRelPath = combineOutputRelPath(urlParts);
@@ -451,10 +451,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       fm.menus,
     );
 
-    if (!page.draft || request.buildDrafts) pages.add(page);
+    if (!page.draft || request.buildDrafts) pages.Add(page);
   }
 
-  pages.sort((a: ContentPageBuild, b: ContentPageBuild) => DateTime.compare(b.dateUtc, a.dateUtc));
+  pages.Sort((a: ContentPageBuild, b: ContentPageBuild) => DateTime.Compare(b.dateUtc, a.dateUtc));
 
   const emptyPages: PageContext[] = [];
   const emptyTranslations: PageContext[] = [];
@@ -462,17 +462,17 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   // Build language contexts for multilingual support
   const allLanguages = new List<LanguageContext>();
-  if (config.languages.length > 0) {
-    for (let i = 0; i < config.languages.length; i++) {
+  if (config.languages.Length > 0) {
+    for (let i = 0; i < config.languages.Length; i++) {
       const langConfig = config.languages[i]!;
-      allLanguages.add(new LanguageContext(langConfig.lang, langConfig.languageName, langConfig.languageDirection));
+      allLanguages.Add(new LanguageContext(langConfig.lang, langConfig.languageName, langConfig.languageDirection));
     }
   }
 
   // Create site with multilingual settings
   // For now, build the default (first) language; full multilingual build will iterate through all
-  const currentLang = config.languages.length > 0 ? config.languages[0] : undefined;
-  const site = new SiteContext(config, emptyPages, currentLang, allLanguages.count > 0 ? allLanguages.toArray() : undefined);
+  const currentLang = config.languages.Length > 0 ? config.languages[0] : undefined;
+  const site = new SiteContext(config, emptyPages, currentLang, allLanguages.Count > 0 ? allLanguages.ToArray() : undefined);
 
   // Set up Sites array (for now, just this site; full implementation would have all language sites)
   const allSites: SiteContext[] = [site];
@@ -483,8 +483,8 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const pageRawBodies = new Dictionary<PageContext, string>();
   const placeholderHtml = new HtmlString("");
 
-  const pageBuilds = pages.toArray();
-  for (let i = 0; i < pageBuilds.length; i++) {
+  const pageBuilds = pages.ToArray();
+  for (let i = 0; i < pageBuilds.Length; i++) {
     const p = pageBuilds[i]!;
     const ctx = new PageContext(
       p.title,
@@ -514,20 +514,20 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       emptyPages,
       p.layout,
     );
-    pageContexts.add(ctx);
-    pageRawBodies.add(ctx, p.rawBody);
+    pageContexts.Add(ctx);
+    pageRawBodies.Add(ctx, p.rawBody);
 
     let sectionPages = new List<PageContext>();
-    const hasSection = bySection.tryGetValue(p.section, sectionPages);
+    const hasSection = bySection.TryGetValue(p.section, sectionPages);
     if (!hasSection) {
       sectionPages = new List<PageContext>();
-      bySection.remove(p.section);
-      bySection.add(p.section, sectionPages);
+      bySection.Remove(p.section);
+      bySection.Add(p.section, sectionPages);
     }
-    sectionPages.add(ctx);
+    sectionPages.Add(ctx);
   }
 
-  const pageContextArr = pageContexts.toArray();
+  const pageContextArr = pageContexts.ToArray();
   site.pages = pageContextArr;
 
   // Integrate frontmatter menus into site.Menus
@@ -560,7 +560,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   let homeSourceDir: string | undefined = undefined;
 
   let homeIdxValue = new ListPageContent(undefined, "", "", undefined, undefined, homeParams, contentDir);
-  const hasHomeIdx = listIndex.tryGetValue("", homeIdxValue);
+  const hasHomeIdx = listIndex.TryGetValue("", homeIdxValue);
   if (hasHomeIdx) {
     if (homeIdxValue.title !== undefined) homeTitle = homeIdxValue.title;
     homeRawBody = homeIdxValue.rawBody;
@@ -612,42 +612,42 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   }
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
-  writeTextFile(Path.combine(outDir, "index.html"), homeHtml);
+  writeTextFile(Path.Combine(outDir, "index.html"), homeHtml);
   pagesBuilt++;
-  sitemapUrlSet.remove("/");
-  sitemapUrlSet.add("/", true);
+  sitemapUrlSet.Remove("/");
+  sitemapUrlSet.Add("/", true);
   if (homeSourceDir !== undefined) copyBundleResources(homeSourceDir, outDir);
 
   const sectionKeySet = new Dictionary<string, boolean>();
-  const keysIt = bySection.keys.getEnumerator();
-  while (keysIt.moveNext()) {
-    const k = keysIt.current;
+  const keysIt = bySection.Keys.GetEnumerator();
+  while (keysIt.MoveNext()) {
+    const k = keysIt.Current;
     if (k !== "") {
-      sectionKeySet.remove(k);
-      sectionKeySet.add(k, true);
+      sectionKeySet.Remove(k);
+      sectionKeySet.Add(k, true);
     }
   }
-  const listKeysIt = listIndex.keys.getEnumerator();
-  while (listKeysIt.moveNext()) {
-    const listKey = listKeysIt.current;
+  const listKeysIt = listIndex.Keys.GetEnumerator();
+  while (listKeysIt.MoveNext()) {
+    const listKey = listKeysIt.Current;
     const hasSlash = containsSlash(listKey);
     if (listKey === "" || hasSlash) continue;
-    sectionKeySet.remove(listKey);
-    sectionKeySet.add(listKey, true);
+    sectionKeySet.Remove(listKey);
+    sectionKeySet.Add(listKey, true);
   }
 
   const sectionKeysList = new List<string>();
-  const sectionKeysIt = sectionKeySet.keys.getEnumerator();
-  while (sectionKeysIt.moveNext()) sectionKeysList.add(sectionKeysIt.current);
-  const sectionKeys = sectionKeysList.toArray();
+  const sectionKeysIt = sectionKeySet.Keys.GetEnumerator();
+  while (sectionKeysIt.MoveNext()) sectionKeysList.Add(sectionKeysIt.Current);
+  const sectionKeys = sectionKeysList.ToArray();
 
-  for (let i = 0; i < sectionKeys.length; i++) {
+  for (let i = 0; i < sectionKeys.Length; i++) {
     const section = sectionKeys[i]!;
 
     let list: PageContext[] = emptyPages;
     let sectionPages = new List<PageContext>();
-    const ok = bySection.tryGetValue(section, sectionPages);
-    if (ok) list = sectionPages.toArray();
+    const ok = bySection.TryGetValue(section, sectionPages);
+    if (ok) list = sectionPages.ToArray();
 
     let title = humanizeSlug(section);
     let sectionRawBody = "";
@@ -659,7 +659,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let listSourceDir: string | undefined = undefined;
 
     let idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
-    const hasIdx = listIndex.tryGetValue(section, idxValue);
+    const hasIdx = listIndex.TryGetValue(section, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
       sectionRawBody = idxValue.rawBody;
@@ -709,40 +709,40 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       ctx.plain = md.plainText;
     }
 
-    const relOut = Path.combine(section, "index.html");
+    const relOut = Path.Combine(section, "index.html");
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
     const basePath = selectTemplate(env, [`${listType}/baseof.html`, `${section}/baseof.html`, "_default/baseof.html"]) ?? baseTpl;
     const html = renderWithBase(env, basePath, mainPath, ctx);
-    writeTextFile(Path.combine(outDir, relOut), html);
+    writeTextFile(Path.Combine(outDir, relOut), html);
     pagesBuilt++;
-    sitemapUrlSet.remove(ctx.relPermalink);
-    sitemapUrlSet.add(ctx.relPermalink, true);
-    if (listSourceDir !== undefined) copyBundleResources(listSourceDir, Path.combine(outDir, section));
+    sitemapUrlSet.Remove(ctx.relPermalink);
+    sitemapUrlSet.Add(ctx.relPermalink, true);
+    if (listSourceDir !== undefined) copyBundleResources(listSourceDir, Path.Combine(outDir, section));
   }
 
   const listDirKeys = new List<string>();
-  const nestedKeysIt = listIndex.keys.getEnumerator();
-  while (nestedKeysIt.moveNext()) {
-    const dirKey = nestedKeysIt.current;
+  const nestedKeysIt = listIndex.Keys.GetEnumerator();
+  while (nestedKeysIt.MoveNext()) {
+    const dirKey = nestedKeysIt.Current;
     const hasSlash = containsSlash(dirKey);
     if (dirKey === "" || !hasSlash) continue;
-    listDirKeys.add(dirKey);
+    listDirKeys.Add(dirKey);
   }
 
-  const nestedListDirs = listDirKeys.toArray();
-  for (let i = 0; i < nestedListDirs.length; i++) {
+  const nestedListDirs = listDirKeys.ToArray();
+  for (let i = 0; i < nestedListDirs.Length; i++) {
     const dirKey = nestedListDirs[i]!;
     const urlPrefix = combineUrl(splitPath(dirKey));
 
     const listPages = new List<PageContext>();
-    for (let j = 0; j < pageContextArr.length; j++) {
+    for (let j = 0; j < pageContextArr.Length; j++) {
       const p = pageContextArr[j]!;
-      if (p.relPermalink.startsWith(urlPrefix)) listPages.add(p);
+      if (p.relPermalink.StartsWith(urlPrefix)) listPages.Add(p);
     }
 
     const dirParts = splitPath(dirKey);
-    const leaf = dirParts.length > 0 ? dirParts[dirParts.length - 1]! : dirKey;
-    const section = dirParts.length > 0 ? dirParts[0]! : "";
+    const leaf = dirParts.Length > 0 ? dirParts[dirParts.Length - 1]! : dirKey;
+    const section = dirParts.Length > 0 ? dirParts[0]! : "";
 
     let title = humanizeSlug(leaf);
     let nestedRawBody = "";
@@ -754,7 +754,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let listSourceDir: string | undefined = undefined;
 
     let idxValue = new ListPageContent(undefined, "", "", undefined, undefined, listParams, contentDir);
-    const hasIdx = listIndex.tryGetValue(dirKey, idxValue);
+    const hasIdx = listIndex.TryGetValue(dirKey, idxValue);
     if (hasIdx) {
       if (idxValue.title !== undefined) title = idxValue.title;
       nestedRawBody = idxValue.rawBody;
@@ -789,7 +789,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       emptyTranslations,
       undefined,
       site,
-      listPages.toArray(),
+      listPages.ToArray(),
       undefined,
       emptyPages,
       layout,
@@ -808,14 +808,14 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
     const basePath = selectTemplate(env, [`${listType}/baseof.html`, `${section}/baseof.html`, "_default/baseof.html"]) ?? baseTpl;
     const html = renderWithBase(env, basePath, mainPath, ctx);
-    writeTextFile(Path.combine(outDir, outRel), html);
+    writeTextFile(Path.Combine(outDir, outRel), html);
     pagesBuilt++;
-    sitemapUrlSet.remove(ctx.relPermalink);
-    sitemapUrlSet.add(ctx.relPermalink, true);
+    sitemapUrlSet.Remove(ctx.relPermalink);
+    sitemapUrlSet.Add(ctx.relPermalink, true);
 
     if (listSourceDir !== undefined) {
       const slash: char = "/";
-      const destDir = Path.combine(outDir, dirKey.replace(slash, Path.directorySeparatorChar));
+      const destDir = Path.Combine(outDir, dirKey.Replace(slash, Path.DirectorySeparatorChar));
       copyBundleResources(listSourceDir, destDir);
     }
   }
@@ -823,48 +823,48 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const buildTaxonomy = (taxonomy: string, getTerms: (page: PageContext) => string[]): void => {
     const byTerm = new Dictionary<string, List<PageContext>>();
 
-    for (let i = 0; i < pageContextArr.length; i++) {
+    for (let i = 0; i < pageContextArr.Length; i++) {
       const page = pageContextArr[i]!;
       const terms = getTerms(page);
-      for (let j = 0; j < terms.length; j++) {
+      for (let j = 0; j < terms.Length; j++) {
         const raw = terms[j]!;
-        const termText = raw.trim();
+        const termText = raw.Trim();
         if (termText === "") continue;
         const termSlug = slugify(termText);
         if (termSlug === "") continue;
 
         let termPages = new List<PageContext>();
-        const hasTerm = byTerm.tryGetValue(termSlug, termPages);
+        const hasTerm = byTerm.TryGetValue(termSlug, termPages);
         if (!hasTerm) {
           termPages = new List<PageContext>();
-          byTerm.remove(termSlug);
-          byTerm.add(termSlug, termPages);
+          byTerm.Remove(termSlug);
+          byTerm.Add(termSlug, termPages);
         }
-        termPages.add(page);
+        termPages.Add(page);
       }
     }
 
     const termKeys = new List<string>();
-    const keysIt = byTerm.keys.getEnumerator();
-    while (keysIt.moveNext()) termKeys.add(keysIt.current);
-    termKeys.sort();
+    const keysIt = byTerm.Keys.GetEnumerator();
+    while (keysIt.MoveNext()) termKeys.Add(keysIt.Current);
+    termKeys.Sort();
 
     const emptyHtml = new HtmlString("");
     const termPagesOut = new List<PageContext>();
 
-    const termSlugs = termKeys.toArray();
-    for (let i = 0; i < termSlugs.length; i++) {
+    const termSlugs = termKeys.ToArray();
+    for (let i = 0; i < termSlugs.Length; i++) {
       const termSlug = termSlugs[i]!;
       let pagesForTermList = new List<PageContext>();
-      const ok = byTerm.tryGetValue(termSlug, pagesForTermList);
+      const ok = byTerm.TryGetValue(termSlug, pagesForTermList);
       if (!ok) continue;
-      const pagesForTerm = pagesForTermList.toArray();
+      const pagesForTerm = pagesForTermList.ToArray();
 
       const termParams = new Dictionary<string, ParamValue>();
-      termParams.remove("term");
-      termParams.add("term", ParamValue.string(termSlug));
-      termParams.remove("taxonomy");
-      termParams.add("taxonomy", ParamValue.string(taxonomy));
+      termParams.Remove("term");
+      termParams.Add("term", ParamValue.string(termSlug));
+      termParams.Remove("taxonomy");
+      termParams.Add("taxonomy", ParamValue.string(taxonomy));
 
       const ctx = new PageContext(
         humanizeSlug(termSlug),
@@ -894,23 +894,23 @@ export const buildSite = (request: BuildRequest): BuildResult => {
         emptyPages,
       );
 
-      termPagesOut.add(ctx);
+      termPagesOut.Add(ctx);
 
-      const outRel = Path.combine(taxonomy, termSlug, "index.html");
+      const outRel = Path.Combine(taxonomy, termSlug, "index.html");
       const mainPath =
         selectTemplate(env, [`${taxonomy}/taxonomy.html`, "taxonomy/taxonomy.html", "_default/taxonomy.html", "_default/list.html"]) ?? listTpl;
       const basePath =
         selectTemplate(env, [`${taxonomy}/baseof.html`, "taxonomy/baseof.html", "_default/baseof.html"]) ?? baseTpl;
       const html = renderWithBase(env, basePath, mainPath, ctx);
-      writeTextFile(Path.combine(outDir, outRel), html);
+      writeTextFile(Path.Combine(outDir, outRel), html);
       pagesBuilt++;
-      sitemapUrlSet.remove(ctx.relPermalink);
-      sitemapUrlSet.add(ctx.relPermalink, true);
+      sitemapUrlSet.Remove(ctx.relPermalink);
+      sitemapUrlSet.Add(ctx.relPermalink, true);
     }
 
     const taxParams = new Dictionary<string, ParamValue>();
-    taxParams.remove("taxonomy");
-    taxParams.add("taxonomy", ParamValue.string(taxonomy));
+    taxParams.Remove("taxonomy");
+    taxParams.Add("taxonomy", ParamValue.string(taxonomy));
 
     const taxCtx = new PageContext(
       humanizeSlug(taxonomy),
@@ -935,35 +935,35 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       emptyTranslations,
       undefined,
       site,
-      termPagesOut.toArray(),
+      termPagesOut.ToArray(),
       undefined,
       emptyPages,
     );
 
-    const taxOutRel = Path.combine(taxonomy, "index.html");
+    const taxOutRel = Path.Combine(taxonomy, "index.html");
     const taxMainPath =
       selectTemplate(env, [`${taxonomy}/terms.html`, "taxonomy/terms.html", "_default/terms.html", "_default/list.html"]) ?? listTpl;
     const taxBasePath =
       selectTemplate(env, [`${taxonomy}/baseof.html`, "taxonomy/baseof.html", "_default/baseof.html"]) ?? baseTpl;
     const taxHtml = renderWithBase(env, taxBasePath, taxMainPath, taxCtx);
-    writeTextFile(Path.combine(outDir, taxOutRel), taxHtml);
+    writeTextFile(Path.Combine(outDir, taxOutRel), taxHtml);
     pagesBuilt++;
-    sitemapUrlSet.remove(taxCtx.relPermalink);
-    sitemapUrlSet.add(taxCtx.relPermalink, true);
+    sitemapUrlSet.Remove(taxCtx.relPermalink);
+    sitemapUrlSet.Add(taxCtx.relPermalink, true);
   };
 
   buildTaxonomy("tags", (page: PageContext) => page.tags);
   buildTaxonomy("categories", (page: PageContext) => page.categories);
 
   const singles = pageBuilds;
-  for (let i = 0; i < singles.length; i++) {
+  for (let i = 0; i < singles.Length; i++) {
     const p = singles[i]!;
 
     const ctx = pageContextArr[i]!;
 
     // Render content with shortcodes now that we have PageContext and SiteContext
     let rawBody = "";
-    const hasRawBody = pageRawBodies.tryGetValue(ctx, rawBody);
+    const hasRawBody = pageRawBodies.TryGetValue(ctx, rawBody);
     if (hasRawBody && rawBody !== "") {
       const md = renderMarkdownWithShortcodes(rawBody, ctx, site, env);
       ctx.content = new HtmlString(md.html);
@@ -973,7 +973,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     }
 
     const templateType = p.type !== "" ? p.type : p.section;
-    const layoutCandidates = p.layout !== undefined && p.layout.trim() !== ""
+    const layoutCandidates = p.layout !== undefined && p.layout.Trim() !== ""
       ? [
           `${templateType}/${p.layout}.html`,
           `${p.section}/${p.layout}.html`,
@@ -994,38 +994,38 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     ) ?? baseTpl;
 
     const html = renderWithBase(env, basePath, mainPath, ctx);
-    writeTextFile(Path.combine(outDir, p.outputRelPath), html);
+    writeTextFile(Path.Combine(outDir, p.outputRelPath), html);
     pagesBuilt++;
-    sitemapUrlSet.remove(ctx.relPermalink);
-    sitemapUrlSet.add(ctx.relPermalink, true);
+    sitemapUrlSet.Remove(ctx.relPermalink);
+    sitemapUrlSet.Add(ctx.relPermalink, true);
 
-    if (isLeafBundleIndexFile(Path.getFileName(p.sourcePath) ?? "") && Path.getDirectoryName(p.sourcePath) !== undefined) {
-      const destDir = Path.getDirectoryName(Path.combine(outDir, p.outputRelPath));
+    if (isLeafBundleIndexFile(Path.GetFileName(p.sourcePath) ?? "") && Path.GetDirectoryName(p.sourcePath) !== undefined) {
+      const destDir = Path.GetDirectoryName(Path.Combine(outDir, p.outputRelPath));
       if (destDir !== undefined && destDir !== "") {
-        copyBundleResources(Path.getDirectoryName(p.sourcePath)!, destDir);
+        copyBundleResources(Path.GetDirectoryName(p.sourcePath)!, destDir);
       }
     }
   }
 
   const rels = new List<string>();
-  const relIt = sitemapUrlSet.keys.getEnumerator();
-  while (relIt.moveNext()) rels.add(relIt.current);
-  const relArr = rels.toArray();
+  const relIt = sitemapUrlSet.Keys.GetEnumerator();
+  while (relIt.MoveNext()) rels.Add(relIt.Current);
+  const relArr = rels.ToArray();
 
-  const sitemapPath = Path.combine(outDir, "sitemap.xml");
-  if (!File.exists(sitemapPath)) {
+  const sitemapPath = Path.Combine(outDir, "sitemap.xml");
+  if (!File.Exists(sitemapPath)) {
     writeTextFile(sitemapPath, renderSitemap(config, relArr));
     pagesBuilt++;
   }
 
-  const rssPath = Path.combine(outDir, "index.xml");
-  if (!File.exists(rssPath)) {
+  const rssPath = Path.Combine(outDir, "index.xml");
+  if (!File.Exists(rssPath)) {
     writeTextFile(rssPath, renderRss(config, site.pages));
     pagesBuilt++;
   }
 
-  const robotsPath = Path.combine(outDir, "robots.txt");
-  if (!File.exists(robotsPath)) {
+  const robotsPath = Path.Combine(outDir, "robots.txt");
+  if (!File.Exists(robotsPath)) {
     writeTextFile(robotsPath, renderRobotsTxt(config));
     pagesBuilt++;
   }

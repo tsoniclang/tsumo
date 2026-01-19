@@ -44,12 +44,12 @@ export class ShortcodeContext {
   Get(keyOrIndex: string): ParamValue | undefined {
     if (this.IsNamedParams) {
       let value: ParamValue = ParamValue.string("");
-      const found = this.Params.tryGetValue(keyOrIndex, value);
+      const found = this.Params.TryGetValue(keyOrIndex, value);
       return found ? value : undefined;
     }
     let idx: int = 0;
-    const parsed = Int32.tryParse(keyOrIndex, idx);
-    if (parsed && idx >= 0 && idx < this.positionalParams.length) {
+    const parsed = Int32.TryParse(keyOrIndex, idx);
+    if (parsed && idx >= 0 && idx < this.positionalParams.Length) {
       return ParamValue.string(this.positionalParams[idx]!);
     }
     return undefined;
