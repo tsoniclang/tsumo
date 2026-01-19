@@ -1,9 +1,9 @@
 import { Console } from "@tsonic/dotnet/System.js";
 import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { HttpListener, HttpListenerContext, HttpListenerResponse } from "@tsonic/dotnet/System.Net.js";
+import { ThreadPool } from "@tsonic/dotnet/System.Threading.js";
 import { FileSystemWatcher, WatcherChangeTypes } from "@tsonic/dotnet/System.IO.js";
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
-import { Task } from "@tsonic/dotnet/System.Threading.Tasks.js";
 import { Encoding } from "@tsonic/dotnet/System.Text.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
 import { buildSite } from "./builder.ts";
@@ -179,11 +179,13 @@ export const serveSite = (req: ServeRequest): void => {
   logLine("Press Ctrl+C to stop");
 
   if (req.watch) {
-    Task.Run(() => watchLoop(req, result.outputDir));
+    ThreadPool.QueueUserWorkItem((_state: unknown) => watchLoop(req, result.outputDir));
   }
 
   while (true) {
     const ctx = listener.GetContext();
-    Task.Run(() => handleRequest(result.outputDir, ctx));
+    ThreadPool.QueueUserWorkItem((_state: unknown) =>
+      handleRequest(result.outputDir, ctx)
+    );
   }
 };
