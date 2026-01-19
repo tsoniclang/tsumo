@@ -16,17 +16,17 @@ export class ScratchStore {
 
   get(key: string): TemplateValue {
     let v: TemplateValue = new NilValue();
-    return this.values.tryGetValue(key, v) ? v : new NilValue();
+    return this.values.TryGetValue(key, v) ? v : new NilValue();
   }
 
   set(key: string, value: TemplateValue): void {
-    this.values.remove(key);
-    this.values.add(key, value);
+    this.values.Remove(key);
+    this.values.Add(key, value);
   }
 
   add(key: string, value: TemplateValue): void {
     let cur: TemplateValue = new NilValue();
-    const has = this.values.tryGetValue(key, cur);
+    const has = this.values.TryGetValue(key, cur);
     if (!has) {
       this.set(key, value);
       return;
@@ -34,53 +34,53 @@ export class ScratchStore {
     if (cur instanceof AnyArrayValue) {
       const curArray = cur as AnyArrayValue;
       const mergedList = new List<TemplateValue>();
-      const it = curArray.value.getEnumerator();
-      while (it.moveNext()) mergedList.add(it.current);
+      const it = curArray.value.GetEnumerator();
+      while (it.MoveNext()) mergedList.Add(it.Current);
       if (value instanceof AnyArrayValue) {
         const valueArray = value as AnyArrayValue;
-        const vit = valueArray.value.getEnumerator();
-        while (vit.moveNext()) mergedList.add(vit.current);
+        const vit = valueArray.value.GetEnumerator();
+        while (vit.MoveNext()) mergedList.Add(vit.Current);
       } else {
-        mergedList.add(value);
+        mergedList.Add(value);
       }
       this.set(key, new AnyArrayValue(mergedList));
       return;
     }
     const pairList = new List<TemplateValue>();
-    pairList.add(cur);
-    pairList.add(value);
+    pairList.Add(cur);
+    pairList.Add(value);
     this.set(key, new AnyArrayValue(pairList));
   }
 
   delete(key: string): void {
-    this.values.remove(key);
+    this.values.Remove(key);
   }
 
   setInMap(mapName: string, key: string, value: TemplateValue): void {
     let cur: TemplateValue = new NilValue();
-    const has = this.values.tryGetValue(mapName, cur);
+    const has = this.values.TryGetValue(mapName, cur);
     if (has) {
       if (cur instanceof DictValue) {
         const dict = cur as DictValue;
-        dict.value.remove(key);
-        dict.value.add(key, value);
+        dict.value.Remove(key);
+        dict.value.Add(key, value);
         return;
       }
     }
     const map = new Dictionary<string, TemplateValue>();
-    map.remove(key);
-    map.add(key, value);
-    this.values.remove(mapName);
-    this.values.add(mapName, new DictValue(map));
+    map.Remove(key);
+    map.Add(key, value);
+    this.values.Remove(mapName);
+    this.values.Add(mapName, new DictValue(map));
   }
 
   deleteInMap(mapName: string, key: string): void {
     let cur: TemplateValue = new NilValue();
-    const has = this.values.tryGetValue(mapName, cur);
+    const has = this.values.TryGetValue(mapName, cur);
     if (has) {
       if (cur instanceof DictValue) {
         const dict = cur as DictValue;
-        dict.value.remove(key);
+        dict.value.Remove(key);
       }
     }
   }

@@ -56,15 +56,15 @@ const renderInlineChildrenToHtml = (container: ContainerInline): string => {
   const writer = new StringWriter();
   const renderer = new HtmlRenderer(writer);
   setupRenderer(renderer);
-  renderer.writeChildren(container);
-  return writer.toString();
+  renderer.WriteChildren(container);
+  return writer.ToString();
 };
 
 const stripHtmlTags = (html: string): string => {
   const result = new StringBuilder();
   let inTag = false;
-  for (let i = 0; i < html.length; i++) {
-    const c = html.substring(i, 1);
+  for (let i = 0; i < html.Length; i++) {
+    const c = html.Substring(i, 1);
     if (c === "<") {
       inTag = true;
       continue;
@@ -73,9 +73,9 @@ const stripHtmlTags = (html: string): string => {
       inTag = false;
       continue;
     }
-    if (!inTag) result.append(c);
+    if (!inTag) result.Append(c);
   }
-  return result.toString();
+  return result.ToString();
 };
 
 // Render hook template helpers
@@ -89,7 +89,7 @@ const renderLinkHookTemplate = (
   const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
   const emptyOverrides = new Dictionary<string, TemplateNode[]>();
   template.renderInto(sb, scope, env, emptyOverrides);
-  return sb.toString();
+  return sb.ToString();
 };
 
 const renderImageHookTemplate = (
@@ -102,7 +102,7 @@ const renderImageHookTemplate = (
   const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
   const emptyOverrides = new Dictionary<string, TemplateNode[]>();
   template.renderInto(sb, scope, env, emptyOverrides);
-  return sb.toString();
+  return sb.ToString();
 };
 
 const renderHeadingHookTemplate = (
@@ -115,7 +115,7 @@ const renderHeadingHookTemplate = (
   const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
   const emptyOverrides = new Dictionary<string, TemplateNode[]>();
   template.renderInto(sb, scope, env, emptyOverrides);
-  return sb.toString();
+  return sb.ToString();
 };
 
 // AST rewriting: Replace hookable elements with HtmlInline/HtmlBlock containing hook output
@@ -125,55 +125,55 @@ const renderHeadingHookTemplate = (
 const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookContext): void => {
   // Collect links to rewrite (can't modify during iteration)
   const linksToRewrite = new List<LinkInline>();
-  const it = container.getEnumerator();
-  while (it.moveNext()) {
-    const inline = it.current;
+  const it = container.GetEnumerator();
+  while (it.MoveNext()) {
+    const inline = it.Current;
     const link = trycast<LinkInline>(inline);
     if (link !== null) {
-      const isImage = link.isImage;
+      const isImage = link.IsImage;
       const hasHook = isImage ? hookCtx.imageHook !== undefined : hookCtx.linkHook !== undefined;
       if (hasHook) {
-        linksToRewrite.add(link);
+        linksToRewrite.Add(link);
       }
     }
     // Recurse into child containers first (before potential replacement)
     const childContainer = trycast<ContainerInline>(inline);
     if (childContainer !== null) rewriteInlinesForHooks(childContainer, hookCtx);
   }
-  it.dispose();
+  it.Dispose();
 
   // Now perform replacements
-  const linkArr = linksToRewrite.toArray();
-  for (let i = 0; i < linkArr.length; i++) {
+  const linkArr = linksToRewrite.ToArray();
+  for (let i = 0; i < linkArr.Length; i++) {
     const link = linkArr[i]!;
-    const isImage = link.isImage;
+    const isImage = link.IsImage;
 
     if (isImage && hookCtx.imageHook !== undefined) {
       // For images: use the rendered label content as alt text
       const altHtml = renderInlineChildrenToHtml(link);
       const alt = stripHtmlTags(altHtml);
-      const title = link.title !== undefined ? link.title : "";
+      const title = link.Title !== undefined ? link.Title : "";
 
-      const ctx = new ImageHookContext(link.url, alt, title, alt, hookCtx.page);
+      const ctx = new ImageHookContext(link.Url, alt, title, alt, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
       const hookHtml = renderImageHookTemplate(hookCtx.imageHook, hookValue, hookCtx.site, hookCtx.env);
 
       // Replace LinkInline with HtmlInline
       const htmlInline = new HtmlInline(hookHtml);
-      link.replaceBy(htmlInline, false);
+      link.ReplaceBy(htmlInline, false);
     } else if (!isImage && hookCtx.linkHook !== undefined) {
       // For links: render inner content to HTML
       const innerHtml = renderInlineChildrenToHtml(link);
       const plainText = stripHtmlTags(innerHtml);
-      const title = link.title !== undefined ? link.title : "";
+      const title = link.Title !== undefined ? link.Title : "";
 
-      const ctx = new LinkHookContext(link.url, innerHtml, title, plainText, hookCtx.page);
+      const ctx = new LinkHookContext(link.Url, innerHtml, title, plainText, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
       const hookHtml = renderLinkHookTemplate(hookCtx.linkHook, hookValue, hookCtx.site, hookCtx.env);
 
       // Replace LinkInline with HtmlInline
       const htmlInline = new HtmlInline(hookHtml);
-      link.replaceBy(htmlInline, false);
+      link.ReplaceBy(htmlInline, false);
     }
   }
 };
@@ -184,21 +184,21 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
   const headingsToRewrite = new List<HeadingBlock>();
   const headingIndices = new List<int>();
 
-  const blockIt = containerBlock.getEnumerator();
+  const blockIt = containerBlock.GetEnumerator();
   let idx = 0;
-  while (blockIt.moveNext()) {
-    const block = blockIt.current;
+  while (blockIt.MoveNext()) {
+    const block = blockIt.Current;
 
     const heading = trycast<HeadingBlock>(block);
     if (heading !== null && hookCtx.headingHook !== undefined) {
-      headingsToRewrite.add(heading);
-      headingIndices.add(idx);
+      headingsToRewrite.Add(heading);
+      headingIndices.Add(idx);
     }
 
     // Process inlines in leaf blocks
     const leaf = trycast<LeafBlock>(block);
     if (leaf !== null) {
-      const inline = leaf.inline;
+      const inline = leaf.Inline;
       if (inline !== undefined) rewriteInlinesForHooks(inline, hookCtx);
     }
 
@@ -208,39 +208,39 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
 
     idx = idx + 1;
   }
-  blockIt.dispose();
+  blockIt.Dispose();
 
   // Replace headings in reverse order (to preserve indices)
   const headingHookTemplate = hookCtx.headingHook;
   if (headingHookTemplate === undefined) return; // Type guard
 
-  const headingArr = headingsToRewrite.toArray();
-  const indexArr = headingIndices.toArray();
-  for (let i = headingArr.length - 1; i >= 0; i--) {
+  const headingArr = headingsToRewrite.ToArray();
+  const indexArr = headingIndices.ToArray();
+  for (let i = headingArr.Length - 1; i >= 0; i--) {
     const heading = headingArr[i]!;
     const headingIdx = indexArr[i]!;
 
     // Get anchor ID from existing attributes
-    const existingAttrs = HtmlAttributesExtensions.tryGetAttributes(heading);
-    const anchor = existingAttrs !== undefined && existingAttrs.id !== undefined ? existingAttrs.id : "";
+    const existingAttrs = HtmlAttributesExtensions.TryGetAttributes(heading);
+    const anchor = existingAttrs !== undefined && existingAttrs.Id !== undefined ? existingAttrs.Id : "";
 
     // Render inline content to HTML and plain text
-    const inline = heading.inline;
+    const inline = heading.Inline;
     const innerHtml = inline !== undefined ? renderInlineChildrenToHtml(inline) : "";
     const plainText = stripHtmlTags(innerHtml);
 
-    const ctx = new HeadingHookContext(heading.level, innerHtml, plainText, anchor, hookCtx.page);
+    const ctx = new HeadingHookContext(heading.Level, innerHtml, plainText, anchor, hookCtx.page);
     const hookValue = new HeadingHookValue(ctx);
     const hookHtml = renderHeadingHookTemplate(headingHookTemplate, hookValue, hookCtx.site, hookCtx.env);
 
     // Create HtmlBlock with hook output
     const parser = getHtmlBlockParser();
     const htmlBlock = new HtmlBlock(parser as HtmlBlockParser);
-    htmlBlock.lines = new StringLineGroup(hookHtml);
+    htmlBlock.Lines = new StringLineGroup(hookHtml);
 
     // Replace heading with HtmlBlock in parent
-    containerBlock.removeAt(headingIdx);
-    containerBlock.insert(headingIdx, htmlBlock);
+    containerBlock.RemoveAt(headingIdx);
+    containerBlock.Insert(headingIdx, htmlBlock);
   }
 };
 
@@ -258,7 +258,7 @@ export const renderMarkdownWithHooks = (
   hookCtx: RenderHookContext,
 ): string => {
   // Parse to AST, rewrite hookable elements, then render
-  const document = Markdown.parse(markdown, markdownPipeline);
+  const document = Markdown.Parse(markdown, markdownPipeline);
   applyRenderHooksToAst(document, hookCtx);
-  return Markdown.toHtml(document, markdownPipeline);
+  return Markdown.ToHtml(document, markdownPipeline);
 };

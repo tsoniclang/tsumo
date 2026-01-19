@@ -15,10 +15,10 @@ export class ShortcodeOrdinalTracker {
 
   next(name: string): int {
     let count: int = 0;
-    const has = this.counts.tryGetValue(name, count);
+    const has = this.counts.TryGetValue(name, count);
     const nextVal = has ? count + 1 : 0;
-    this.counts.remove(name);
-    this.counts.add(name, nextVal);
+    this.counts.Remove(name);
+    this.counts.Add(name, nextVal);
     return nextVal;
   }
 }
@@ -41,13 +41,13 @@ const executeShortcode = (
   // Check recursion guard
   const guardKey = call.name;
   let isRecursing: boolean = false;
-  const hasGuard = recursionGuard.tryGetValue(guardKey, isRecursing);
+  const hasGuard = recursionGuard.TryGetValue(guardKey, isRecursing);
   if (hasGuard && isRecursing) {
     return `<!-- shortcode recursion detected: ${call.name} -->`;
   }
 
-  recursionGuard.remove(guardKey);
-  recursionGuard.add(guardKey, true);
+  recursionGuard.Remove(guardKey);
+  recursionGuard.Add(guardKey, true);
 
   const ordinal = ordinalTracker.next(call.name);
 
@@ -77,10 +77,10 @@ const executeShortcode = (
 
   template.renderInto(sb, scope, env, emptyOverrides);
 
-  recursionGuard.remove(guardKey);
-  recursionGuard.add(guardKey, false);
+  recursionGuard.Remove(guardKey);
+  recursionGuard.Add(guardKey, false);
 
-  return sb.toString();
+  return sb.ToString();
 };
 
 export const processShortcodes = (
@@ -93,16 +93,16 @@ export const processShortcodes = (
   recursionGuard: Dictionary<string, boolean>,
 ): string => {
   const calls = parseShortcodes(text);
-  if (calls.length === 0) return text;
+  if (calls.Length === 0) return text;
 
   // Sort by startIndex descending to process from end to beginning
   const sorted = new List<ShortcodeCall>();
-  for (let i = 0; i < calls.length; i++) sorted.add(calls[i]!);
+  for (let i = 0; i < calls.Length; i++) sorted.Add(calls[i]!);
 
   // Simple bubble sort by startIndex descending
-  const arr = sorted.toArray();
-  for (let i = 0; i < arr.length; i++) {
-    for (let j = i + 1; j < arr.length; j++) {
+  const arr = sorted.ToArray();
+  for (let i = 0; i < arr.Length; i++) {
+    for (let j = i + 1; j < arr.Length; j++) {
       if (arr[j]!.startIndex > arr[i]!.startIndex) {
         const tmp = arr[i]!;
         arr[i] = arr[j]!;
@@ -112,14 +112,14 @@ export const processShortcodes = (
   }
 
   let result = text;
-  for (let i = 0; i < arr.length; i++) {
+  for (let i = 0; i < arr.Length; i++) {
     const call = arr[i]!;
 
     // Skip comment shortcodes ({{</* ... */>}} or {{%/* ... */%}})
     // These are handled by parseShortcodes skipping them already
 
     const replacement = executeShortcode(call, page, site, env, ordinalTracker, parent, recursionGuard);
-    result = result.substring(0, call.startIndex) + replacement + result.substring(call.endIndex);
+    result = result.Substring(0, call.startIndex) + replacement + result.Substring(call.endIndex);
   }
 
   return result;

@@ -33,14 +33,14 @@ export class ParamValue {
   }
 
   static parseScalar(text: string): ParamValue {
-    const trimmed = text.trim();
-    const lower = trimmed.toLowerInvariant();
+    const trimmed = text.Trim();
+    const lower = trimmed.ToLowerInvariant();
 
     if (lower === "true") return ParamValue.bool(true);
     if (lower === "false") return ParamValue.bool(false);
 
     let parsed: int = 0;
-    if (Int32.tryParse(trimmed, parsed)) return ParamValue.number(parsed);
+    if (Int32.TryParse(trimmed, parsed)) return ParamValue.number(parsed);
 
     return ParamValue.string(trimmed);
   }

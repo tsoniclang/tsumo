@@ -17,17 +17,5 @@
   "buildOptions": {
     "stripSymbols": true,
     "invariantGlobalization": true
-  },
-  "dotnet": {
-    "typeRoots": [
-      "../../node_modules/@tsonic/globals"
-    ],
-    "libraries": ["lib/Markdig.dll"],
-    "packageReferences": [
-      {
-        "id": "PhotoSauce.MagicScaler",
-        "version": "0.14.2"
-      }
-    ]
   }
 }

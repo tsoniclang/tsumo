@@ -37,9 +37,9 @@ export class SiteContext {
       this.Language = new LanguageContext(language.lang, language.languageName, language.languageDirection);
       this.languageCode = language.lang;
     } else {
-      const lang = config.languages.length > 0 ? config.languages[0]!.lang : (config.languageCode.trim() === "" ? "en" : config.languageCode);
-      const name = config.languages.length > 0 ? config.languages[0]!.languageName : lang;
-      const dir = config.languages.length > 0 ? config.languages[0]!.languageDirection : "ltr";
+      const lang = config.languages.Length > 0 ? config.languages[0]!.lang : (config.languageCode.Trim() === "" ? "en" : config.languageCode);
+      const name = config.languages.Length > 0 ? config.languages[0]!.languageName : lang;
+      const dir = config.languages.Length > 0 ? config.languages[0]!.languageDirection : "ltr";
       this.Language = new LanguageContext(lang, name, dir);
       this.languageCode = lang;  // Use computed lang, not config.languageCode, for consistency
     }
@@ -47,7 +47,7 @@ export class SiteContext {
     // Set all languages
     // Note: IsMultiLingual is false until per-language build is implemented.
     // Even with multiple configured languages, we only build for one language currently.
-    if (allLanguages !== undefined && allLanguages.length > 0) {
+    if (allLanguages !== undefined && allLanguages.Length > 0) {
       this.Languages = allLanguages;
     } else {
       const langs: LanguageContext[] = [this.Language];

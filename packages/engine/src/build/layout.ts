@@ -7,36 +7,36 @@ import { PageContext, SiteConfig } from "../models.ts";
 export const combineUrl = (parts: string[]): string => {
   const slash: char = "/";
   const sb = new List<string>();
-  for (let i = 0; i < parts.length; i++) {
-    const p = parts[i]!.trim();
-    if (p !== "") sb.add(p.trimStart(slash).trimEnd(slash));
+  for (let i = 0; i < parts.Length; i++) {
+    const p = parts[i]!.Trim();
+    if (p !== "") sb.Add(p.TrimStart(slash).TrimEnd(slash));
   }
-  const arr = sb.toArray();
+  const arr = sb.ToArray();
   let out = "/";
-  for (let i = 0; i < arr.length; i++) {
+  for (let i = 0; i < arr.Length; i++) {
     out += arr[i]!;
-    if (!out.endsWith("/")) out += "/";
+    if (!out.EndsWith("/")) out += "/";
   }
   return out === "//" ? "/" : out;
 };
 
 export const resolveThemeDir = (siteDir: string, config: SiteConfig, themesDir?: string): string | undefined => {
   if (config.theme === undefined) return undefined;
-  const themeName = config.theme.trim();
+  const themeName = config.theme.Trim();
   if (themeName === "") return undefined;
-  const themesDirTrimmed = themesDir !== undefined ? themesDir.trim() : "";
+  const themesDirTrimmed = themesDir !== undefined ? themesDir.Trim() : "";
   if (themesDirTrimmed !== "") {
-    const themesBase = Path.isPathRooted(themesDirTrimmed) ? themesDirTrimmed : Path.combine(siteDir, themesDirTrimmed);
-    const candidate = Path.combine(themesBase, themeName);
-    if (Directory.exists(candidate)) return candidate;
+    const themesBase = Path.IsPathRooted(themesDirTrimmed) ? themesDirTrimmed : Path.Combine(siteDir, themesDirTrimmed);
+    const candidate = Path.Combine(themesBase, themeName);
+    if (Directory.Exists(candidate)) return candidate;
   }
 
-  const themeDir = Path.combine(siteDir, "themes", themeName);
-  return Directory.exists(themeDir) ? themeDir : undefined;
+  const themeDir = Path.Combine(siteDir, "themes", themeName);
+  return Directory.Exists(themeDir) ? themeDir : undefined;
 };
 
 export const selectTemplate = (env: LayoutEnvironment, candidates: string[]): string | undefined => {
-  for (let i = 0; i < candidates.length; i++) {
+  for (let i = 0; i < candidates.Length; i++) {
     const p = candidates[i]!;
     const t = env.getTemplate(p);
     if (t !== undefined) return p;

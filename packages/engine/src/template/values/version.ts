@@ -23,8 +23,8 @@ export class VersionStringValue extends TemplateValue {
     const aParts = VersionStringValue.parseVersion(a);
     const bParts = VersionStringValue.parseVersion(b);
 
-    const aLen = aParts.length;
-    const bLen = bParts.length;
+    const aLen = aParts.Length;
+    const bLen = bParts.Length;
     const maxLen = aLen > bLen ? aLen : bLen;
 
     for (let i = 0; i < maxLen; i++) {
@@ -39,33 +39,33 @@ export class VersionStringValue extends TemplateValue {
   private static parseVersion(v: string): int[] {
     // Remove common prefixes like "v" or "V"
     let cleaned = v;
-    if (cleaned.startsWith("v") || cleaned.startsWith("V")) {
-      cleaned = cleaned.substring(1);
+    if (cleaned.StartsWith("v") || cleaned.StartsWith("V")) {
+      cleaned = cleaned.Substring(1);
     }
     // Split by dots and convert to numbers
-    const parts = cleaned.split(".");
+    const parts = cleaned.Split(".");
     const result = new List<int>();
-    for (let i = 0; i < parts.length; i++) {
+    for (let i = 0; i < parts.Length; i++) {
       const part = parts[i]!;
       // Extract leading numeric portion (handles cases like "1-beta")
       const num = VersionStringValue.extractLeadingNumber(part);
-      result.add(num);
+      result.Add(num);
     }
-    return result.toArray();
+    return result.ToArray();
   }
 
   private static extractLeadingNumber(s: string): int {
     let numStr = "";
-    for (let i = 0; i < s.length; i++) {
-      const ch = s.substring(i, 1);
+    for (let i = 0; i < s.Length; i++) {
+      const ch = s.Substring(i, 1);
       // Check if ch is a digit (0-9) using compareTo for C# compatibility
-      if (ch.compareTo("0") >= 0 && ch.compareTo("9") <= 0) {
+      if (ch.CompareTo("0") >= 0 && ch.CompareTo("9") <= 0) {
         numStr = numStr + ch;
       } else {
         break;
       }
     }
     if (numStr === "") return 0;
-    return Int32.parse(numStr);
+    return Int32.Parse(numStr);
   }
 }

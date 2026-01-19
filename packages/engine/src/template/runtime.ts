@@ -53,10 +53,10 @@ export class Pipeline {
   }
 
   eval(scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): TemplateValue {
-    if (this.stages.length === 0) return TemplateRuntime.nil;
+    if (this.stages.Length === 0) return TemplateRuntime.nil;
 
     let value = this.stages[0]!.eval(scope, env, overrides, defines, undefined);
-    for (let i = 1; i < this.stages.length; i++) {
+    for (let i = 1; i < this.stages.Length; i++) {
       value = this.stages[i]!.eval(scope, env, overrides, defines, value);
     }
     return value;
@@ -91,13 +91,13 @@ class TemplateRuntime {
       return value.value.value !== "";
     }
 
-    if (value instanceof DictValue) return value.value.count > 0;
-    if (value instanceof PageArrayValue) return value.value.length > 0;
-    if (value instanceof StringArrayValue) return value.value.length > 0;
-    if (value instanceof SitesArrayValue) return value.value.length > 0;
-    if (value instanceof DocsMountArrayValue) return value.value.length > 0;
-    if (value instanceof NavArrayValue) return value.value.length > 0;
-    if (value instanceof AnyArrayValue) return value.value.count > 0;
+    if (value instanceof DictValue) return value.value.Count > 0;
+    if (value instanceof PageArrayValue) return value.value.Length > 0;
+    if (value instanceof StringArrayValue) return value.value.Length > 0;
+    if (value instanceof SitesArrayValue) return value.value.Length > 0;
+    if (value instanceof DocsMountArrayValue) return value.value.Length > 0;
+    if (value instanceof NavArrayValue) return value.value.Length > 0;
+    if (value instanceof AnyArrayValue) return value.value.Count > 0;
 
     return true;
   }
@@ -116,7 +116,7 @@ class TemplateRuntime {
     }
 
     if (value instanceof NumberValue) {
-      return value.value.toString();
+      return value.value.ToString();
     }
 
     if (value instanceof PageValue) {
@@ -136,7 +136,7 @@ class TemplateRuntime {
     }
     if (value instanceof StringValue) {
       let parsed: int = 0;
-      if (Int32.tryParse(value.value, parsed)) return parsed;
+      if (Int32.TryParse(value.value, parsed)) return parsed;
       return 0;
     }
     if (value instanceof BoolValue) {
@@ -158,18 +158,18 @@ class TemplateRuntime {
       return value.value ? "true" : "false";
     }
     if (value instanceof NumberValue) {
-      return value.value.toString();
+      return value.value.ToString();
     }
     return "";
   }
 
   static parseStringLiteral(token: string): string | undefined {
-    const t = token.trim();
+    const t = token.Trim();
     if (
-      t.length >= 2 &&
-      ((t.startsWith("\"") && t.endsWith("\"")) || (t.startsWith("'") && t.endsWith("'")) || (t.startsWith("`") && t.endsWith("`")))
+      t.Length >= 2 &&
+      ((t.StartsWith("\"") && t.EndsWith("\"")) || (t.StartsWith("'") && t.EndsWith("'")) || (t.StartsWith("`") && t.EndsWith("`")))
     ) {
-      return t.substring(1, t.length - 2);
+      return t.Substring(1, t.Length - 2);
     }
     return undefined;
   }
@@ -177,18 +177,18 @@ class TemplateRuntime {
   static isNumberLiteral(token: string): boolean {
     if (token === "") return false;
     let parsed: int = 0;
-    return Int32.tryParse(token, parsed);
+    return Int32.TryParse(token, parsed);
   }
 
   static resolvePath(value: TemplateValue, segments: string[], scope: RenderScope): TemplateValue {
     let cur: TemplateValue = value;
-    for (let i = 0; i < segments.length; i++) {
+    for (let i = 0; i < segments.Length; i++) {
       const seg = segments[i]!;
       if (cur instanceof NilValue) return TemplateRuntime.nil;
 
       if (cur instanceof PageValue) {
         const page = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "title") cur = new StringValue(page.title);
         else if (k === "content") cur = new HtmlValue(page.content);
         else if (k === "summary") cur = new HtmlValue(page.summary);
@@ -202,7 +202,7 @@ class TemplateRuntime {
         else if (k === "type") cur = new StringValue(page.type);
         else if (k === "slug") cur = new StringValue(page.slug);
         else if (k === "relpermalink") cur = new StringValue(page.relPermalink);
-        else if (k === "layout") cur = page.layout !== undefined && page.layout.trim() !== "" ? new StringValue(page.layout) : TemplateRuntime.nil;
+        else if (k === "layout") cur = page.layout !== undefined && page.layout.Trim() !== "" ? new StringValue(page.layout) : TemplateRuntime.nil;
         else if (k === "file") cur = page.File !== undefined ? new FileValue(page.File) : TemplateRuntime.nil;
         else if (k === "language") cur = new LanguageValue(page.Language);
         else if (k === "translations") cur = new PageArrayValue(page.Translations);
@@ -212,7 +212,7 @@ class TemplateRuntime {
         else if (k === "parent") cur = page.parent !== undefined ? new PageValue(page.parent) : TemplateRuntime.nil;
         else if (k === "ancestors") cur = new PageArrayValue(page.ancestors);
         else if (k === "permalink") {
-          const rel = page.relPermalink.startsWith("/") ? page.relPermalink.substring(1) : page.relPermalink;
+          const rel = page.relPermalink.StartsWith("/") ? page.relPermalink.Substring(1) : page.relPermalink;
           cur = new StringValue(ensureTrailingSlash(scope.site.baseURL) + rel);
         } else if (k === "site") cur = new SiteValue(page.site);
         else if (k === "resources") {
@@ -236,7 +236,7 @@ class TemplateRuntime {
           if (parentPage !== undefined) {
             const siblings = TemplateRuntime.copyPageArray(parentPage.pages);
             let foundIdx: int = -1;
-            for (let pi = 0; pi < siblings.length; pi++) {
+            for (let pi = 0; pi < siblings.Length; pi++) {
               const sibling = siblings[pi]!;
               if (sibling.relPermalink === page.relPermalink) {
                 foundIdx = pi;
@@ -258,14 +258,14 @@ class TemplateRuntime {
           if (parentPage !== undefined) {
             const siblings = TemplateRuntime.copyPageArray(parentPage.pages);
             let foundIdx: int = -1;
-            for (let ni = 0; ni < siblings.length; ni++) {
+            for (let ni = 0; ni < siblings.Length; ni++) {
               const sibling = siblings[ni]!;
               if (sibling.relPermalink === page.relPermalink) {
                 foundIdx = ni;
                 break;
               }
             }
-            if (foundIdx >= 0 && foundIdx < siblings.length - 1) {
+            if (foundIdx >= 0 && foundIdx < siblings.Length - 1) {
               const nextIdx: int = foundIdx + 1;
               cur = new PageValue(siblings[nextIdx]!);
             } else {
@@ -281,7 +281,7 @@ class TemplateRuntime {
 
       if (cur instanceof SiteValue) {
         const site = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "title") cur = new StringValue(site.title);
         else if (k === "baseurl") cur = new StringValue(site.baseURL);
         else if (k === "languagecode") cur = new StringValue(site.languageCode);
@@ -306,7 +306,7 @@ class TemplateRuntime {
 
       if (cur instanceof LanguageValue) {
         const lang = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "lang") cur = new StringValue(lang.Lang);
         else if (k === "languagename") cur = new StringValue(lang.LanguageName);
         else if (k === "languagedirection") cur = new StringValue(lang.LanguageDirection);
@@ -316,7 +316,7 @@ class TemplateRuntime {
 
       if (cur instanceof FileValue) {
         const f = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "filename") cur = new StringValue(f.Filename);
         else if (k === "dir") cur = new StringValue(f.Dir);
         else if (k === "basefilename") cur = new StringValue(f.BaseFileName);
@@ -325,7 +325,7 @@ class TemplateRuntime {
       }
 
       if (cur instanceof SitesValue) {
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "default") cur = new SiteValue(cur.value);
         else cur = TemplateRuntime.nil;
         continue;
@@ -334,12 +334,12 @@ class TemplateRuntime {
       if (cur instanceof MenusValue) {
         const site = cur.site;
         let entries: MenuEntry[] = [];
-        const hasMenu = site.Menus.tryGetValue(seg, entries);
+        const hasMenu = site.Menus.TryGetValue(seg, entries);
         if (hasMenu) {
           cur = new MenuArrayValue(entries, site);
         } else {
-          const lowerSeg = seg.toLowerInvariant();
-          const hasMenuLower = site.Menus.tryGetValue(lowerSeg, entries);
+          const lowerSeg = seg.ToLowerInvariant();
+          const hasMenuLower = site.Menus.TryGetValue(lowerSeg, entries);
           cur = hasMenuLower ? new MenuArrayValue(entries, site) : TemplateRuntime.nil;
         }
         continue;
@@ -348,7 +348,7 @@ class TemplateRuntime {
       if (cur instanceof MenuEntryValue) {
         const entry = cur.value;
         const site = cur.site;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "name") cur = new StringValue(entry.name);
         else if (k === "url") cur = new StringValue(entry.url !== "" ? entry.url : entry.page?.relPermalink ?? "");
         else if (k === "title") cur = new StringValue(entry.title);
@@ -367,7 +367,7 @@ class TemplateRuntime {
 
       if (cur instanceof OutputFormatsValue) {
         const site = cur.site;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "get") {
           cur = new OutputFormatsGetValue(site);
         } else {
@@ -378,7 +378,7 @@ class TemplateRuntime {
 
       if (cur instanceof OutputFormatValue) {
         const fmt = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "rel") cur = new StringValue(fmt.Rel);
         else if (k === "mediatype") cur = TemplateRuntime.wrapMediaType(fmt.MediaType);
         else if (k === "permalink") cur = new StringValue(fmt.Permalink);
@@ -388,7 +388,7 @@ class TemplateRuntime {
 
       if (cur instanceof MediaTypeValue) {
         const mt = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "type") cur = new StringValue(mt.Type);
         else cur = TemplateRuntime.nil;
         continue;
@@ -396,7 +396,7 @@ class TemplateRuntime {
 
       if (cur instanceof ShortcodeValue) {
         const sc = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "name") cur = new StringValue(sc.name);
         else if (k === "page") cur = new PageValue(sc.Page);
         else if (k === "site") cur = new SiteValue(sc.Site);
@@ -412,7 +412,7 @@ class TemplateRuntime {
 
       if (cur instanceof LinkHookValue) {
         const hook = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "destination") cur = new StringValue(hook.Destination);
         else if (k === "text") cur = new HtmlValue(new HtmlString(hook.Text));
         else if (k === "title") cur = new StringValue(hook.Title);
@@ -424,7 +424,7 @@ class TemplateRuntime {
 
       if (cur instanceof ImageHookValue) {
         const hook = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "destination") cur = new StringValue(hook.Destination);
         else if (k === "text") cur = new StringValue(hook.Text);
         else if (k === "title") cur = new StringValue(hook.Title);
@@ -436,7 +436,7 @@ class TemplateRuntime {
 
       if (cur instanceof HeadingHookValue) {
         const hook = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "level") cur = new NumberValue(hook.Level);
         else if (k === "text") cur = new HtmlValue(new HtmlString(hook.Text));
         else if (k === "plaintext") cur = new StringValue(hook.PlainText);
@@ -449,12 +449,12 @@ class TemplateRuntime {
       if (cur instanceof TaxonomiesValue) {
         const site = cur.site;
         let terms: Dictionary<string, PageContext[]> = new Dictionary<string, PageContext[]>();
-        const found = site.Taxonomies.tryGetValue(seg, terms);
+        const found = site.Taxonomies.TryGetValue(seg, terms);
         if (found) {
           cur = new TaxonomyTermsValue(terms, site);
         } else {
-          const lowerSeg = seg.toLowerInvariant();
-          const foundLower = site.Taxonomies.tryGetValue(lowerSeg, terms);
+          const lowerSeg = seg.ToLowerInvariant();
+          const foundLower = site.Taxonomies.TryGetValue(lowerSeg, terms);
           cur = foundLower ? new TaxonomyTermsValue(terms, site) : TemplateRuntime.nil;
         }
         continue;
@@ -464,7 +464,7 @@ class TemplateRuntime {
         const termsDict = cur.terms;
         const site = cur.site;
         let pages: PageContext[] = [];
-        const found = termsDict.tryGetValue(seg, pages);
+        const found = termsDict.TryGetValue(seg, pages);
         if (found) {
           cur = new PageArrayValue(pages);
         } else {
@@ -475,24 +475,24 @@ class TemplateRuntime {
 
       if (cur instanceof UrlValue) {
         const uri = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "isabs") {
-          cur = new BoolValue(uri.isAbsoluteUri);
+          cur = new BoolValue(uri.IsAbsoluteUri);
           continue;
         }
         if (k === "host") {
           // Hugo returns empty string for relative URIs, not an exception
-          cur = new StringValue(uri.isAbsoluteUri ? uri.host : "");
+          cur = new StringValue(uri.IsAbsoluteUri ? uri.Host : "");
           continue;
         }
         if (k === "scheme") {
           // Hugo returns empty string for relative URIs
-          cur = new StringValue(uri.isAbsoluteUri ? uri.scheme : "");
+          cur = new StringValue(uri.IsAbsoluteUri ? uri.Scheme : "");
           continue;
         }
         if (k === "string") {
           // Return the original string representation
-          cur = new StringValue(uri.originalString);
+          cur = new StringValue(uri.OriginalString);
           continue;
         }
         if (k === "path" || k === "rawquery" || k === "fragment") {
@@ -509,7 +509,7 @@ class TemplateRuntime {
       if (cur instanceof ResourceValue) {
         const rv = cur as ResourceValue;
         const res = rv.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "content") {
           cur = new StringValue(res.text ?? "");
           continue;
@@ -519,24 +519,24 @@ class TemplateRuntime {
           continue;
         }
         if (k === "relpermalink") {
-          if (res.outputRelPath === undefined || res.outputRelPath.trim() === "") {
+          if (res.outputRelPath === undefined || res.outputRelPath.Trim() === "") {
             cur = TemplateRuntime.nil;
             continue;
           }
           rv.manager.ensurePublished(res);
           const slash: char = "/";
-          const rel = res.outputRelPath.trimStart(slash);
+          const rel = res.outputRelPath.TrimStart(slash);
           cur = new StringValue("/" + rel);
           continue;
         }
         if (k === "permalink") {
-          if (res.outputRelPath === undefined || res.outputRelPath.trim() === "") {
+          if (res.outputRelPath === undefined || res.outputRelPath.Trim() === "") {
             cur = TemplateRuntime.nil;
             continue;
           }
           rv.manager.ensurePublished(res);
           const slash: char = "/";
-          const rel = res.outputRelPath.trimStart(slash);
+          const rel = res.outputRelPath.TrimStart(slash);
           cur = new StringValue(ensureTrailingSlash(scope.site.baseURL) + rel);
           continue;
         }
@@ -558,7 +558,7 @@ class TemplateRuntime {
 
       if (cur instanceof ResourceDataValue) {
         const data = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "integrity") {
           cur = new StringValue(data.Integrity);
           continue;
@@ -569,7 +569,7 @@ class TemplateRuntime {
 
       if (cur instanceof DocsMountValue) {
         const mount = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "name") cur = new StringValue(mount.name);
         else if (k === "urlprefix") cur = new StringValue(mount.urlPrefix);
         else if (k === "nav") cur = new NavArrayValue(mount.nav);
@@ -579,7 +579,7 @@ class TemplateRuntime {
 
       if (cur instanceof NavItemValue) {
         const item = cur.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
         if (k === "title") cur = new StringValue(item.title);
         else if (k === "url") cur = new StringValue(item.url);
         else if (k === "children") cur = new NavArrayValue(item.children);
@@ -593,14 +593,14 @@ class TemplateRuntime {
       if (cur instanceof DictValue) {
         const dict = cur.value;
         let direct: TemplateValue = TemplateRuntime.nil;
-        const hasDirect = dict.tryGetValue(seg, direct);
+        const hasDirect = dict.TryGetValue(seg, direct);
         if (hasDirect) {
           cur = direct;
           continue;
         }
-        const lowerKey = seg.toLowerInvariant();
+        const lowerKey = seg.ToLowerInvariant();
         let lower: TemplateValue = TemplateRuntime.nil;
-        const hasLower = dict.tryGetValue(lowerKey, lower);
+        const hasLower = dict.TryGetValue(lowerKey, lower);
         if (hasLower) {
           cur = lower;
           continue;
@@ -613,7 +613,7 @@ class TemplateRuntime {
       if (cur instanceof PageArrayValue) {
         const pageArrVal = cur as PageArrayValue;
         const pages: PageContext[] = pageArrVal.value;
-        const k = seg.toLowerInvariant();
+        const k = seg.ToLowerInvariant();
 
         // Sorting methods (return sorted copy)
         if (k === "bylastmod") {
@@ -651,7 +651,7 @@ class TemplateRuntime {
 
         // Length property
         if (k === "len") {
-          cur = new NumberValue(pages.length);
+          cur = new NumberValue(pages.Length);
           continue;
         }
 
@@ -666,34 +666,34 @@ class TemplateRuntime {
 
   static wrapStringDict(dict: Dictionary<string, string>): DictValue {
     const mapped = new Dictionary<string, TemplateValue>();
-    const it = dict.getEnumerator();
-    while (it.moveNext()) {
-      const kv = it.current;
-      mapped.remove(kv.key);
-      mapped.add(kv.key, new StringValue(kv.value));
+    const it = dict.GetEnumerator();
+    while (it.MoveNext()) {
+      const kv = it.Current;
+      mapped.Remove(kv.Key);
+      mapped.Add(kv.Key, new StringValue(kv.Value));
     }
     return new DictValue(mapped);
   }
 
   static wrapParamDict(dict: Dictionary<string, ParamValue>): DictValue {
     const mapped = new Dictionary<string, TemplateValue>();
-    const it = dict.getEnumerator();
-    while (it.moveNext()) {
-      const kv = it.current;
-      const pv = kv.value;
+    const it = dict.GetEnumerator();
+    while (it.MoveNext()) {
+      const kv = it.Current;
+      const pv = kv.Value;
       const kind = pv.kind;
       let tv: TemplateValue = new StringValue(pv.stringValue);
       if (kind === ParamKind.Bool) tv = new BoolValue(pv.boolValue);
       if (kind === ParamKind.Number) tv = new NumberValue(pv.numberValue);
-      mapped.remove(kv.key);
-      mapped.add(kv.key, tv);
+      mapped.Remove(kv.Key);
+      mapped.Add(kv.Key, tv);
     }
     return new DictValue(mapped);
   }
 
   static wrapLanguages(languages: LanguageContext[]): AnyArrayValue {
     const items = new List<TemplateValue>();
-    for (let i = 0; i < languages.length; i++) items.add(new LanguageValue(languages[i]!));
+    for (let i = 0; i < languages.Length; i++) items.Add(new LanguageValue(languages[i]!));
     return new AnyArrayValue(items);
   }
 
@@ -703,103 +703,103 @@ class TemplateRuntime {
 
   static getPageStore(page: PageContext): ScratchStore {
     let existing = new ScratchStore();
-    const has = TemplateRuntime.pageStores.tryGetValue(page, existing);
+    const has = TemplateRuntime.pageStores.TryGetValue(page, existing);
     if (has) return existing;
     const store = new ScratchStore();
-    TemplateRuntime.pageStores.remove(page);
-    TemplateRuntime.pageStores.add(page, store);
+    TemplateRuntime.pageStores.Remove(page);
+    TemplateRuntime.pageStores.Add(page, store);
     return store;
   }
 
   static getSiteStore(site: SiteContext): ScratchStore {
     let existing = new ScratchStore();
-    const has = TemplateRuntime.siteStores.tryGetValue(site, existing);
+    const has = TemplateRuntime.siteStores.TryGetValue(site, existing);
     if (has) return existing;
     const store = new ScratchStore();
-    TemplateRuntime.siteStores.remove(site);
-    TemplateRuntime.siteStores.add(site, store);
+    TemplateRuntime.siteStores.Remove(site);
+    TemplateRuntime.siteStores.Add(site, store);
     return store;
   }
 
   static splitUrlParts(uri: Uri): UrlParts {
     let rawQuery = "";
     let fragment = "";
-    if (uri.isAbsoluteUri) {
-      rawQuery = uri.query.startsWith("?") ? uri.query.substring(1) : uri.query;
-      fragment = uri.fragment.startsWith("#") ? uri.fragment.substring(1) : uri.fragment;
-      return new UrlParts(uri.absolutePath, rawQuery, fragment);
+    if (uri.IsAbsoluteUri) {
+      rawQuery = uri.Query.StartsWith("?") ? uri.Query.Substring(1) : uri.Query;
+      fragment = uri.Fragment.StartsWith("#") ? uri.Fragment.Substring(1) : uri.Fragment;
+      return new UrlParts(uri.AbsolutePath, rawQuery, fragment);
     }
 
-    const raw = uri.originalString;
-    const hashIndex = raw.indexOf("#");
-    const beforeHash = hashIndex >= 0 ? raw.substring(0, hashIndex) : raw;
-    fragment = hashIndex >= 0 ? raw.substring(hashIndex + 1) : "";
+    const raw = uri.OriginalString;
+    const hashIndex = raw.IndexOf("#");
+    const beforeHash = hashIndex >= 0 ? raw.Substring(0, hashIndex) : raw;
+    fragment = hashIndex >= 0 ? raw.Substring(hashIndex + 1) : "";
 
-    const queryIndex = beforeHash.indexOf("?");
-    const path = queryIndex >= 0 ? beforeHash.substring(0, queryIndex) : beforeHash;
-    rawQuery = queryIndex >= 0 ? beforeHash.substring(queryIndex + 1) : "";
+    const queryIndex = beforeHash.IndexOf("?");
+    const path = queryIndex >= 0 ? beforeHash.Substring(0, queryIndex) : beforeHash;
+    rawQuery = queryIndex >= 0 ? beforeHash.Substring(queryIndex + 1) : "";
 
     return new UrlParts(path, rawQuery, fragment);
   }
 
   static normalizeRelPath(raw: string): string {
     const normalized = replaceText(raw, "\\", "/");
-    const parts = normalized.split("/");
+    const parts = normalized.Split("/");
     const outParts = new List<string>();
-    for (let i = 0; i < parts.length; i++) {
-      const p = parts[i]!.trim();
+    for (let i = 0; i < parts.Length; i++) {
+      const p = parts[i]!.Trim();
       if (p === "" || p === ".") continue;
       if (p === "..") {
-        if (outParts.count > 0) outParts.removeAt(outParts.count - 1);
+        if (outParts.Count > 0) outParts.RemoveAt(outParts.Count - 1);
         continue;
       }
-      outParts.add(p);
+      outParts.Add(p);
     }
-    const arr = outParts.toArray();
+    const arr = outParts.ToArray();
     let out = "";
-    for (let i = 0; i < arr.length; i++) out = out === "" ? arr[i]! : out + "/" + arr[i]!;
+    for (let i = 0; i < arr.Length; i++) out = out === "" ? arr[i]! : out + "/" + arr[i]!;
     return out;
   }
 
   private static segmentMatch(pattern: string, segment: string): boolean {
     if (pattern === "*") return true;
-    const star = pattern.indexOf("*");
+    const star = pattern.IndexOf("*");
     if (star < 0) return pattern === segment;
 
-    const parts = pattern.split("*");
+    const parts = pattern.Split("*");
     let pos = 0;
-    for (let i = 0; i < parts.length; i++) {
+    for (let i = 0; i < parts.Length; i++) {
       const p = parts[i]!;
       if (p === "") continue;
-      const idx = segment.indexOf(p, pos);
+      const idx = segment.IndexOf(p, pos);
       if (idx < 0) return false;
-      if (i === 0 && !pattern.startsWith("*") && idx !== 0) return false;
-      pos = idx + p.length;
+      if (i === 0 && !pattern.StartsWith("*") && idx !== 0) return false;
+      pos = idx + p.Length;
     }
-    if (!pattern.endsWith("*") && pos !== segment.length) return false;
+    if (!pattern.EndsWith("*") && pos !== segment.Length) return false;
     return true;
   }
 
   private static splitGlobSegments(raw: string): string[] {
     const slash: char = "/";
-    const normalized = replaceText(raw.trim(), "\\", "/").trimStart(slash);
+    const normalized = replaceText(raw.Trim(), "\\", "/").TrimStart(slash);
     if (normalized === "") {
       const empty: string[] = [];
       return empty;
     }
-    return normalized.split("/");
+    return normalized.Split("/");
   }
 
   private static globMatchAt(patSegs: string[], pathSegs: string[], pi: int, si: int): boolean {
-    if (pi >= patSegs.length) return si >= pathSegs.length;
+    if (pi >= patSegs.Length) return si >= pathSegs.Length;
     const p = patSegs[pi]!;
     if (p === "**") {
-      for (let i = si; i <= pathSegs.length; i++) {
+      for (let i = si; i <= pathSegs.Length; i++) {
         if (TemplateRuntime.globMatchAt(patSegs, pathSegs, pi + 1, i)) return true;
       }
       return false;
     }
-    if (si >= pathSegs.length) return false;
+    if (si >= pathSegs.Length) return false;
     if (!TemplateRuntime.segmentMatch(p, pathSegs[si]!)) return false;
     return TemplateRuntime.globMatchAt(patSegs, pathSegs, pi + 1, si + 1);
   }
@@ -811,9 +811,9 @@ class TemplateRuntime {
   }
 
   static resolvePageRef(page: PageContext, ref: string): string {
-    const raw = ref.trim();
+    const raw = ref.Trim();
     if (raw === "" || raw === "/") return "";
-    if (raw.startsWith("/")) return TemplateRuntime.trimSlashes(raw);
+    if (raw.StartsWith("/")) return TemplateRuntime.trimSlashes(raw);
     const base = page.File !== undefined ? page.File.Dir : TemplateRuntime.trimSlashes(page.relPermalink);
     const combined =
       base === "" ? raw : TemplateRuntime.trimEndChar(base, "/") + "/" + TemplateRuntime.trimStartChar(raw, "/");
@@ -821,13 +821,13 @@ class TemplateRuntime {
   }
 
   static tryGetPage(site: SiteContext, pathRaw: string): PageContext | undefined {
-    const trimmed = pathRaw.trim();
+    const trimmed = pathRaw.Trim();
     if (trimmed === "" || trimmed === "/") return site.home;
     const needle = TemplateRuntime.trimSlashes(trimmed);
     if (needle === "") return site.home;
     let candidates: PageContext[] = site.pages;
-    if (site.allPages.length > 0) candidates = site.allPages;
-    for (let i = 0; i < candidates.length; i++) {
+    if (site.allPages.Length > 0) candidates = site.allPages;
+    for (let i = 0; i < candidates.Length; i++) {
       const p = candidates[i]!;
       if (TemplateRuntime.trimSlashes(p.relPermalink) === needle) return p;
       if (p.slug === needle) return p;
@@ -836,32 +836,32 @@ class TemplateRuntime {
   }
 
   static toTitleCase(text: string): string {
-    const trimmed = text.trim();
+    const trimmed = text.Trim();
     if (trimmed === "") return "";
-    const parts = trimmed.split(" ");
+    const parts = trimmed.Split(" ");
     const sb = new StringBuilder();
-    for (let i = 0; i < parts.length; i++) {
+    for (let i = 0; i < parts.Length; i++) {
       const word = parts[i]!;
-      if (word.trim() === "") continue;
-      if (sb.length > 0) sb.append(" ");
-      const first = word.substring(0, 1).toUpperInvariant();
-      const rest = word.length > 1 ? word.substring(1).toLowerInvariant() : "";
-      sb.append(first);
-      sb.append(rest);
+      if (word.Trim() === "") continue;
+      if (sb.Length > 0) sb.Append(" ");
+      const first = word.Substring(0, 1).ToUpperInvariant();
+      const rest = word.Length > 1 ? word.Substring(1).ToLowerInvariant() : "";
+      sb.Append(first);
+      sb.Append(rest);
     }
-    return sb.toString();
+    return sb.ToString();
   }
 
   static toPages(value: TemplateValue): PageContext[] {
     if (value instanceof PageArrayValue) return value.value;
     if (value instanceof AnyArrayValue) {
       const out = new List<PageContext>();
-      const it = value.value.getEnumerator();
-      while (it.moveNext()) {
-        const cur = it.current;
-        if (cur instanceof PageValue) out.add((cur as PageValue).value);
+      const it = value.value.GetEnumerator();
+      while (it.MoveNext()) {
+        const cur = it.Current;
+        if (cur instanceof PageValue) out.Add((cur as PageValue).value);
       }
-      return out.toArray();
+      return out.ToArray();
     }
     const empty: PageContext[] = [];
     return empty;
@@ -874,11 +874,11 @@ class TemplateRuntime {
    */
   static sortPagesByDate(pages: PageContext[], field: string): PageContext[] {
     const copy = new List<PageContext>();
-    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
+    for (let i = 0; i < pages.Length; i++) copy.Add(pages[i]!);
 
     // Simple bubble sort for stability and tsonic compatibility
-    const arr = copy.toArray();
-    const len = arr.length;
+    const arr = copy.ToArray();
+    const len = arr.Length;
     for (let i = 0; i < len; i++) {
       for (let j = 0; j < len - i - 1; j++) {
         const a = arr[j]!;
@@ -887,7 +887,7 @@ class TemplateRuntime {
         const dateA = field === "lastmod" ? a.lastmod : a.date;
         const dateB = field === "lastmod" ? b.lastmod : b.date;
         // Compare dates (ascending order)
-        if (dateA.compareTo(dateB) > 0) {
+        if (dateA.CompareTo(dateB) > 0) {
           arr[j] = b;
           arr[j + 1] = a;
         }
@@ -901,16 +901,16 @@ class TemplateRuntime {
    */
   static sortPagesByTitle(pages: PageContext[]): PageContext[] {
     const copy = new List<PageContext>();
-    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
+    for (let i = 0; i < pages.Length; i++) copy.Add(pages[i]!);
 
     // Simple bubble sort
-    const arr = copy.toArray();
-    const len = arr.length;
+    const arr = copy.ToArray();
+    const len = arr.Length;
     for (let i = 0; i < len; i++) {
       for (let j = 0; j < len - i - 1; j++) {
         const a = arr[j]!;
         const b = arr[j + 1]!;
-        if (a.title.compareTo(b.title) > 0) {
+        if (a.title.CompareTo(b.title) > 0) {
           arr[j] = b;
           arr[j + 1] = a;
         }
@@ -927,18 +927,18 @@ class TemplateRuntime {
     // TODO: Add weight field to PageContext when needed
     // For now, return a copy in original order
     const copy = new List<PageContext>();
-    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
-    return copy.toArray();
+    for (let i = 0; i < pages.Length; i++) copy.Add(pages[i]!);
+    return copy.ToArray();
   }
 
   /**
    * Reverse the order of pages. Returns a new reversed array.
    */
   static reversePages(pages: PageContext[]): PageContext[] {
-    const len = pages.length;
+    const len = pages.Length;
     const reversed = new List<PageContext>();
-    for (let i = len - 1; i >= 0; i--) reversed.add(pages[i]!);
-    return reversed.toArray();
+    for (let i = len - 1; i >= 0; i--) reversed.Add(pages[i]!);
+    return reversed.ToArray();
   }
 
   /**
@@ -946,8 +946,8 @@ class TemplateRuntime {
    */
   static copyPageArray(pages: PageContext[]): PageContext[] {
     const copy = new List<PageContext>();
-    for (let i = 0; i < pages.length; i++) copy.add(pages[i]!);
-    return copy.toArray();
+    for (let i = 0; i < pages.Length; i++) copy.Add(pages[i]!);
+    return copy.ToArray();
   }
 
   /**
@@ -955,8 +955,8 @@ class TemplateRuntime {
    */
   static copyStringArray(strings: string[]): string[] {
     const copy = new List<string>();
-    for (let i = 0; i < strings.length; i++) copy.add(strings[i]!);
-    return copy.toArray();
+    for (let i = 0; i < strings.Length; i++) copy.Add(strings[i]!);
+    return copy.ToArray();
   }
 
   /**
@@ -968,7 +968,7 @@ class TemplateRuntime {
     if (a instanceof StringValue && b instanceof StringValue) {
       const aStr = (a as StringValue).value;
       const bStr = (b as StringValue).value;
-      return aStr.compareTo(bStr);
+      return aStr.CompareTo(bStr);
     }
     // Compare numbers
     if (a instanceof NumberValue && b instanceof NumberValue) {
@@ -981,11 +981,11 @@ class TemplateRuntime {
     // Compare as strings (fallback)
     const aPlain = TemplateRuntime.toPlainString(a);
     const bPlain = TemplateRuntime.toPlainString(b);
-    return aPlain.compareTo(bPlain);
+    return aPlain.CompareTo(bPlain);
   }
 
   static matchWhere(actual: TemplateValue, op: string, expected: TemplateValue): boolean {
-    const opLower = op.trim().toLowerInvariant();
+    const opLower = op.Trim().ToLowerInvariant();
     const actualText = TemplateRuntime.toPlainString(actual);
 
     if (opLower === "eq" || opLower === "==") {
@@ -996,21 +996,21 @@ class TemplateRuntime {
     }
     if (opLower === "in") {
       if (expected instanceof AnyArrayValue) {
-        const it = expected.value.getEnumerator();
-        while (it.moveNext()) {
-          if (TemplateRuntime.toPlainString(it.current) === actualText) return true;
+        const it = expected.value.GetEnumerator();
+        while (it.MoveNext()) {
+          if (TemplateRuntime.toPlainString(it.Current) === actualText) return true;
         }
         return false;
       }
       if (expected instanceof StringArrayValue) {
-        for (let i = 0; i < expected.value.length; i++) {
+        for (let i = 0; i < expected.value.Length; i++) {
           if (expected.value[i]! === actualText) return true;
         }
         return false;
       }
       if (expected instanceof DictValue) {
         let v: TemplateValue = TemplateRuntime.nil;
-        return expected.value.tryGetValue(actualText, v);
+        return expected.value.TryGetValue(actualText, v);
       }
       return false;
     }
@@ -1022,39 +1022,39 @@ class TemplateRuntime {
   }
 
   static evalToken(token: string, scope: RenderScope): TemplateValue {
-    const t = token.trim();
+    const t = token.Trim();
     if (t === ".") return scope.dot;
     if (t === "$") return scope.root;
-    if (t.startsWith("$.")) {
-      const segs = t.substring(2).split(".");
+    if (t.StartsWith("$.")) {
+      const segs = t.Substring(2).Split(".");
       return TemplateRuntime.resolvePath(scope.root, segs, scope);
     }
-    if (t.startsWith(".")) {
-      const segs = t.substring(1).split(".");
+    if (t.StartsWith(".")) {
+      const segs = t.Substring(1).Split(".");
       return TemplateRuntime.resolvePath(scope.dot, segs, scope);
     }
-    if (t.startsWith("$") && t.length > 1) {
-      const inner = t.substring(1);
-      const segs = inner.split(".");
-      const name = segs.length > 0 ? segs[0]! : inner;
+    if (t.StartsWith("$") && t.Length > 1) {
+      const inner = t.Substring(1);
+      const segs = inner.Split(".");
+      const name = segs.Length > 0 ? segs[0]! : inner;
       const value = scope.getVar(name) ?? TemplateRuntime.nil;
-      if (segs.length > 1) {
+      if (segs.Length > 1) {
         const rem = new List<string>();
-        for (let i = 1; i < segs.length; i++) rem.add(segs[i]!);
-        return TemplateRuntime.resolvePath(value, rem.toArray(), scope);
+        for (let i = 1; i < segs.Length; i++) rem.Add(segs[i]!);
+        return TemplateRuntime.resolvePath(value, rem.ToArray(), scope);
       }
       return value;
     }
     if (t === "site") return new SiteValue(scope.site);
-    if (t.startsWith("site.")) {
-      const segs = t.substring(5).split(".");
+    if (t.StartsWith("site.")) {
+      const segs = t.Substring(5).Split(".");
       return TemplateRuntime.resolvePath(new SiteValue(scope.site), segs, scope);
     }
     const lit = TemplateRuntime.parseStringLiteral(t);
     if (lit !== undefined) return new StringValue(lit);
     if (t === "true") return new BoolValue(true);
     if (t === "false") return new BoolValue(false);
-    if (TemplateRuntime.isNumberLiteral(t)) return new NumberValue(Int32.parse(t));
+    if (TemplateRuntime.isNumberLiteral(t)) return new NumberValue(Int32.Parse(t));
     return new StringValue(t);
   }
 
@@ -1088,29 +1088,29 @@ class TemplateRuntime {
     overrides: Dictionary<string, TemplateNode[]>,
     _defines: Dictionary<string, TemplateNode[]>,
   ): TemplateValue {
-    const name = nameRaw.trim().toLowerInvariant();
+    const name = nameRaw.Trim().ToLowerInvariant();
     try {
 
-    if (name === "site.store.get" && args.length >= 1) {
+    if (name === "site.store.get" && args.Length >= 1) {
       const store = TemplateRuntime.getSiteStore(scope.site);
       return store.get(TemplateRuntime.toPlainString(args[0]!));
     }
-    if (name === "site.store.set" && args.length >= 2) {
+    if (name === "site.store.set" && args.Length >= 2) {
       const store = TemplateRuntime.getSiteStore(scope.site);
       store.set(TemplateRuntime.toPlainString(args[0]!), args[1]!);
       return TemplateRuntime.nil;
     }
-    if (name === "site.store.add" && args.length >= 2) {
+    if (name === "site.store.add" && args.Length >= 2) {
       const store = TemplateRuntime.getSiteStore(scope.site);
       store.add(TemplateRuntime.toPlainString(args[0]!), args[1]!);
       return TemplateRuntime.nil;
     }
-    if (name === "site.store.delete" && args.length >= 1) {
+    if (name === "site.store.delete" && args.Length >= 1) {
       const store = TemplateRuntime.getSiteStore(scope.site);
       store.delete(TemplateRuntime.toPlainString(args[0]!));
       return TemplateRuntime.nil;
     }
-    if (name === "site.store.setinmap" && args.length >= 3) {
+    if (name === "site.store.setinmap" && args.Length >= 3) {
       const store = TemplateRuntime.getSiteStore(scope.site);
       const mapName = TemplateRuntime.toPlainString(args[0]!);
       const key = TemplateRuntime.toPlainString(args[1]!);
@@ -1122,56 +1122,56 @@ class TemplateRuntime {
       }
       return TemplateRuntime.nil;
     }
-    if (name === "site.store.deleteinmap" && args.length >= 2) {
+    if (name === "site.store.deleteinmap" && args.Length >= 2) {
       const store = TemplateRuntime.getSiteStore(scope.site);
       store.deleteInMap(TemplateRuntime.toPlainString(args[0]!), TemplateRuntime.toPlainString(args[1]!));
       return TemplateRuntime.nil;
     }
 
-    const trimmedName = nameRaw.trim();
-    const lastDot = trimmedName.lastIndexOf(".");
-    const lowerName = trimmedName.toLowerInvariant();
-    const startsWithDot = trimmedName.startsWith(".");
-    const startsWithDollar = trimmedName.startsWith("$");
-    const startsWithSite = lowerName.startsWith("site.");
+    const trimmedName = nameRaw.Trim();
+    const lastDot = trimmedName.LastIndexOf(".");
+    const lowerName = trimmedName.ToLowerInvariant();
+    const startsWithDot = trimmedName.StartsWith(".");
+    const startsWithDollar = trimmedName.StartsWith("$");
+    const startsWithSite = lowerName.StartsWith("site.");
 
     let receiverToken: string | undefined = undefined;
     let methodName: string | undefined = undefined;
     if (lastDot > 0) {
       if (startsWithDot || startsWithDollar || startsWithSite) {
-        receiverToken = trimmedName.substring(0, lastDot);
-        methodName = trimmedName.substring(lastDot + 1).trim();
+        receiverToken = trimmedName.Substring(0, lastDot);
+        methodName = trimmedName.Substring(lastDot + 1).Trim();
       }
     } else if (startsWithDot && lastDot === 0) {
       receiverToken = ".";
-      methodName = trimmedName.substring(1).trim();
+      methodName = trimmedName.Substring(1).Trim();
     }
 
-    if (receiverToken !== undefined && methodName !== undefined && methodName.trim() !== "") {
-      const method = methodName.toLowerInvariant();
+    if (receiverToken !== undefined && methodName !== undefined && methodName.Trim() !== "") {
+      const method = methodName.ToLowerInvariant();
       const receiverValue = TemplateRuntime.evalToken(receiverToken, scope);
 
       if (receiverValue instanceof ScratchValue) {
         const scratch = receiverValue as ScratchValue;
         const store = scratch.value;
-        if (method === "get" && args.length >= 1) return store.get(TemplateRuntime.toPlainString(args[0]!));
-        if (method === "set" && args.length >= 2) {
+        if (method === "get" && args.Length >= 1) return store.get(TemplateRuntime.toPlainString(args[0]!));
+        if (method === "set" && args.Length >= 2) {
           store.set(TemplateRuntime.toPlainString(args[0]!), args[1]!);
           return TemplateRuntime.nil;
         }
-        if (method === "add" && args.length >= 2) {
+        if (method === "add" && args.Length >= 2) {
           store.add(TemplateRuntime.toPlainString(args[0]!), args[1]!);
           return TemplateRuntime.nil;
         }
-        if (method === "delete" && args.length >= 1) {
+        if (method === "delete" && args.Length >= 1) {
           store.delete(TemplateRuntime.toPlainString(args[0]!));
           return TemplateRuntime.nil;
         }
-        if (method === "setinmap" && args.length >= 3) {
+        if (method === "setinmap" && args.Length >= 3) {
           store.setInMap(TemplateRuntime.toPlainString(args[0]!), TemplateRuntime.toPlainString(args[1]!), args[2]!);
           return TemplateRuntime.nil;
         }
-        if (method === "deleteinmap" && args.length >= 2) {
+        if (method === "deleteinmap" && args.Length >= 2) {
           store.deleteInMap(TemplateRuntime.toPlainString(args[0]!), TemplateRuntime.toPlainString(args[1]!));
           return TemplateRuntime.nil;
         }
@@ -1182,26 +1182,26 @@ class TemplateRuntime {
         const mgr = resources.manager;
         const page = resources.page;
 
-        if (method === "get" && args.length >= 1) {
+        if (method === "get" && args.Length >= 1) {
           if (page.File === undefined) return TemplateRuntime.nil;
           const raw = TemplateRuntime.toPlainString(args[0]!);
           const normalized = TemplateRuntime.normalizeRelPath(raw);
           if (normalized === "") return TemplateRuntime.nil;
 
-          const pageDir = Path.getDirectoryName(page.File.Filename);
-          if (pageDir === undefined || pageDir.trim() === "") return TemplateRuntime.nil;
+          const pageDir = Path.GetDirectoryName(page.File.Filename);
+          if (pageDir === undefined || pageDir.Trim() === "") return TemplateRuntime.nil;
 
-          const pageDirFull = Path.getFullPath(pageDir);
-          const pagePrefix = pageDirFull.endsWith(Path.directorySeparatorChar) ? pageDirFull : pageDirFull + Path.directorySeparatorChar;
+          const pageDirFull = Path.GetFullPath(pageDir);
+          const pagePrefix = pageDirFull.EndsWith(Path.DirectorySeparatorChar) ? pageDirFull : pageDirFull + Path.DirectorySeparatorChar;
           const slash: char = "/";
-          const osRel = normalized.replace(slash, Path.directorySeparatorChar);
-          const candidate = Path.getFullPath(Path.combine(pageDirFull, osRel));
-          if (!candidate.startsWith(pagePrefix) || !File.exists(candidate)) return TemplateRuntime.nil;
+          const osRel = normalized.Replace(slash, Path.DirectorySeparatorChar);
+          const candidate = Path.GetFullPath(Path.Combine(pageDirFull, osRel));
+          if (!candidate.StartsWith(pagePrefix) || !File.Exists(candidate)) return TemplateRuntime.nil;
 
-          const bytes = File.readAllBytes(candidate);
-          const ext = (Path.getExtension(candidate) ?? "").toLowerInvariant();
+          const bytes = File.ReadAllBytes(candidate);
+          const ext = (Path.GetExtension(candidate) ?? "").ToLowerInvariant();
           const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".svg" || ext === ".html" || ext === ".txt";
-          const text = isText ? Encoding.UTF8.getString(bytes) : undefined;
+          const text = isText ? Encoding.UTF8.GetString(bytes) : undefined;
 
           const base = TemplateRuntime.trimSlashes(page.relPermalink);
           const outRel = base === "" ? normalized : TemplateRuntime.trimEndChar(base, "/") + "/" + normalized;
@@ -1210,24 +1210,24 @@ class TemplateRuntime {
           return new ResourceValue(mgr, res);
         }
 
-        if (method === "getmatch" && args.length >= 1) {
+        if (method === "getmatch" && args.Length >= 1) {
           if (page.File === undefined) return TemplateRuntime.nil;
-          const pattern = TemplateRuntime.toPlainString(args[0]!).trim();
+          const pattern = TemplateRuntime.toPlainString(args[0]!).Trim();
           if (pattern === "") return TemplateRuntime.nil;
 
-          const pageDir = Path.getDirectoryName(page.File.Filename);
-          if (pageDir === undefined || pageDir.trim() === "") return TemplateRuntime.nil;
+          const pageDir = Path.GetDirectoryName(page.File.Filename);
+          if (pageDir === undefined || pageDir.Trim() === "") return TemplateRuntime.nil;
 
-          const files = Directory.getFiles(pageDir, "*", SearchOption.allDirectories);
-          for (let i = 0; i < files.length; i++) {
+          const files = Directory.GetFiles(pageDir, "*", SearchOption.AllDirectories);
+          for (let i = 0; i < files.Length; i++) {
             const filePath = files[i]!;
-            const rel = filePath.length > 0 ? replaceText(Path.getRelativePath(pageDir, filePath), "\\", "/") : "";
+            const rel = filePath.Length > 0 ? replaceText(Path.GetRelativePath(pageDir, filePath), "\\", "/") : "";
             if (rel === "" || !TemplateRuntime.globMatch(pattern, rel)) continue;
 
-            const bytes = File.readAllBytes(filePath);
-            const ext = (Path.getExtension(filePath) ?? "").toLowerInvariant();
+            const bytes = File.ReadAllBytes(filePath);
+            const ext = (Path.GetExtension(filePath) ?? "").ToLowerInvariant();
             const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".svg" || ext === ".html" || ext === ".txt";
-            const text = isText ? Encoding.UTF8.getString(bytes) : undefined;
+            const text = isText ? Encoding.UTF8.GetString(bytes) : undefined;
 
             const base = TemplateRuntime.trimSlashes(page.relPermalink);
             const outRel = base === "" ? rel : TemplateRuntime.trimEndChar(base, "/") + "/" + rel;
@@ -1242,7 +1242,7 @@ class TemplateRuntime {
 
       if (receiverValue instanceof SiteValue) {
         const site = (receiverValue as SiteValue).value;
-        if (method === "getpage" && args.length >= 1) {
+        if (method === "getpage" && args.Length >= 1) {
           const path = TemplateRuntime.toPlainString(args[0]!);
           const p = TemplateRuntime.tryGetPage(site, path);
           return p !== undefined ? new PageValue(p) : TemplateRuntime.nil;
@@ -1252,36 +1252,36 @@ class TemplateRuntime {
       if (receiverValue instanceof PageValue) {
         const page = (receiverValue as PageValue).value;
 
-        if (method === "renderstring" && args.length >= 1) {
+        if (method === "renderstring" && args.Length >= 1) {
           const markdown = TemplateRuntime.toPlainString(args[0]!);
           // Use full markdown rendering with shortcodes and render hooks
           const result = renderMarkdownWithShortcodes(markdown, page, scope.site, env);
           return new HtmlValue(new HtmlString(result.html));
         }
 
-        if (method === "getpage" && args.length >= 1) {
+        if (method === "getpage" && args.Length >= 1) {
           const raw = TemplateRuntime.toPlainString(args[0]!);
           const resolved = TemplateRuntime.resolvePageRef(page, raw);
           const found = TemplateRuntime.tryGetPage(page.site, resolved);
           return found !== undefined ? new PageValue(found) : TemplateRuntime.nil;
         }
 
-        if (method === "isancestor" && args.length >= 1) {
+        if (method === "isancestor" && args.Length >= 1) {
           const otherValue = args[0]!;
           if (otherValue instanceof PageValue) {
             const other = (otherValue as PageValue).value;
             const ancestors = other.ancestors;
-            for (let i = 0; i < ancestors.length; i++) {
+            for (let i = 0; i < ancestors.Length; i++) {
               if (ancestors[i] === page) return new BoolValue(true);
             }
             const base = TemplateRuntime.trimEndChar(page.relPermalink, "/");
             const child = TemplateRuntime.trimEndChar(other.relPermalink, "/");
-            return new BoolValue(child.startsWith(base) && child !== base);
+            return new BoolValue(child.StartsWith(base) && child !== base);
           }
           return new BoolValue(false);
         }
 
-        if (method === "ismenucurrent" && args.length >= 2) {
+        if (method === "ismenucurrent" && args.Length >= 2) {
           const menuNameArg = args[0]!;
           const entryArg = args[1]!;
           if (entryArg instanceof MenuEntryValue) {
@@ -1298,12 +1298,12 @@ class TemplateRuntime {
 
       if (receiverValue instanceof OutputFormatsValue) {
         const site = (receiverValue as OutputFormatsValue).site;
-        if (method === "get" && args.length >= 1) {
-          const formatName = TemplateRuntime.toPlainString(args[0]!).toLowerInvariant();
+        if (method === "get" && args.Length >= 1) {
+          const formatName = TemplateRuntime.toPlainString(args[0]!).ToLowerInvariant();
           const formats = site.getOutputFormats();
-          for (let i = 0; i < formats.length; i++) {
+          for (let i = 0; i < formats.Length; i++) {
             const fmt = formats[i]!;
-            if (fmt.Rel.toLowerInvariant() === formatName || formatName === "rss") {
+            if (fmt.Rel.ToLowerInvariant() === formatName || formatName === "rss") {
               return new OutputFormatValue(fmt);
             }
           }
@@ -1313,7 +1313,7 @@ class TemplateRuntime {
 
       if (receiverValue instanceof ShortcodeValue) {
         const sc = (receiverValue as ShortcodeValue).value;
-        if (method === "get" && args.length >= 1) {
+        if (method === "get" && args.Length >= 1) {
           const keyOrIndex = TemplateRuntime.toPlainString(args[0]!);
           const pv = sc.Get(keyOrIndex);
           if (pv === undefined) return TemplateRuntime.nil;
@@ -1327,17 +1327,17 @@ class TemplateRuntime {
       if (receiverValue instanceof AnyArrayValue) {
         const items = receiverValue.value;
 
-        if ((method === "next" || method === "prev") && args.length >= 1) {
+        if ((method === "next" || method === "prev") && args.Length >= 1) {
           const target = args[0]!;
           if (target instanceof PageValue) {
             const targetPage = (target as PageValue).value;
             const arr = new List<TemplateValue>();
-            const it = items.getEnumerator();
-            while (it.moveNext()) arr.add(it.current);
-            const vals = arr.toArray();
+            const it = items.GetEnumerator();
+            while (it.MoveNext()) arr.Add(it.Current);
+            const vals = arr.ToArray();
 
             let idx: int = -1;
-            for (let i = 0; i < vals.length; i++) {
+            for (let i = 0; i < vals.Length; i++) {
               const cur = vals[i]!;
               if (cur instanceof PageValue && (cur as PageValue).value === targetPage) {
                 idx = i;
@@ -1346,7 +1346,7 @@ class TemplateRuntime {
             }
             if (idx < 0) return TemplateRuntime.nil;
             const nextIndex = method === "next" ? idx + 1 : idx - 1;
-            if (nextIndex < 0 || nextIndex >= vals.length) return TemplateRuntime.nil;
+            if (nextIndex < 0 || nextIndex >= vals.Length) return TemplateRuntime.nil;
             return vals[nextIndex]!;
           }
         }
@@ -1354,13 +1354,13 @@ class TemplateRuntime {
     }
 
     if (name === "return") {
-      const v = args.length >= 1 ? args[0]! : TemplateRuntime.nil;
+      const v = args.Length >= 1 ? args[0]! : TemplateRuntime.nil;
       throw new ReturnException(v);
     }
 
     if (name === "hugo.ismultilingual") return new BoolValue(false);
     if (name === "hugo.ismultihost") return new BoolValue(false);
-    if (name === "hugo.workingdir") return new StringValue(Environment.currentDirectory);
+    if (name === "hugo.workingdir") return new StringValue(Environment.CurrentDirectory);
     // hugo.Version returns a VersionStringValue for semver-like comparison
     // Report a high version to pass theme version gates (e.g., PaperMod requires >= 0.146.0)
     if (name === "hugo.version") return new VersionStringValue("0.146.0");
@@ -1373,14 +1373,14 @@ class TemplateRuntime {
     // hugo.IsDevelopment returns true in development mode
     if (name === "hugo.isdevelopment") return new BoolValue(!env.isProduction);
 
-    if (name === "i18n" && args.length >= 1) {
+    if (name === "i18n" && args.Length >= 1) {
       const key = TemplateRuntime.toPlainString(args[0]!);
       const lang = scope.site.Language.Lang;
       const translated = env.getI18n(lang, key);
       return new StringValue(translated);
     }
 
-    if (name === "resources.get" && args.length >= 1) {
+    if (name === "resources.get" && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
       const path = TemplateRuntime.toPlainString(args[0]!);
@@ -1388,7 +1388,7 @@ class TemplateRuntime {
       return res !== undefined ? new ResourceValue(mgr, res) : TemplateRuntime.nil;
     }
 
-    if (name === "resources.getmatch" && args.length >= 1) {
+    if (name === "resources.getmatch" && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
       const pattern = TemplateRuntime.toPlainString(args[0]!);
@@ -1397,56 +1397,56 @@ class TemplateRuntime {
     }
 
     // resources.Match - get all matching resources (returns array)
-    if (name === "resources.match" && args.length >= 1) {
+    if (name === "resources.match" && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return new AnyArrayValue(new List<TemplateValue>());
       const pattern = TemplateRuntime.toPlainString(args[0]!);
       const resources = mgr.match(pattern);
       const result = new List<TemplateValue>();
-      for (let i = 0; i < resources.length; i++) {
-        result.add(new ResourceValue(mgr, resources[i]!));
+      for (let i = 0; i < resources.Length; i++) {
+        result.Add(new ResourceValue(mgr, resources[i]!));
       }
       return new AnyArrayValue(result);
     }
 
     // resources.ByType - get all resources of a given media type
-    if (name === "resources.bytype" && args.length >= 1) {
+    if (name === "resources.bytype" && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return new AnyArrayValue(new List<TemplateValue>());
       const mediaType = TemplateRuntime.toPlainString(args[0]!);
       const resources = mgr.byType(mediaType);
       const result = new List<TemplateValue>();
-      for (let i = 0; i < resources.length; i++) {
-        result.add(new ResourceValue(mgr, resources[i]!));
+      for (let i = 0; i < resources.Length; i++) {
+        result.Add(new ResourceValue(mgr, resources[i]!));
       }
       return new AnyArrayValue(result);
     }
 
     // resources.Concat - concatenate resources into one
-    if (name === "resources.concat" && args.length >= 2) {
+    if (name === "resources.concat" && args.Length >= 2) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
       const targetPath = TemplateRuntime.toPlainString(args[0]!);
-      const input = args[args.length - 1]!;
+      const input = args[args.Length - 1]!;
       // Input can be an array of resources (piped from slice or Match)
       const resources = new List<Resource>();
       if (input instanceof AnyArrayValue) {
-        const arr = input.value.toArray();
-        for (let i = 0; i < arr.length; i++) {
+        const arr = input.value.ToArray();
+        for (let i = 0; i < arr.Length; i++) {
           const item = arr[i]!;
           if (item instanceof ResourceValue) {
-            resources.add((item as ResourceValue).value);
+            resources.Add((item as ResourceValue).value);
           }
         }
       } else if (input instanceof ResourceValue) {
-        resources.add((input as ResourceValue).value);
+        resources.Add((input as ResourceValue).value);
       }
-      if (resources.count === 0) return TemplateRuntime.nil;
-      const res = mgr.concat(targetPath, resources.toArray());
+      if (resources.Count === 0) return TemplateRuntime.nil;
+      const res = mgr.concat(targetPath, resources.ToArray());
       return new ResourceValue(mgr, res);
     }
 
-    if (name === "resources.fromstring" && args.length >= 2) {
+    if (name === "resources.fromstring" && args.Length >= 2) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
       const nameArg = TemplateRuntime.toPlainString(args[0]!);
@@ -1455,10 +1455,10 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-	    if (name === "resources.executeastemplate" && args.length >= 2) {
+	    if (name === "resources.executeastemplate" && args.Length >= 2) {
 	      const mgr = TemplateRuntime.getResourceManager(env);
 	      if (mgr === undefined) return TemplateRuntime.nil;
-	      const piped = args.length >= 3 ? args[args.length - 1]! : TemplateRuntime.nil;
+	      const piped = args.Length >= 3 ? args[args.Length - 1]! : TemplateRuntime.nil;
 	      const isResource = piped instanceof ResourceValue;
 	      if (isResource === false) return TemplateRuntime.nil;
 	      const src = (piped as ResourceValue).value;
@@ -1469,8 +1469,8 @@ class TemplateRuntime {
 	      const sb = new StringBuilder();
 	      const templateScope = new RenderScope(ctx, ctx, scope.site, scope.env, undefined);
 	      tpl.renderInto(sb, templateScope, env, overrides);
-	      const rendered = sb.toString();
-      const bytes = Encoding.UTF8.getBytes(rendered);
+	      const rendered = sb.ToString();
+      const bytes = Encoding.UTF8.GetBytes(rendered);
       const lang = scope.site.Language.Lang;
       const id = `${src.id}|executeAsTemplate:${targetName}|lang:${lang}`;
       const out = new Resource(id, src.sourcePath, src.publishable, targetName, bytes, rendered, new ResourceData(""));
@@ -1480,7 +1480,7 @@ class TemplateRuntime {
     if (name === "resources.minify" || name === "minify") {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
-      const piped = args.length >= 1 ? args[args.length - 1]! : TemplateRuntime.nil;
+      const piped = args.Length >= 1 ? args[args.Length - 1]! : TemplateRuntime.nil;
       const isResource = piped instanceof ResourceValue;
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
@@ -1488,10 +1488,10 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if ((name === "resources.fingerprint" || name === "fingerprint") && args.length >= 1) {
+    if ((name === "resources.fingerprint" || name === "fingerprint") && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
-      const piped = args[args.length - 1]!;
+      const piped = args[args.Length - 1]!;
       const isResource = piped instanceof ResourceValue;
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
@@ -1499,11 +1499,11 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if (name === "resources.copy" && args.length >= 2) {
+    if (name === "resources.copy" && args.Length >= 2) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
       const targetPath = TemplateRuntime.toPlainString(args[0]!);
-      const piped = args[args.length - 1]!;
+      const piped = args[args.Length - 1]!;
       const isResource = piped instanceof ResourceValue;
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
@@ -1511,10 +1511,10 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if (name === "resources.postprocess" && args.length >= 1) {
+    if (name === "resources.postprocess" && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
-      const piped = args[args.length - 1]!;
+      const piped = args[args.Length - 1]!;
       const isResource = piped instanceof ResourceValue;
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
@@ -1522,13 +1522,13 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if ((name === "images.resize" || name === "resize") && args.length >= 1) {
+    if ((name === "images.resize" || name === "resize") && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
 
       // First arg is resize spec, piped resource is last arg
-      const spec = args.length >= 2 ? TemplateRuntime.toPlainString(args[0]!) : "";
-      const piped = args[args.length - 1]!;
+      const spec = args.Length >= 2 ? TemplateRuntime.toPlainString(args[0]!) : "";
+      const piped = args[args.Length - 1]!;
       const isResource = piped instanceof ResourceValue;
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
@@ -1536,10 +1536,10 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if (name === "css.sass" && args.length >= 1) {
+    if (name === "css.sass" && args.Length >= 1) {
       const mgr = TemplateRuntime.getResourceManager(env);
       if (mgr === undefined) return TemplateRuntime.nil;
-      const piped = args[args.length - 1]!;
+      const piped = args[args.Length - 1]!;
       const isResource = piped instanceof ResourceValue;
       if (isResource === false) return TemplateRuntime.nil;
       const src = (piped as ResourceValue).value;
@@ -1547,9 +1547,9 @@ class TemplateRuntime {
       return new ResourceValue(mgr, res);
     }
 
-    if (name === "partial" && args.length >= 1) {
+    if (name === "partial" && args.Length >= 1) {
       const nameArg = TemplateRuntime.toPlainString(args[0]!);
-      const ctx = args.length >= 2 ? args[1]! : scope.dot;
+      const ctx = args.Length >= 2 ? args[1]! : scope.dot;
       const tpl = env.getTemplate(`partials/${nameArg}`) ?? env.getTemplate(`_partials/${nameArg}`);
       if (tpl === undefined) return TemplateRuntime.nil;
 
@@ -1557,16 +1557,16 @@ class TemplateRuntime {
       const partialScope = new RenderScope(ctx, ctx, scope.site, scope.env, undefined);
       try {
         tpl.renderInto(sb, partialScope, env, overrides);
-        return new HtmlValue(new HtmlString(sb.toString()));
+        return new HtmlValue(new HtmlString(sb.ToString()));
       } catch (e) {
         if (e instanceof ReturnException) return e.value;
         throw e;
       }
     }
 
-    if (name === "partialcached" && args.length >= 1) {
+    if (name === "partialcached" && args.Length >= 1) {
       const nameArg = TemplateRuntime.toPlainString(args[0]!);
-      const ctx = args.length >= 2 ? args[1]! : scope.dot;
+      const ctx = args.Length >= 2 ? args[1]! : scope.dot;
       const tpl = env.getTemplate(`partials/${nameArg}`) ?? env.getTemplate(`_partials/${nameArg}`);
       if (tpl === undefined) return TemplateRuntime.nil;
 
@@ -1574,7 +1574,7 @@ class TemplateRuntime {
       const partialScope = new RenderScope(ctx, ctx, scope.site, scope.env, undefined);
       try {
         tpl.renderInto(sb, partialScope, env, overrides);
-        return new HtmlValue(new HtmlString(sb.toString()));
+        return new HtmlValue(new HtmlString(sb.ToString()));
       } catch (e) {
         if (e instanceof ReturnException) return e.value;
         throw e;
@@ -1582,130 +1582,130 @@ class TemplateRuntime {
     }
 
     // templates.Exists - check if a template exists
-    if (name === "templates.exists" && args.length >= 1) {
+    if (name === "templates.exists" && args.Length >= 1) {
       const templatePath = TemplateRuntime.toPlainString(args[0]!);
       const tpl = env.getTemplate(templatePath);
       return new BoolValue(tpl !== undefined);
     }
 
     // errorf - log error and continue (in Hugo this can halt, but we just warn)
-    if (name === "errorf" && args.length >= 1) {
+    if (name === "errorf" && args.Length >= 1) {
       const format = TemplateRuntime.toPlainString(args[0]!);
       let message = format;
       // Simple %s replacement for additional args
-      for (let i = 1; i < args.length; i++) {
-        message = message.replace("%s", TemplateRuntime.toPlainString(args[i]!));
-        message = message.replace("%v", TemplateRuntime.toPlainString(args[i]!));
-        message = message.replace("%d", TemplateRuntime.toPlainString(args[i]!));
+      for (let i = 1; i < args.Length; i++) {
+        message = message.Replace("%s", TemplateRuntime.toPlainString(args[i]!));
+        message = message.Replace("%v", TemplateRuntime.toPlainString(args[i]!));
+        message = message.Replace("%d", TemplateRuntime.toPlainString(args[i]!));
       }
-      Console.error.writeLine("ERROR: {0}", message);
+      Console.Error.WriteLine("ERROR: {0}", message);
       return TemplateRuntime.nil;
     }
 
     // warnf - log warning and continue
-    if (name === "warnf" && args.length >= 1) {
+    if (name === "warnf" && args.Length >= 1) {
       const format = TemplateRuntime.toPlainString(args[0]!);
       let message = format;
-      for (let i = 1; i < args.length; i++) {
-        message = message.replace("%s", TemplateRuntime.toPlainString(args[i]!));
-        message = message.replace("%v", TemplateRuntime.toPlainString(args[i]!));
-        message = message.replace("%d", TemplateRuntime.toPlainString(args[i]!));
+      for (let i = 1; i < args.Length; i++) {
+        message = message.Replace("%s", TemplateRuntime.toPlainString(args[i]!));
+        message = message.Replace("%v", TemplateRuntime.toPlainString(args[i]!));
+        message = message.Replace("%d", TemplateRuntime.toPlainString(args[i]!));
       }
-      Console.error.writeLine("WARN: {0}", message);
+      Console.Error.WriteLine("WARN: {0}", message);
       return TemplateRuntime.nil;
     }
 
-    if (name === "safehtml" && args.length >= 1) {
+    if (name === "safehtml" && args.Length >= 1) {
       const v = args[0]!;
       if (v instanceof HtmlValue) return v;
       return new HtmlValue(new HtmlString(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "safehtmlattr" && args.length >= 1) {
+    if (name === "safehtmlattr" && args.Length >= 1) {
       const v = args[0]!;
       if (v instanceof HtmlValue) return v;
       return new HtmlValue(new HtmlString(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "safejs" && args.length >= 1) {
+    if (name === "safejs" && args.Length >= 1) {
       const v = args[0]!;
       return new HtmlValue(new HtmlString(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "safeurl" && args.length >= 1) {
+    if (name === "safeurl" && args.Length >= 1) {
       const v = args[0]!;
       return new HtmlValue(new HtmlString(escapeHtml(TemplateRuntime.toPlainString(v))));
     }
 
-    if (name === "safecss" && args.length >= 1) {
+    if (name === "safecss" && args.Length >= 1) {
       const v = args[0]!;
       return new HtmlValue(new HtmlString(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "htmlescape" && args.length >= 1) {
+    if (name === "htmlescape" && args.Length >= 1) {
       const v = args[0]!;
       return new StringValue(escapeHtml(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "htmlunescape" && args.length >= 1) {
+    if (name === "htmlunescape" && args.Length >= 1) {
       const v = args[0]!;
-      return new StringValue(WebUtility.htmlDecode(TemplateRuntime.toPlainString(v)) ?? "");
+      return new StringValue(WebUtility.HtmlDecode(TemplateRuntime.toPlainString(v)) ?? "");
     }
 
-    if (name === "time.format" && args.length >= 2) {
+    if (name === "time.format" && args.Length >= 2) {
       const layout = TemplateRuntime.toPlainString(args[0]!);
       const input = TemplateRuntime.toPlainString(args[1]!);
-      let parsed: DateTime = DateTime.minValue;
-      const ok = DateTime.tryParse(input, parsed);
+      let parsed: DateTime = DateTime.MinValue;
+      const ok = DateTime.TryParse(input, parsed);
       if (!ok) return new StringValue("");
       const fmt = TemplateRuntime.convertGoDateLayoutToDotNet(layout);
-      return new StringValue(parsed.toString(fmt));
+      return new StringValue(parsed.ToString(fmt));
     }
 
-	    if (name === "path.base" && args.length >= 1) {
+	    if (name === "path.base" && args.Length >= 1) {
 	      const raw = TemplateRuntime.toPlainString(args[0]!);
 	      const normalized = TemplateRuntime.trimEndChar(replaceText(raw, "\\", "/"), "/");
 	      if (normalized === "") return new StringValue("");
-	      const idx = normalized.lastIndexOf("/");
-	      return idx >= 0 ? new StringValue(normalized.substring(idx + 1)) : new StringValue(normalized);
+	      const idx = normalized.LastIndexOf("/");
+	      return idx >= 0 ? new StringValue(normalized.Substring(idx + 1)) : new StringValue(normalized);
 	    }
 
-    if (name === "title" && args.length >= 1) {
+    if (name === "title" && args.Length >= 1) {
       return new StringValue(TemplateRuntime.toTitleCase(TemplateRuntime.toPlainString(args[0]!)));
     }
 
-    if (name === "where" && args.length >= 4) {
+    if (name === "where" && args.Length >= 4) {
       const pages = TemplateRuntime.toPages(args[0]!);
       const path = TemplateRuntime.toPlainString(args[1]!);
-      const opRaw = TemplateRuntime.toPlainString(args[2]!).toLowerInvariant();
+      const opRaw = TemplateRuntime.toPlainString(args[2]!).ToLowerInvariant();
       const expected = args[3]!;
       const empty: string[] = [];
-      const segs = path.trim() === "" ? empty : path.split(".");
+      const segs = path.Trim() === "" ? empty : path.Split(".");
       const out = new List<PageContext>();
-      for (let i = 0; i < pages.length; i++) {
+      for (let i = 0; i < pages.Length; i++) {
         const page = pages[i]!;
-        const actual = segs.length === 0 ? new PageValue(page) : TemplateRuntime.resolvePath(new PageValue(page), segs, scope);
+        const actual = segs.Length === 0 ? new PageValue(page) : TemplateRuntime.resolvePath(new PageValue(page), segs, scope);
         const ok = TemplateRuntime.matchWhere(actual, opRaw, expected);
-        if (ok) out.add(page);
+        if (ok) out.Add(page);
       }
-      return new PageArrayValue(out.toArray());
+      return new PageArrayValue(out.ToArray());
     }
 
-    if (name === "sort" && args.length >= 1) {
+    if (name === "sort" && args.Length >= 1) {
       const collection = args[0]!;
-      const sortKey = args.length >= 2 ? TemplateRuntime.toPlainString(args[1]!) : "";
-      const sortOrder = args.length >= 3 ? TemplateRuntime.toPlainString(args[2]!).toLowerInvariant() : "asc";
+      const sortKey = args.Length >= 2 ? TemplateRuntime.toPlainString(args[1]!) : "";
+      const sortOrder = args.Length >= 3 ? TemplateRuntime.toPlainString(args[2]!).ToLowerInvariant() : "asc";
       const isDesc = sortOrder === "desc";
       const empty: string[] = [];
-      const keySegs = sortKey.trim() === "" ? empty : sortKey.split(".");
+      const keySegs = sortKey.Trim() === "" ? empty : sortKey.Split(".");
 
       if (collection instanceof PageArrayValue) {
         const arr = TemplateRuntime.copyPageArray(collection.value);
         // Simple bubble sort
-        for (let i = 0; i < arr.length; i++) {
-          for (let j = i + 1; j < arr.length; j++) {
-            const aVal = keySegs.length === 0 ? new PageValue(arr[i]!) : TemplateRuntime.resolvePath(new PageValue(arr[i]!), keySegs, scope);
-            const bVal = keySegs.length === 0 ? new PageValue(arr[j]!) : TemplateRuntime.resolvePath(new PageValue(arr[j]!), keySegs, scope);
+        for (let i = 0; i < arr.Length; i++) {
+          for (let j = i + 1; j < arr.Length; j++) {
+            const aVal = keySegs.Length === 0 ? new PageValue(arr[i]!) : TemplateRuntime.resolvePath(new PageValue(arr[i]!), keySegs, scope);
+            const bVal = keySegs.Length === 0 ? new PageValue(arr[j]!) : TemplateRuntime.resolvePath(new PageValue(arr[j]!), keySegs, scope);
             const cmp = TemplateRuntime.compareValues(aVal, bVal);
             const shouldSwap: boolean = isDesc ? cmp < 0 : cmp > 0;
             if (shouldSwap === true) {
@@ -1719,14 +1719,14 @@ class TemplateRuntime {
       }
 
       if (collection instanceof AnyArrayValue) {
-        const items = collection.value.toArray();
+        const items = collection.value.ToArray();
         const sorted = new List<TemplateValue>();
-        for (let i = 0; i < items.length; i++) sorted.add(items[i]!);
-        const arr = sorted.toArray();
-        for (let i = 0; i < arr.length; i++) {
-          for (let j = i + 1; j < arr.length; j++) {
-            const aVal = keySegs.length === 0 ? arr[i]! : TemplateRuntime.resolvePath(arr[i]!, keySegs, scope);
-            const bVal = keySegs.length === 0 ? arr[j]! : TemplateRuntime.resolvePath(arr[j]!, keySegs, scope);
+        for (let i = 0; i < items.Length; i++) sorted.Add(items[i]!);
+        const arr = sorted.ToArray();
+        for (let i = 0; i < arr.Length; i++) {
+          for (let j = i + 1; j < arr.Length; j++) {
+            const aVal = keySegs.Length === 0 ? arr[i]! : TemplateRuntime.resolvePath(arr[i]!, keySegs, scope);
+            const bVal = keySegs.Length === 0 ? arr[j]! : TemplateRuntime.resolvePath(arr[j]!, keySegs, scope);
             const cmp = TemplateRuntime.compareValues(aVal, bVal);
             const shouldSwap: boolean = isDesc ? cmp < 0 : cmp > 0;
             if (shouldSwap === true) {
@@ -1737,88 +1737,88 @@ class TemplateRuntime {
           }
         }
         const sortResult = new List<TemplateValue>();
-        for (let i = 0; i < arr.length; i++) sortResult.add(arr[i]!);
+        for (let i = 0; i < arr.Length; i++) sortResult.Add(arr[i]!);
         return new AnyArrayValue(sortResult);
       }
 
       return collection;
     }
 
-    if (name === "after" && args.length >= 2) {
+    if (name === "after" && args.Length >= 2) {
       const n = TemplateRuntime.toNumber(args[0]!);
       const collection = args[1]!;
 
       if (collection instanceof PageArrayValue) {
         const pages = TemplateRuntime.copyPageArray(collection.value);
         const result = new List<PageContext>();
-        for (let i = n; i < pages.length; i++) result.add(pages[i]!);
-        return new PageArrayValue(result.toArray());
+        for (let i = n; i < pages.Length; i++) result.Add(pages[i]!);
+        return new PageArrayValue(result.ToArray());
       }
 
       if (collection instanceof AnyArrayValue) {
-        const items = collection.value.toArray();
+        const items = collection.value.ToArray();
         const result = new List<TemplateValue>();
-        for (let i = n; i < items.length; i++) result.add(items[i]!);
+        for (let i = n; i < items.Length; i++) result.Add(items[i]!);
         return new AnyArrayValue(result);
       }
 
       return TemplateRuntime.nil;
     }
 
-    if (name === "last" && args.length >= 2) {
+    if (name === "last" && args.Length >= 2) {
       const n = TemplateRuntime.toNumber(args[0]!);
       const collection = args[1]!;
 
       if (collection instanceof PageArrayValue) {
         const pages = TemplateRuntime.copyPageArray(collection.value);
-        const start: int = pages.length > n ? pages.length - n : 0;
+        const start: int = pages.Length > n ? pages.Length - n : 0;
         const result = new List<PageContext>();
-        for (let i = start; i < pages.length; i++) result.add(pages[i]!);
-        return new PageArrayValue(result.toArray());
+        for (let i = start; i < pages.Length; i++) result.Add(pages[i]!);
+        return new PageArrayValue(result.ToArray());
       }
 
       if (collection instanceof AnyArrayValue) {
-        const items = collection.value.toArray();
-        const start: int = items.length > n ? items.length - n : 0;
+        const items = collection.value.ToArray();
+        const start: int = items.Length > n ? items.Length - n : 0;
         const result = new List<TemplateValue>();
-        for (let i = start; i < items.length; i++) result.add(items[i]!);
+        for (let i = start; i < items.Length; i++) result.Add(items[i]!);
         return new AnyArrayValue(result);
       }
 
       return TemplateRuntime.nil;
     }
 
-    if (name === "uniq" && args.length >= 1) {
+    if (name === "uniq" && args.Length >= 1) {
       const collection = args[0]!;
 
       if (collection instanceof PageArrayValue) {
         const pages = TemplateRuntime.copyPageArray(collection.value);
         const seen = new Dictionary<string, boolean>();
         const uniqResult = new List<PageContext>();
-        for (let i = 0; i < pages.length; i++) {
+        for (let i = 0; i < pages.Length; i++) {
           const p = pages[i]!;
           const key = p.relPermalink;
           let exists = false;
-          const found = seen.tryGetValue(key, exists);
+          const found = seen.TryGetValue(key, exists);
           if (found === false) {
-            seen.add(key, true);
-            uniqResult.add(p);
+            seen.Add(key, true);
+            uniqResult.Add(p);
           }
         }
-        return new PageArrayValue(uniqResult.toArray());
+        return new PageArrayValue(uniqResult.ToArray());
       }
 
       if (collection instanceof AnyArrayValue) {
-        const items = collection.value.toArray();
+        const items = collection.value.ToArray();
         const seen = new Dictionary<string, boolean>();
         const uniqResult = new List<TemplateValue>();
-        for (let i = 0; i < items.length; i++) {
+        for (let i = 0; i < items.Length; i++) {
           const key = TemplateRuntime.toPlainString(items[i]!);
           let exists = false;
-          const found = seen.tryGetValue(key, exists);
+          const found = seen.TryGetValue(key, exists);
           if (found === false) {
-            seen.add(key, true);
-            uniqResult.add(items[i]!);
+            seen.Add(key, true);
+            uniqResult.Add(items[i]!);
           }
         }
         return new AnyArrayValue(uniqResult);
@@ -1827,41 +1827,41 @@ class TemplateRuntime {
       return collection;
     }
 
-    if (name === "group" && args.length >= 2) {
+    if (name === "group" && args.Length >= 2) {
       const key = TemplateRuntime.toPlainString(args[0]!);
       const collection = args[1]!;
       const empty: string[] = [];
-      const keySegs = key.trim() === "" ? empty : key.split(".");
+      const keySegs = key.Trim() === "" ? empty : key.Split(".");
 
       if (collection instanceof PageArrayValue) {
         const pages = TemplateRuntime.copyPageArray(collection.value);
         const groups = new Dictionary<string, List<PageContext>>();
         const groupOrder = new List<string>();
 
-        for (let i = 0; i < pages.length; i++) {
+        for (let i = 0; i < pages.Length; i++) {
           const page = pages[i]!;
           const val = TemplateRuntime.resolvePath(new PageValue(page), keySegs, scope);
           const groupKey = TemplateRuntime.toPlainString(val);
 
           let group: List<PageContext> = new List<PageContext>();
-          const hasGroup = groups.tryGetValue(groupKey, group);
+          const hasGroup = groups.TryGetValue(groupKey, group);
           if (hasGroup === false) {
             group = new List<PageContext>();
-            groups.add(groupKey, group);
-            groupOrder.add(groupKey);
+            groups.Add(groupKey, group);
+            groupOrder.Add(groupKey);
           }
-          group.add(page);
+          group.Add(page);
         }
 
         const groupResult = new List<TemplateValue>();
-        const keys = groupOrder.toArray();
-        for (let i = 0; i < keys.length; i++) {
+        const keys = groupOrder.ToArray();
+        for (let i = 0; i < keys.Length; i++) {
           let group: List<PageContext> = new List<PageContext>();
-          groups.tryGetValue(keys[i]!, group);
+          groups.TryGetValue(keys[i]!, group);
           const groupDict = new Dictionary<string, TemplateValue>();
-          groupDict.add("Key", new StringValue(keys[i]!));
-          groupDict.add("Pages", new PageArrayValue(group.toArray()));
-          groupResult.add(new DictValue(groupDict));
+          groupDict.Add("Key", new StringValue(keys[i]!));
+          groupDict.Add("Pages", new PageArrayValue(group.ToArray()));
+          groupResult.Add(new DictValue(groupDict));
         }
         return new AnyArrayValue(groupResult);
       }
@@ -1869,14 +1869,14 @@ class TemplateRuntime {
       return TemplateRuntime.nil;
     }
 
-    if (name === "plainify" && args.length >= 1) {
+    if (name === "plainify" && args.Length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
       // very small tag stripper (best-effort)
       const sb = new StringBuilder();
       let inTag = false;
-      for (let i = 0; i < s.length; i++) {
-        const ch = s.substring(i, 1);
+      for (let i = 0; i < s.Length; i++) {
+        const ch = s.Substring(i, 1);
         if (ch === "<") {
           inTag = true;
           continue;
@@ -1885,102 +1885,102 @@ class TemplateRuntime {
           inTag = false;
           continue;
         }
-        if (!inTag) sb.append(ch);
+        if (!inTag) sb.Append(ch);
       }
-      return new StringValue(sb.toString());
+      return new StringValue(sb.ToString());
     }
 
-    if (name === "cond" && args.length >= 3) {
+    if (name === "cond" && args.Length >= 3) {
       return TemplateRuntime.isTruthy(args[0]!) ? args[1]! : args[2]!;
     }
 
     if (name === "dict") {
       const map = new Dictionary<string, TemplateValue>();
-      for (let i = 0; i + 1 < args.length; i += 2) {
+      for (let i = 0; i + 1 < args.Length; i += 2) {
         const k = TemplateRuntime.toPlainString(args[i]!);
-        map.remove(k);
-        map.add(k, args[i + 1]!);
+        map.Remove(k);
+        map.Add(k, args[i + 1]!);
       }
       return new DictValue(map);
     }
 
     if (name === "slice") {
       const items = new List<TemplateValue>();
-      for (let i = 0; i < args.length; i++) items.add(args[i]!);
+      for (let i = 0; i < args.Length; i++) items.Add(args[i]!);
       return new AnyArrayValue(items);
     }
 
-    if (name === "append" && args.length >= 2) {
-      const listValue = args[args.length - 1]!;
+    if (name === "append" && args.Length >= 2) {
+      const listValue = args[args.Length - 1]!;
       const items = new List<TemplateValue>();
       if (listValue instanceof AnyArrayValue) {
-        const it = listValue.value.getEnumerator();
-        while (it.moveNext()) items.add(it.current);
+        const it = listValue.value.GetEnumerator();
+        while (it.MoveNext()) items.Add(it.Current);
       } else {
-        items.add(listValue);
+        items.Add(listValue);
       }
 
-      for (let i = 0; i < args.length - 1; i++) {
+      for (let i = 0; i < args.Length - 1; i++) {
         const v = args[i]!;
         if (v instanceof AnyArrayValue) {
-          const it = v.value.getEnumerator();
-          while (it.moveNext()) items.add(it.current);
+          const it = v.value.GetEnumerator();
+          while (it.MoveNext()) items.Add(it.Current);
         } else {
-          items.add(v);
+          items.Add(v);
         }
       }
       return new AnyArrayValue(items);
     }
 
-    if (name === "merge" && args.length >= 2) {
+    if (name === "merge" && args.Length >= 2) {
       const a = args[0]!;
       const b = args[1]!;
       const merged = new Dictionary<string, TemplateValue>();
       if (a instanceof DictValue) {
-        const it = a.value.getEnumerator();
-        while (it.moveNext()) {
-          const kv = it.current;
-          merged.remove(kv.key);
-          merged.add(kv.key, kv.value);
+        const it = a.value.GetEnumerator();
+        while (it.MoveNext()) {
+          const kv = it.Current;
+          merged.Remove(kv.Key);
+          merged.Add(kv.Key, kv.Value);
         }
       }
       if (b instanceof DictValue) {
-        const it = b.value.getEnumerator();
-        while (it.moveNext()) {
-          const kv = it.current;
-          merged.remove(kv.key);
-          merged.add(kv.key, kv.value);
+        const it = b.value.GetEnumerator();
+        while (it.MoveNext()) {
+          const kv = it.Current;
+          merged.Remove(kv.Key);
+          merged.Add(kv.Key, kv.Value);
         }
       }
       return new DictValue(merged);
     }
 
-    if (name === "isset" && args.length >= 2) {
+    if (name === "isset" && args.Length >= 2) {
       const container = args[0]!;
       const key = TemplateRuntime.toPlainString(args[1]!);
       if (container instanceof DictValue) {
         let v: TemplateValue = TemplateRuntime.nil;
-        return new BoolValue(container.value.tryGetValue(key, v));
+        return new BoolValue(container.value.TryGetValue(key, v));
       }
       return new BoolValue(false);
     }
 
-    if (name === "index" && args.length >= 2) {
+    if (name === "index" && args.Length >= 2) {
       const container = args[0]!;
       const keyValue = args[1]!;
       if (container instanceof DictValue) {
         const key = TemplateRuntime.toPlainString(keyValue);
         let v: TemplateValue = TemplateRuntime.nil;
-        return container.value.tryGetValue(key, v) ? v : TemplateRuntime.nil;
+        return container.value.TryGetValue(key, v) ? v : TemplateRuntime.nil;
       }
       if (container instanceof AnyArrayValue) {
         if (keyValue instanceof NumberValue) {
           const idx = (keyValue as NumberValue).value;
-          if (idx < 0 || idx >= container.value.count) return TemplateRuntime.nil;
-          const it = container.value.getEnumerator();
+          if (idx < 0 || idx >= container.value.Count) return TemplateRuntime.nil;
+          const it = container.value.GetEnumerator();
           let pos: int = 0;
-          while (it.moveNext()) {
-            if (pos === idx) return it.current;
+          while (it.MoveNext()) {
+            if (pos === idx) return it.Current;
             pos++;
           }
           return TemplateRuntime.nil;
@@ -1989,98 +1989,98 @@ class TemplateRuntime {
       if (container instanceof PageArrayValue) {
         if (keyValue instanceof NumberValue) {
           const idx = (keyValue as NumberValue).value;
-          return idx >= 0 && idx < container.value.length ? new PageValue(container.value[idx]!) : TemplateRuntime.nil;
+          return idx >= 0 && idx < container.value.Length ? new PageValue(container.value[idx]!) : TemplateRuntime.nil;
         }
       }
       return TemplateRuntime.nil;
     }
 
-    if (name === "delimit" && args.length >= 2) {
+    if (name === "delimit" && args.Length >= 2) {
       const listValue = args[0]!;
       const delim = TemplateRuntime.toPlainString(args[1]!);
       const parts = new List<string>();
       if (listValue instanceof AnyArrayValue) {
-        const it = listValue.value.getEnumerator();
-        while (it.moveNext()) parts.add(TemplateRuntime.toPlainString(it.current));
+        const it = listValue.value.GetEnumerator();
+        while (it.MoveNext()) parts.Add(TemplateRuntime.toPlainString(it.Current));
       } else if (listValue instanceof StringArrayValue) {
-        for (let i = 0; i < listValue.value.length; i++) parts.add(listValue.value[i]!);
+        for (let i = 0; i < listValue.value.Length; i++) parts.Add(listValue.value[i]!);
       }
-      const arr = parts.toArray();
+      const arr = parts.ToArray();
       let out = "";
-      for (let i = 0; i < arr.length; i++) {
+      for (let i = 0; i < arr.Length; i++) {
         if (i > 0) out += delim;
         out += arr[i]!;
       }
       return new StringValue(out);
     }
 
-    if (name === "in" && args.length >= 2) {
+    if (name === "in" && args.Length >= 2) {
       const container = args[0]!;
       const needle = TemplateRuntime.toPlainString(args[1]!);
       if (container instanceof AnyArrayValue) {
-        const it = container.value.getEnumerator();
-        while (it.moveNext()) {
-          if (TemplateRuntime.toPlainString(it.current) === needle) return new BoolValue(true);
+        const it = container.value.GetEnumerator();
+        while (it.MoveNext()) {
+          if (TemplateRuntime.toPlainString(it.Current) === needle) return new BoolValue(true);
         }
         return new BoolValue(false);
       }
       if (container instanceof StringValue) {
-        return new BoolValue(container.value.contains(needle));
+        return new BoolValue(container.value.Contains(needle));
       }
       return new BoolValue(false);
     }
 
-	    if (name === "split" && args.length >= 2) {
+	    if (name === "split" && args.Length >= 2) {
 	      const s = TemplateRuntime.toPlainString(args[0]!);
 	      const delim = TemplateRuntime.toPlainString(args[1]!);
 	      const items = new List<TemplateValue>();
 	      if (delim === "") {
-	        for (let i = 0; i < s.length; i++) items.add(new StringValue(s.substring(i, i + 1)));
+	        for (let i = 0; i < s.Length; i++) items.Add(new StringValue(s.Substring(i, i + 1)));
 	        return new AnyArrayValue(items);
 	      }
 	
 	      let start = 0;
 	      while (true) {
-	        const idx = s.indexOf(delim, start);
+	        const idx = s.IndexOf(delim, start);
 	        if (idx < 0) break;
-	        items.add(new StringValue(s.substring(start, idx)));
-	        start = idx + delim.length;
+	        items.Add(new StringValue(s.Substring(start, idx)));
+	        start = idx + delim.Length;
 	      }
-	      items.add(new StringValue(s.substring(start)));
+	      items.Add(new StringValue(s.Substring(start)));
 	      return new AnyArrayValue(items);
 	    }
 
-    if (name === "add" && args.length >= 2) {
+    if (name === "add" && args.Length >= 2) {
       let sum: int = 0;
-      for (let i = 0; i < args.length; i++) {
+      for (let i = 0; i < args.Length; i++) {
         const v = args[i]!;
         let parsed: int = 0;
         const s = TemplateRuntime.toPlainString(v);
-        if (Int32.tryParse(s, parsed)) sum += parsed;
+        if (Int32.TryParse(s, parsed)) sum += parsed;
       }
       return new NumberValue(sum);
     }
 
-    if (name === "sub" && args.length >= 2) {
+    if (name === "sub" && args.Length >= 2) {
       const a = TemplateRuntime.toNumber(args[0]!);
       const b = TemplateRuntime.toNumber(args[1]!);
       return new NumberValue(a - b);
     }
 
-    if (name === "mul" && args.length >= 2) {
+    if (name === "mul" && args.Length >= 2) {
       const a = TemplateRuntime.toNumber(args[0]!);
       const b = TemplateRuntime.toNumber(args[1]!);
       return new NumberValue(a * b);
     }
 
-    if (name === "div" && args.length >= 2) {
+    if (name === "div" && args.Length >= 2) {
       const a = TemplateRuntime.toNumber(args[0]!);
       const b = TemplateRuntime.toNumber(args[1]!);
       if (b === 0) return new NumberValue(0);
       return new NumberValue(a / b);
     }
 
-    if (name === "mod" && args.length >= 2) {
+    if (name === "mod" && args.Length >= 2) {
       const a = TemplateRuntime.toNumber(args[0]!);
       const b = TemplateRuntime.toNumber(args[1]!);
       if (b === 0) return new NumberValue(0);
@@ -2092,267 +2092,267 @@ class TemplateRuntime {
     }
 
     if (name === "encoding.jsonify" || name === "jsonify") {
-      const v = args.length >= 1 ? args[0]! : TemplateRuntime.nil;
+      const v = args.Length >= 1 ? args[0]! : TemplateRuntime.nil;
       return new StringValue(TemplateRuntime.toJson(v));
     }
 
-    if (name === "crypto.sha1" && args.length >= 1) {
-      const bytes = Encoding.UTF8.getBytes(TemplateRuntime.toPlainString(args[0]!));
-      const hash = SHA1.hashData(bytes);
+    if (name === "crypto.sha1" && args.Length >= 1) {
+      const bytes = Encoding.UTF8.GetBytes(TemplateRuntime.toPlainString(args[0]!));
+      const hash = SHA1.HashData(bytes);
       return new StringValue(TemplateRuntime.bytesToHex(hash));
     }
 
-    if (name === "md5" && args.length >= 1) {
-      const bytes = Encoding.UTF8.getBytes(TemplateRuntime.toPlainString(args[0]!));
-      const hash = MD5.hashData(bytes);
+    if (name === "md5" && args.Length >= 1) {
+      const bytes = Encoding.UTF8.GetBytes(TemplateRuntime.toPlainString(args[0]!));
+      const hash = MD5.HashData(bytes);
       return new StringValue(TemplateRuntime.bytesToHex(hash));
     }
 
-    if (name === "urls.parse" && args.length >= 1) {
+    if (name === "urls.parse" && args.Length >= 1) {
       const s = TemplateRuntime.toPlainString(args[0]!);
       return new UrlValue(TemplateRuntime.parseUrl(s));
     }
 
-    if (name === "urls.joinpath" && args.length >= 1) {
+    if (name === "urls.joinpath" && args.Length >= 1) {
       const parts = new List<string>();
-      for (let i = 0; i < args.length; i++) parts.add(TemplateRuntime.toPlainString(args[i]!));
-      const arr = parts.toArray();
+      for (let i = 0; i < args.Length; i++) parts.Add(TemplateRuntime.toPlainString(args[i]!));
+      const arr = parts.ToArray();
       let out = "";
-      for (let i = 0; i < arr.length; i++) {
+      for (let i = 0; i < arr.Length; i++) {
         const p = arr[i]!;
         out = out === "" ? TemplateRuntime.trimSlashes(p) : TemplateRuntime.trimEndChar(out, "/") + "/" + TemplateRuntime.trimStartChar(p, "/");
       }
       return new StringValue(out);
     }
 
-    if (name === "strings.contains" && args.length >= 2) {
+    if (name === "strings.Contains" && args.Length >= 2) {
       const s = TemplateRuntime.toPlainString(args[0]!);
       const sub = TemplateRuntime.toPlainString(args[1]!);
-      return new BoolValue(s.contains(sub));
+      return new BoolValue(s.Contains(sub));
     }
 
-    if (name === "strings.hasprefix" && args.length >= 2) {
+    if (name === "strings.hasprefix" && args.Length >= 2) {
       const s = TemplateRuntime.toPlainString(args[0]!);
       const prefix = TemplateRuntime.toPlainString(args[1]!);
-      return new BoolValue(s.startsWith(prefix));
+      return new BoolValue(s.StartsWith(prefix));
     }
 
-    if (name === "strings.trimprefix" && args.length >= 2) {
+    if (name === "strings.trimprefix" && args.Length >= 2) {
       const prefix = TemplateRuntime.toPlainString(args[0]!);
       const s = TemplateRuntime.toPlainString(args[1]!);
-      return new StringValue(s.startsWith(prefix) ? s.substring(prefix.length) : s);
+      return new StringValue(s.StartsWith(prefix) ? s.Substring(prefix.Length) : s);
     }
 
-    if (name === "strings.trimsuffix" && args.length >= 2) {
+    if (name === "strings.trimsuffix" && args.Length >= 2) {
       const suffix = TemplateRuntime.toPlainString(args[0]!);
       const s = TemplateRuntime.toPlainString(args[1]!);
-      return new StringValue(s.endsWith(suffix) ? s.substring(0, s.length - suffix.length) : s);
+      return new StringValue(s.EndsWith(suffix) ? s.Substring(0, s.Length - suffix.Length) : s);
     }
 
     if (name === "warnf") return TemplateRuntime.nil;
     if (name === "errorf") {
-      const msg = TemplateRuntime.toPlainString(args.length >= 1 ? args[0]! : TemplateRuntime.nil);
+      const msg = TemplateRuntime.toPlainString(args.Length >= 1 ? args[0]! : TemplateRuntime.nil);
       throw new Exception(msg);
     }
 
-    if (name === "urlize" && args.length >= 1) {
+    if (name === "urlize" && args.Length >= 1) {
       const v = args[0]!;
       return new StringValue(slugify(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "humanize" && args.length >= 1) {
+    if (name === "humanize" && args.Length >= 1) {
       const v = args[0]!;
       return new StringValue(humanizeSlug(TemplateRuntime.toPlainString(v)));
     }
 
-    if (name === "lower" && args.length >= 1) {
+    if (name === "lower" && args.Length >= 1) {
       const v = args[0]!;
-      return new StringValue(TemplateRuntime.toPlainString(v).toLowerInvariant());
+      return new StringValue(TemplateRuntime.toPlainString(v).ToLowerInvariant());
     }
 
-    if (name === "upper" && args.length >= 1) {
+    if (name === "upper" && args.Length >= 1) {
       const v = args[0]!;
-      return new StringValue(TemplateRuntime.toPlainString(v).toUpperInvariant());
+      return new StringValue(TemplateRuntime.toPlainString(v).ToUpperInvariant());
     }
 
-    if (name === "trim" && args.length >= 1) {
+    if (name === "trim" && args.Length >= 1) {
       const v = args[0]!;
-      return new StringValue(TemplateRuntime.toPlainString(v).trim());
+      return new StringValue(TemplateRuntime.toPlainString(v).Trim());
     }
 
-    if (name === "replace" && args.length >= 3) {
+    if (name === "replace" && args.Length >= 3) {
       const s = TemplateRuntime.toPlainString(args[0]!);
       const oldStr = TemplateRuntime.toPlainString(args[1]!);
       const newStr = TemplateRuntime.toPlainString(args[2]!);
-      return new StringValue(s.replace(oldStr, newStr));
+      return new StringValue(s.Replace(oldStr, newStr));
     }
 
-    if (name === "replaceRE" && args.length >= 3) {
+    if (name === "replaceRE" && args.Length >= 3) {
       const pattern = TemplateRuntime.toPlainString(args[0]!);
       const replacement = TemplateRuntime.toPlainString(args[1]!);
       const s = TemplateRuntime.toPlainString(args[2]!);
       const regex = new Regex(pattern);
-      return new StringValue(regex.replace(s, replacement));
+      return new StringValue(regex.Replace(s, replacement));
     }
 
-    if (name === "truncate" && args.length >= 2) {
+    if (name === "truncate" && args.Length >= 2) {
       const length = TemplateRuntime.toNumber(args[0]!);
       const s = TemplateRuntime.toPlainString(args[1]!);
-      const ellipsis = args.length >= 3 ? TemplateRuntime.toPlainString(args[2]!) : "...";
-      if (s.length <= length) return new StringValue(s);
-      const truncLen: int = length - ellipsis.length;
-      if (truncLen <= 0) return new StringValue(ellipsis.substring(0, length));
-      return new StringValue(s.substring(0, truncLen) + ellipsis);
+      const ellipsis = args.Length >= 3 ? TemplateRuntime.toPlainString(args[2]!) : "...";
+      if (s.Length <= length) return new StringValue(s);
+      const truncLen: int = length - ellipsis.Length;
+      if (truncLen <= 0) return new StringValue(ellipsis.Substring(0, length));
+      return new StringValue(s.Substring(0, truncLen) + ellipsis);
     }
 
-    if (name === "markdownify" && args.length >= 1) {
+    if (name === "markdownify" && args.Length >= 1) {
       const s = TemplateRuntime.toPlainString(args[0]!);
       const md = renderMarkdown(s);
       // Strip wrapping <p> tags for inline use
-      let html = md.html.trim();
-      if (html.startsWith("<p>") && html.endsWith("</p>")) {
-        html = html.substring(3, html.length - 4);
+      let html = md.html.Trim();
+      if (html.StartsWith("<p>") && html.EndsWith("</p>")) {
+        html = html.Substring(3, html.Length - 4);
       }
       return new HtmlValue(new HtmlString(html));
     }
 
-    if (name === "relurl" && args.length >= 1) {
+    if (name === "relurl" && args.Length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
-      return new StringValue(s.startsWith("/") ? s : "/" + s);
+      return new StringValue(s.StartsWith("/") ? s : "/" + s);
     }
 
-    if (name === "absurl" && args.length >= 1) {
+    if (name === "absurl" && args.Length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
-      const rel = s.startsWith("/") ? s.substring(1) : s;
+      const rel = s.StartsWith("/") ? s.Substring(1) : s;
       return new StringValue(ensureTrailingSlash(scope.site.baseURL) + rel);
     }
 
-    if (name === "abslangurl" && args.length >= 1) {
+    if (name === "abslangurl" && args.Length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
       const lang = scope.site.Language.Lang;
-      const langPrefix = scope.site.Languages.length > 1 ? lang + "/" : "";
-      const rel = s.startsWith("/") ? s.substring(1) : s;
+      const langPrefix = scope.site.Languages.Length > 1 ? lang + "/" : "";
+      const rel = s.StartsWith("/") ? s.Substring(1) : s;
       return new StringValue(ensureTrailingSlash(scope.site.baseURL) + langPrefix + rel);
     }
 
-    if (name === "rellangurl" && args.length >= 1) {
+    if (name === "rellangurl" && args.Length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
       const lang = scope.site.Language.Lang;
-      const langPrefix = scope.site.Languages.length > 1 ? "/" + lang : "";
-      const path = s.startsWith("/") ? s : "/" + s;
+      const langPrefix = scope.site.Languages.Length > 1 ? "/" + lang : "";
+      const path = s.StartsWith("/") ? s : "/" + s;
       return new StringValue(langPrefix + path);
     }
 
-    if (name === "urlquery" && args.length >= 1) {
+    if (name === "urlquery" && args.Length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
-      return new StringValue(Uri.escapeDataString(s));
+      return new StringValue(Uri.EscapeDataString(s));
     }
 
-    if (name === "default" && args.length >= 2) {
+    if (name === "default" && args.Length >= 2) {
       const fallback = args[0]!;
       const v = args[1]!;
       return TemplateRuntime.isTruthy(v) ? v : fallback;
     }
 
-    if (name === "len" && args.length >= 1) {
+    if (name === "len" && args.Length >= 1) {
       const v = args[0]!;
       if (v instanceof StringValue) {
-        const l: int = v.value.length;
+        const l: int = v.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof HtmlValue) {
-        const l: int = v.value.value.length;
+        const l: int = v.value.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof PageArrayValue) {
-        const l: int = v.value.length;
+        const l: int = v.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof StringArrayValue) {
-        const l: int = v.value.length;
+        const l: int = v.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof SitesArrayValue) {
-        const l: int = v.value.length;
+        const l: int = v.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof DocsMountArrayValue) {
-        const l: int = v.value.length;
+        const l: int = v.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof NavArrayValue) {
-        const l: int = v.value.length;
+        const l: int = v.value.Length;
         return new NumberValue(l);
       }
       if (v instanceof DictValue) {
-        return new NumberValue(v.value.count);
+        return new NumberValue(v.value.Count);
       }
       if (v instanceof AnyArrayValue) {
-        return new NumberValue(v.value.count);
+        return new NumberValue(v.value.Count);
       }
       return new NumberValue(0);
     }
 
-    if (name === "dateformat" && args.length >= 2) {
+    if (name === "dateformat" && args.Length >= 2) {
       const layout = TemplateRuntime.toPlainString(args[0]!);
       const s = TemplateRuntime.toPlainString(args[1]!);
-      let parsed: DateTime = DateTime.minValue;
-      const ok = DateTime.tryParse(s, parsed);
+      let parsed: DateTime = DateTime.MinValue;
+      const ok = DateTime.TryParse(s, parsed);
       if (!ok) return new StringValue("");
       const fmt = TemplateRuntime.convertGoDateLayoutToDotNet(layout);
-      return new StringValue(parsed.toString(fmt));
+      return new StringValue(parsed.ToString(fmt));
     }
 
-    if (name === "print" && args.length >= 1) {
+    if (name === "print" && args.Length >= 1) {
       const sb = new StringBuilder();
-      for (let i = 0; i < args.length; i++) sb.append(TemplateRuntime.toPlainString(args[i]!));
-      return new StringValue(sb.toString());
+      for (let i = 0; i < args.Length; i++) sb.Append(TemplateRuntime.toPlainString(args[i]!));
+      return new StringValue(sb.ToString());
     }
 
-    if (name === "printf" && args.length >= 1) {
+    if (name === "printf" && args.Length >= 1) {
       const fmt = TemplateRuntime.toPlainString(args[0]!);
       const vals = new List<string>();
-      for (let argIndex = 1; argIndex < args.length; argIndex++) vals.add(TemplateRuntime.toPlainString(args[argIndex]!));
-      const values = vals.toArray();
+      for (let argIndex = 1; argIndex < args.Length; argIndex++) vals.Add(TemplateRuntime.toPlainString(args[argIndex]!));
+      const values = vals.ToArray();
 
       const sb = new StringBuilder();
       let pos = 0;
       let valueIndex = 0;
-      while (pos < fmt.length) {
-        const ch = fmt.substring(pos, 1);
-        if (ch === "%" && pos + 1 < fmt.length) {
-          const next = fmt.substring(pos + 1, 1);
+      while (pos < fmt.Length) {
+        const ch = fmt.Substring(pos, 1);
+        if (ch === "%" && pos + 1 < fmt.Length) {
+          const next = fmt.Substring(pos + 1, 1);
           if (next === "%") {
-            sb.append("%");
+            sb.Append("%");
             pos += 2;
             continue;
           }
           if (next === "s") {
-            if (valueIndex < values.length) sb.append(values[valueIndex]!);
+            if (valueIndex < values.Length) sb.Append(values[valueIndex]!);
             valueIndex++;
             pos += 2;
             continue;
           }
           if (next === "d") {
-            if (valueIndex < values.length) sb.append(values[valueIndex]!);
+            if (valueIndex < values.Length) sb.Append(values[valueIndex]!);
             valueIndex++;
             pos += 2;
             continue;
           }
         }
-        sb.append(ch);
+        sb.Append(ch);
         pos++;
       }
 
-      return new StringValue(sb.toString());
+      return new StringValue(sb.ToString());
     }
 
-    if (args.length >= 2) {
+    if (args.Length >= 2) {
       const isCompare = name === "eq" || name === "ne" || name === "lt" || name === "le" || name === "gt" || name === "ge";
       if (isCompare) {
         const a = args[0]!;
@@ -2372,12 +2372,12 @@ class TemplateRuntime {
           } else {
             const av = TemplateRuntime.toPlainString(a);
             const bv = TemplateRuntime.toPlainString(b);
-            cmp = av.compareTo(bv);
+            cmp = av.CompareTo(bv);
           }
         } else {
           const av = TemplateRuntime.toPlainString(a);
           const bv = TemplateRuntime.toPlainString(b);
-          cmp = av.compareTo(bv);
+          cmp = av.CompareTo(bv);
         }
 
         if (name === "eq") return new BoolValue(cmp === 0);
@@ -2389,31 +2389,31 @@ class TemplateRuntime {
       }
     }
 
-    if (name === "not" && args.length >= 1) {
+    if (name === "not" && args.Length >= 1) {
       return new BoolValue(!TemplateRuntime.isTruthy(args[0]!));
     }
 
-    if (name === "and" && args.length >= 1) {
+    if (name === "and" && args.Length >= 1) {
       let cur = args[0]!;
-      for (let i = 0; i < args.length; i++) {
+      for (let i = 0; i < args.Length; i++) {
         cur = args[i]!;
         if (!TemplateRuntime.isTruthy(cur)) return cur;
       }
       return cur;
     }
 
-    if (name === "or" && args.length >= 1) {
-      for (let i = 0; i < args.length; i++) {
+    if (name === "or" && args.Length >= 1) {
+      for (let i = 0; i < args.Length; i++) {
         const cur = args[i]!;
         if (TemplateRuntime.isTruthy(cur)) return cur;
       }
-      return args[args.length - 1]!;
+      return args[args.Length - 1]!;
     }
 
     return TemplateRuntime.nil;
     } catch (e) {
       if (e instanceof ReturnException) throw e;
-      Console.error.writeLine("Template function failed: {0} ({1})", nameRaw, name);
+      Console.Error.WriteLine("Template function failed: {0} ({1})", nameRaw, name);
       throw e;
     }
   }
@@ -2432,17 +2432,17 @@ class TemplateRuntime {
     overrides: Dictionary<string, TemplateNode[]>,
     defines: Dictionary<string, TemplateNode[]>,
   ): TemplateValue {
-    const method = methodName.toLowerInvariant();
+    const method = methodName.ToLowerInvariant();
 
     // Handle AnyArrayValue methods (resource collections, page collections, etc.)
     if (receiver instanceof AnyArrayValue) {
       const arr = receiver.value;
 
       // GetMatch - find first item matching pattern (for resources)
-      if (method === "getmatch" && args.length >= 1) {
+      if (method === "getmatch" && args.Length >= 1) {
         const pattern = TemplateRuntime.toPlainString(args[0]!);
-        const items = arr.toArray();
-        for (let i = 0; i < items.length; i++) {
+        const items = arr.ToArray();
+        for (let i = 0; i < items.Length; i++) {
           const item = items[i]!;
           if (item instanceof ResourceValue) {
             const res = item.value;
@@ -2456,17 +2456,17 @@ class TemplateRuntime {
       }
 
       // Match - filter items matching pattern
-      if (method === "match" && args.length >= 1) {
+      if (method === "match" && args.Length >= 1) {
         const pattern = TemplateRuntime.toPlainString(args[0]!);
         const matchResult = new List<TemplateValue>();
-        const items = arr.toArray();
-        for (let i = 0; i < items.length; i++) {
+        const items = arr.ToArray();
+        for (let i = 0; i < items.Length; i++) {
           const item = items[i]!;
           if (item instanceof ResourceValue) {
             const res = item.value;
             const name = res.outputRelPath ?? res.id;
             if (TemplateRuntime.globMatch(pattern, name)) {
-              matchResult.add(item);
+              matchResult.Add(item);
             }
           }
         }
@@ -2474,24 +2474,24 @@ class TemplateRuntime {
       }
 
       // ByType - filter by media type (using path extension as heuristic)
-      if (method === "bytype" && args.length >= 1) {
-        const targetType = TemplateRuntime.toPlainString(args[0]!).toLowerInvariant();
+      if (method === "bytype" && args.Length >= 1) {
+        const targetType = TemplateRuntime.toPlainString(args[0]!).ToLowerInvariant();
         const byTypeResult = new List<TemplateValue>();
-        const byTypeItems = arr.toArray();
-        for (let i = 0; i < byTypeItems.length; i++) {
+        const byTypeItems = arr.ToArray();
+        for (let i = 0; i < byTypeItems.Length; i++) {
           const item = byTypeItems[i]!;
           if (item instanceof ResourceValue) {
             const res = item.value;
             // Determine type from extension
             const path = res.outputRelPath ?? res.id;
-            const ext = TemplateRuntime.getPathExtension(path).toLowerInvariant();
+            const ext = TemplateRuntime.getPathExtension(path).ToLowerInvariant();
             let mainType = "application";
             if (ext === ".png" || ext === ".jpg" || ext === ".jpeg" || ext === ".gif" || ext === ".webp" || ext === ".svg") {
               mainType = "image";
             } else if (ext === ".css" || ext === ".html" || ext === ".js" || ext === ".json" || ext === ".xml" || ext === ".txt") {
               mainType = "text";
             }
-            if (mainType === targetType) byTypeResult.add(item);
+            if (mainType === targetType) byTypeResult.Add(item);
           }
         }
         return new AnyArrayValue(byTypeResult);
@@ -2504,19 +2504,19 @@ class TemplateRuntime {
       const pages: PageContext[] = pageArr.value;
 
       // First - return first N pages
-      if (method === "first" && args.length >= 1) {
+      if (method === "first" && args.Length >= 1) {
         const n = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
         const firstResult = new List<PageContext>();
-        for (let i = 0; i < pages.length && i < n; i++) firstResult.add(pages[i]!);
-        return new PageArrayValue(firstResult.toArray());
+        for (let i = 0; i < pages.Length && i < n; i++) firstResult.Add(pages[i]!);
+        return new PageArrayValue(firstResult.ToArray());
       }
 
       // Limit - same as First
-      if (method === "limit" && args.length >= 1) {
+      if (method === "limit" && args.Length >= 1) {
         const n = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
         const limitResult = new List<PageContext>();
-        for (let i = 0; i < pages.length && i < n; i++) limitResult.add(pages[i]!);
-        return new PageArrayValue(limitResult.toArray());
+        for (let i = 0; i < pages.Length && i < n; i++) limitResult.Add(pages[i]!);
+        return new PageArrayValue(limitResult.ToArray());
       }
     }
 
@@ -2525,8 +2525,8 @@ class TemplateRuntime {
       const page = receiver.value;
 
       // GetTerms - return term pages for a taxonomy
-      if (method === "getterms" && args.length >= 1) {
-        const taxonomy = TemplateRuntime.toPlainString(args[0]!).toLowerInvariant();
+      if (method === "getterms" && args.Length >= 1) {
+        const taxonomy = TemplateRuntime.toPlainString(args[0]!).ToLowerInvariant();
         const site = page.site;
         const termsResult = new List<PageContext>();
 
@@ -2534,7 +2534,7 @@ class TemplateRuntime {
         // Currently only supports built-in tags and categories
         if (taxonomy !== "tags" && taxonomy !== "categories") {
           // Unsupported taxonomy - return empty result
-          return new PageArrayValue(termsResult.toArray());
+          return new PageArrayValue(termsResult.ToArray());
         }
         let termValues: string[];
         if (taxonomy === "tags") {
@@ -2545,27 +2545,27 @@ class TemplateRuntime {
         const allPages = TemplateRuntime.copyPageArray(site.allPages);
 
         // Find the term pages from site taxonomies
-        for (let i = 0; i < termValues.length; i++) {
+        for (let i = 0; i < termValues.Length; i++) {
           const termValue = termValues[i]!;
           // Look for the term page in site.allPages
-          const termSlug = termValue.toLowerInvariant().replace(" ", "-");
-          for (let j = 0; j < allPages.length; j++) {
+          const termSlug = termValue.ToLowerInvariant().Replace(" ", "-");
+          for (let j = 0; j < allPages.Length; j++) {
             const p = allPages[j]!;
             if (p.kind === "term" && p.section === taxonomy && p.slug === termSlug) {
-              termsResult.add(p);
+              termsResult.Add(p);
               break;
             }
           }
         }
 
-        return new PageArrayValue(termsResult.toArray());
+        return new PageArrayValue(termsResult.ToArray());
       }
     }
 
     // Handle ResourceValue methods
     if (receiver instanceof ResourceValue) {
       // Resize for images
-      if (method === "resize" && args.length >= 1) {
+      if (method === "resize" && args.Length >= 1) {
         // TODO: Implement actual image resizing
         // For now, return the same resource (placeholder)
         return receiver;
@@ -2579,96 +2579,96 @@ class TemplateRuntime {
   }
 
   private static getPathExtension(path: string): string {
-    const lastDot = path.lastIndexOf(".");
+    const lastDot = path.LastIndexOf(".");
     if (lastDot < 0) return "";
-    return path.substring(lastDot);
+    return path.Substring(lastDot);
   }
 
   static toJson(value: TemplateValue): string {
     if (value instanceof NilValue) return "null";
     if (value instanceof BoolValue) return value.value ? "true" : "false";
-    if (value instanceof NumberValue) return value.value.toString();
+    if (value instanceof NumberValue) return value.value.ToString();
     if (value instanceof StringValue) return TemplateRuntime.toJsonString(value.value);
     if (value instanceof HtmlValue) return TemplateRuntime.toJsonString(value.value.value);
     if (value instanceof AnyArrayValue) {
       const items = value.value;
       const sb = new StringBuilder();
-      sb.append("[");
+      sb.Append("[");
       let first = true;
-      const it = items.getEnumerator();
-      while (it.moveNext()) {
-        if (!first) sb.append(",");
+      const it = items.GetEnumerator();
+      while (it.MoveNext()) {
+        if (!first) sb.Append(",");
         first = false;
-        sb.append(TemplateRuntime.toJson(it.current));
+        sb.Append(TemplateRuntime.toJson(it.Current));
       }
-      sb.append("]");
-      return sb.toString();
+      sb.Append("]");
+      return sb.ToString();
     }
     if (value instanceof DictValue) {
       const sb = new StringBuilder();
-      sb.append("{");
+      sb.Append("{");
       let first = true;
-      const it = value.value.getEnumerator();
-      while (it.moveNext()) {
-        const kv = it.current;
-        if (!first) sb.append(",");
+      const it = value.value.GetEnumerator();
+      while (it.MoveNext()) {
+        const kv = it.Current;
+        if (!first) sb.Append(",");
         first = false;
-        sb.append(TemplateRuntime.toJsonString(kv.key));
-        sb.append(":");
-        sb.append(TemplateRuntime.toJson(kv.value));
+        sb.Append(TemplateRuntime.toJsonString(kv.Key));
+        sb.Append(":");
+        sb.Append(TemplateRuntime.toJson(kv.Value));
       }
-      sb.append("}");
-      return sb.toString();
+      sb.Append("}");
+      return sb.ToString();
     }
     return "null";
   }
 
   static toJsonString(value: string): string {
     const sb = new StringBuilder();
-    sb.append("\"");
-    for (let i = 0; i < value.length; i++) {
-      const ch = value.substring(i, 1);
-      if (ch === "\\") sb.append("\\\\");
-      else if (ch === "\"") sb.append("\\\"");
-      else if (ch === "\n") sb.append("\\n");
-      else if (ch === "\r") sb.append("\\r");
-      else if (ch === "\t") sb.append("\\t");
-      else sb.append(ch);
+    sb.Append("\"");
+    for (let i = 0; i < value.Length; i++) {
+      const ch = value.Substring(i, 1);
+      if (ch === "\\") sb.Append("\\\\");
+      else if (ch === "\"") sb.Append("\\\"");
+      else if (ch === "\n") sb.Append("\\n");
+      else if (ch === "\r") sb.Append("\\r");
+      else if (ch === "\t") sb.Append("\\t");
+      else sb.Append(ch);
     }
-    sb.append("\"");
-    return sb.toString();
+    sb.Append("\"");
+    return sb.ToString();
   }
 
   static bytesToHex(bytes: byte[]): string {
     const hexChars = "0123456789abcdef";
     const sb = new StringBuilder();
-    for (let i = 0; i < bytes.length; i++) {
+    for (let i = 0; i < bytes.Length; i++) {
       const b: int = bytes[i]!;
-      sb.append(hexChars.substring((b >> 4) & 0xf, 1));
-      sb.append(hexChars.substring(b & 0xf, 1));
+      sb.Append(hexChars.Substring((b >> 4) & 0xf, 1));
+      sb.Append(hexChars.Substring(b & 0xf, 1));
     }
-    return sb.toString();
+    return sb.ToString();
   }
 
   static parseUrl(value: string): Uri {
-    const trimmed = value.trim();
+    const trimmed = value.Trim();
     try {
-      return new Uri(trimmed, UriKind.relativeOrAbsolute);
+      return new Uri(trimmed, UriKind.RelativeOrAbsolute);
     } catch (e) {
-      return new Uri("about:blank", UriKind.absolute);
+      return new Uri("about:blank", UriKind.Absolute);
     }
   }
 
   static trimStartChar(value: string, ch: string): string {
     let start = 0;
-    while (start < value.length && value.substring(start, 1) === ch) start++;
-    return value.substring(start);
+    while (start < value.Length && value.Substring(start, 1) === ch) start++;
+    return value.Substring(start);
   }
 
   static trimEndChar(value: string, ch: string): string {
-    let end = value.length;
-    while (end > 0 && value.substring(end - 1, 1) === ch) end--;
-    return value.substring(0, end);
+    let end = value.Length;
+    while (end > 0 && value.Substring(end - 1, 1) === ch) end--;
+    return value.Substring(0, end);
   }
 
   static trimSlashes(value: string): string {
@@ -2677,7 +2677,7 @@ class TemplateRuntime {
   }
 
   static trimRightWhitespace(s: string): string {
-    return s.trimEnd();
+    return s.TrimEnd();
   }
 
   static parseTemplateText(template: string): Template {
@@ -2692,67 +2692,67 @@ class TemplateRuntime {
     let i = 0;
     let lastSegment: Segment | undefined = undefined;
 
-    while (i < template.length) {
+    while (i < template.Length) {
       const start = indexOfTextFrom(template, "{{", i);
       if (start < 0) {
-        const textSegment = new Segment(false, template.substring(i));
-        segs.add(textSegment);
+        const textSegment = new Segment(false, template.Substring(i));
+        segs.Add(textSegment);
         lastSegment = textSegment;
         break;
       }
 
       if (start > i) {
-        const textSegment = new Segment(false, template.substring(i, start - i));
-        segs.add(textSegment);
+        const textSegment = new Segment(false, template.Substring(i, start - i));
+        segs.Add(textSegment);
         lastSegment = textSegment;
       }
 
       const end = indexOfTextFrom(template, "}}", start + 2);
       if (end < 0) {
-        const textSegment = new Segment(false, template.substring(start));
-        segs.add(textSegment);
+        const textSegment = new Segment(false, template.Substring(start));
+        segs.Add(textSegment);
         lastSegment = textSegment;
         break;
       }
 
-      let action = template.substring(start + 2, end - (start + 2));
+      let action = template.Substring(start + 2, end - (start + 2));
       let leftTrim = false;
       let rightTrim = false;
 
-      if (action.startsWith("-")) {
+      if (action.StartsWith("-")) {
         leftTrim = true;
-        action = action.substring(1);
+        action = action.Substring(1);
       }
 
-      if (action.endsWith("-")) {
+      if (action.EndsWith("-")) {
         rightTrim = true;
-        action = action.substring(0, action.length - 1);
+        action = action.Substring(0, action.Length - 1);
       }
 
-      action = action.trim();
+      action = action.Trim();
 
       if (leftTrim && lastSegment !== undefined && !lastSegment.isAction) {
-        segs.removeAt(segs.count - 1);
+        segs.RemoveAt(segs.Count - 1);
         const trimmedTextSegment = new Segment(false, TemplateRuntime.trimRightWhitespace(lastSegment.text));
-        segs.add(trimmedTextSegment);
+        segs.Add(trimmedTextSegment);
         lastSegment = trimmedTextSegment;
       }
 
       const actionSegment = new Segment(true, action);
-      segs.add(actionSegment);
+      segs.Add(actionSegment);
       lastSegment = actionSegment;
       i = end + 2;
 
       if (rightTrim) {
-        while (i < template.length) {
-          const ch = template.substring(i, 1);
+        while (i < template.Length) {
+          const ch = template.Substring(i, 1);
           if (ch !== " " && ch !== "\t" && ch !== "\r" && ch !== "\n") break;
           i++;
         }
       }
     }
 
-    return segs.toArray();
+    return segs.ToArray();
   }
 
   static tokenizeAction(action: string): string[] {
@@ -2760,32 +2760,32 @@ class TemplateRuntime {
     let i = 0;
 
     const push = (t: string): void => {
-      if (t !== "") tokens.add(t);
+      if (t !== "") tokens.Add(t);
     };
 
-    while (i < action.length) {
-      const ch = action.substring(i, 1);
+    while (i < action.Length) {
+      const ch = action.Substring(i, 1);
       if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") {
         i++;
         continue;
       }
       if (ch === "|") {
-        tokens.add("|");
+        tokens.Add("|");
         i++;
         continue;
       }
       if (ch === "(" || ch === ")" || ch === ",") {
-        tokens.add(ch);
+        tokens.Add(ch);
         i++;
         continue;
       }
-      if (ch === ":" && i + 1 < action.length && action.substring(i + 1, 1) === "=") {
-        tokens.add(":=");
+      if (ch === ":" && i + 1 < action.Length && action.Substring(i + 1, 1) === "=") {
+        tokens.Add(":=");
         i += 2;
         continue;
       }
       if (ch === "=") {
-        tokens.add("=");
+        tokens.Add("=");
         i++;
         continue;
       }
@@ -2793,34 +2793,34 @@ class TemplateRuntime {
         const quote = ch;
         i++;
         const quotedStart = i;
-        while (i < action.length && action.substring(i, 1) !== quote) i++;
-        const value = action.substring(quotedStart, i - quotedStart);
+        while (i < action.Length && action.Substring(i, 1) !== quote) i++;
+        const value = action.Substring(quotedStart, i - quotedStart);
         push(quote + value + quote);
-        if (i < action.length) i++;
+        if (i < action.Length) i++;
         continue;
       }
       if (ch === "`") {
         const quote = ch;
         i++;
         const quotedStart = i;
-        while (i < action.length && action.substring(i, 1) !== quote) i++;
-        const value = action.substring(quotedStart, i - quotedStart);
+        while (i < action.Length && action.Substring(i, 1) !== quote) i++;
+        const value = action.Substring(quotedStart, i - quotedStart);
         push(quote + value + quote);
-        if (i < action.length) i++;
+        if (i < action.Length) i++;
         continue;
       }
 
       const tokenStart = i;
-      while (i < action.length) {
-        const c = action.substring(i, 1);
+      while (i < action.Length) {
+        const c = action.Substring(i, 1);
         if (c === " " || c === "\t" || c === "\r" || c === "\n" || c === "|" || c === "(" || c === ")" || c === "," || c === "=") break;
-        if (c === ":" && i + 1 < action.length && action.substring(i + 1, 1) === "=") break;
+        if (c === ":" && i + 1 < action.Length && action.Substring(i + 1, 1) === "=") break;
         i++;
       }
-      push(action.substring(tokenStart, i - tokenStart));
+      push(action.Substring(tokenStart, i - tokenStart));
     }
 
-    return tokens.toArray();
+    return tokens.ToArray();
   }
 
   static parsePipeline(tokens: string[]): Pipeline {
@@ -2830,8 +2830,8 @@ class TemplateRuntime {
 
   static sliceTokens(tokens: string[], startIndex: int): string[] {
     const out = new List<string>();
-    for (let i = startIndex; i < tokens.length; i++) out.add(tokens[i]!);
-    return out.toArray();
+    for (let i = startIndex; i < tokens.Length; i++) out.Add(tokens[i]!);
+    return out.ToArray();
   }
 }
 
@@ -2865,13 +2865,13 @@ class TokenExpr extends Expr {
   }
 
   override eval(scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): TemplateValue {
-    const t = this.token.trim();
+    const t = this.token.Trim();
     if (
       t === "." ||
       t === "$" ||
-      t.startsWith(".") ||
-      t.startsWith("$") ||
-      t.startsWith("site") ||
+      t.StartsWith(".") ||
+      t.StartsWith("$") ||
+      t.StartsWith("site") ||
       TemplateRuntime.parseStringLiteral(t) !== undefined ||
       t === "true" ||
       t === "false" ||
@@ -2921,45 +2921,45 @@ class PipelineParser {
 
   parsePipeline(stopOnRightParen: boolean): Pipeline {
     const stages = new List<Command>();
-    while (this.idx < this.tokens.length) {
+    while (this.idx < this.tokens.Length) {
       const t = this.tokens[this.idx]!;
       if (stopOnRightParen && t === ")") break;
       if (t === "|") {
         this.idx++;
         continue;
       }
-      stages.add(this.parseCommand());
-      if (this.idx < this.tokens.length && this.tokens[this.idx]! === "|") this.idx++;
+      stages.Add(this.parseCommand());
+      if (this.idx < this.tokens.Length && this.tokens[this.idx]! === "|") this.idx++;
     }
-    return new Pipeline(stages.toArray());
+    return new Pipeline(stages.ToArray());
   }
 
   private parseCommand(): Command {
     const head = this.parseExpr();
     const args = new List<Expr>();
 
-    while (this.idx < this.tokens.length) {
+    while (this.idx < this.tokens.Length) {
       const t = this.tokens[this.idx]!;
       if (t === "|" || t === ")") break;
-      args.add(this.parseExpr());
+      args.Add(this.parseExpr());
     }
 
-    return new Command(head, args.toArray());
+    return new Command(head, args.ToArray());
   }
 
   private parseExpr(): Expr {
-    if (this.idx >= this.tokens.length) return new TokenExpr("");
+    if (this.idx >= this.tokens.Length) return new TokenExpr("");
     const t = this.tokens[this.idx]!;
 
     if (t === "(") {
       this.idx++;
       const inner = this.parsePipeline(true);
-      if (this.idx < this.tokens.length && this.tokens[this.idx]! === ")") this.idx++;
+      if (this.idx < this.tokens.Length && this.tokens[this.idx]! === ")") this.idx++;
       let expr: Expr = new PipelineExpr(inner);
-      while (this.idx < this.tokens.length) {
+      while (this.idx < this.tokens.Length) {
         const next = this.tokens[this.idx]!;
-        if (next.startsWith(".") && next !== ".") {
-          const segs = next.substring(1).split(".");
+        if (next.StartsWith(".") && next !== ".") {
+          const segs = next.Substring(1).Split(".");
           expr = new AccessExpr(expr, segs);
           this.idx++;
           continue;
@@ -2990,15 +2990,15 @@ export class Command {
     defines: Dictionary<string, TemplateNode[]>,
     piped: TemplateValue | undefined,
   ): TemplateValue {
-    if (this.args.length === 0 && piped === undefined) return this.head.eval(scope, env, overrides, defines);
+    if (this.args.Length === 0 && piped === undefined) return this.head.eval(scope, env, overrides, defines);
 
     const head = this.head;
     if (head instanceof TokenExpr) {
       const tokenExpr = head as TokenExpr;
       const evaluatedArgs = new List<TemplateValue>();
-      for (let i = 0; i < this.args.length; i++) evaluatedArgs.add(this.args[i]!.eval(scope, env, overrides, defines));
-      if (piped !== undefined) evaluatedArgs.add(piped);
-      return TemplateRuntime.callFunction(tokenExpr.token, evaluatedArgs.toArray(), scope, env, overrides, defines);
+      for (let i = 0; i < this.args.Length; i++) evaluatedArgs.Add(this.args[i]!.eval(scope, env, overrides, defines));
+      if (piped !== undefined) evaluatedArgs.Add(piped);
+      return TemplateRuntime.callFunction(tokenExpr.token, evaluatedArgs.ToArray(), scope, env, overrides, defines);
     }
 
     // Handle AccessExpr with args - method invocation on expression result
@@ -3006,22 +3006,22 @@ export class Command {
     if (head instanceof AccessExpr) {
       const accessExpr = head as AccessExpr;
       const segments = accessExpr.segments;
-      if (segments.length >= 1) {
+      if (segments.Length >= 1) {
         // Evaluate the receiver (base + all segments except last)
         let receiver = accessExpr.base.eval(scope, env, overrides, defines);
-        if (segments.length > 1) {
+        if (segments.Length > 1) {
           const receiverSegs: string[] = [];
-          for (let i = 0; i < segments.length - 1; i++) receiverSegs[i] = segments[i]!;
+          for (let i = 0; i < segments.Length - 1; i++) receiverSegs[i] = segments[i]!;
           receiver = TemplateRuntime.resolvePath(receiver, receiverSegs, scope);
         }
         // The last segment is the method name
-        const methodName = segments[segments.length - 1]!;
+        const methodName = segments[segments.Length - 1]!;
         // Evaluate args
         const evaluatedArgs = new List<TemplateValue>();
-        for (let i = 0; i < this.args.length; i++) evaluatedArgs.add(this.args[i]!.eval(scope, env, overrides, defines));
-        if (piped !== undefined) evaluatedArgs.add(piped);
+        for (let i = 0; i < this.args.Length; i++) evaluatedArgs.Add(this.args[i]!.eval(scope, env, overrides, defines));
+        if (piped !== undefined) evaluatedArgs.Add(piped);
         // Dispatch the method call
-        return TemplateRuntime.callMethod(receiver, methodName, evaluatedArgs.toArray(), scope, env, overrides, defines);
+        return TemplateRuntime.callMethod(receiver, methodName, evaluatedArgs.ToArray(), scope, env, overrides, defines);
       }
     }
 
@@ -3066,7 +3066,7 @@ class Parser {
     if (thenBody.endedWithElse) {
       const elseTokens = this.takeElseTokens();
       let isElseIf = false;
-      if (elseTokens.length >= 2) isElseIf = elseTokens[1] === "if";
+      if (elseTokens.Length >= 2) isElseIf = elseTokens[1] === "if";
       if (isElseIf === true) {
         const elseCond = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(elseTokens, 2));
         const nested = this.parseIfFrom(elseCond);
@@ -3082,52 +3082,52 @@ class Parser {
   parseNodes(stopOnElse: boolean): ParseNodesResult {
     const nodes = new List<TemplateNode>();
 
-    while (this.idx < this.segs.length) {
+    while (this.idx < this.segs.Length) {
       const seg = this.segs[this.idx]!;
       this.idx++;
 
       if (!seg.isAction) {
-        nodes.add(new TextNode(seg.text));
+        nodes.Add(new TextNode(seg.text));
         continue;
       }
 
-      if (seg.text.startsWith("/*") && seg.text.endsWith("*/")) {
+      if (seg.text.StartsWith("/*") && seg.text.EndsWith("*/")) {
         continue;
       }
 
       const tokens = TemplateRuntime.tokenizeAction(seg.text);
-      if (tokens.length === 0) continue;
+      if (tokens.Length === 0) continue;
 
       const head = tokens[0]!;
-      if (head === "end") return new ParseNodesResult(nodes.toArray(), false);
+      if (head === "end") return new ParseNodesResult(nodes.ToArray(), false);
       if (head === "else") {
         if (stopOnElse) {
           this.lastElseTokens = tokens;
-          return new ParseNodesResult(nodes.toArray(), true);
+          return new ParseNodesResult(nodes.ToArray(), true);
         }
         continue;
       }
 
-      if (head === "define" && tokens.length >= 2) {
+      if (head === "define" && tokens.Length >= 2) {
         const name = TemplateRuntime.parseStringLiteral(tokens[1]!) ?? tokens[1]!;
         const body = this.parseNodes(false);
-        this.defines.remove(name);
-        this.defines.add(name, body.nodes);
+        this.defines.Remove(name);
+        this.defines.Add(name, body.nodes);
         continue;
       }
 
-      if (head === "block" && tokens.length >= 2) {
+      if (head === "block" && tokens.Length >= 2) {
         const name = TemplateRuntime.parseStringLiteral(tokens[1]!) ?? tokens[1]!;
-        const ctxTokens = tokens.length >= 3 ? TemplateRuntime.sliceTokens(tokens, 2) : ["."];
+        const ctxTokens = tokens.Length >= 3 ? TemplateRuntime.sliceTokens(tokens, 2) : ["."];
         const ctx = TemplateRuntime.parsePipeline(ctxTokens);
         const body = this.parseNodes(false);
-        nodes.add(new BlockNode(name, ctx, body.nodes));
+        nodes.Add(new BlockNode(name, ctx, body.nodes));
         continue;
       }
 
       if (head === "if") {
         const cond = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(tokens, 1));
-        nodes.add(this.parseIfFrom(cond));
+        nodes.Add(this.parseIfFrom(cond));
         continue;
       }
 
@@ -3140,7 +3140,7 @@ class Parser {
           const elseBody = this.parseNodes(false);
           elseNodes = elseBody.nodes;
         }
-        nodes.add(new WithNode(expr, body.nodes, elseNodes));
+        nodes.Add(new WithNode(expr, body.nodes, elseNodes));
         continue;
       }
 
@@ -3149,31 +3149,31 @@ class Parser {
         let keyVar: string | undefined = undefined;
         let valueVar: string | undefined = undefined;
 
-        const first = idx < tokens.length ? tokens[idx]! : "";
-        const isVar = first.startsWith("$") && first !== "$" && !first.startsWith("$.");
+        const first = idx < tokens.Length ? tokens[idx]! : "";
+        const isVar = first.StartsWith("$") && first !== "$" && !first.StartsWith("$.");
         let hasDeclare = false;
-        if (idx + 1 < tokens.length) {
+        if (idx + 1 < tokens.Length) {
           const tok1 = tokens[idx + 1]!;
           hasDeclare = tok1 === ":=" || tok1 === "=";
         }
         let hasKeyValueDeclare = false;
-        if (idx + 3 < tokens.length) {
+        if (idx + 3 < tokens.Length) {
           const tok0 = tokens[idx]!;
           const tok1 = tokens[idx + 1]!;
           const tok2 = tokens[idx + 2]!;
           const tok3 = tokens[idx + 3]!;
           const isKvDeclareOp = tok3 === ":=" || tok3 === "=";
-          hasKeyValueDeclare = tok0.startsWith("$") && tok1 === "," && tok2.startsWith("$") && isKvDeclareOp;
+          hasKeyValueDeclare = tok0.StartsWith("$") && tok1 === "," && tok2.StartsWith("$") && isKvDeclareOp;
         }
 
         let exprTokens: string[] = [];
         if (hasKeyValueDeclare) {
-          keyVar = tokens[idx]!.substring(1);
-          valueVar = tokens[idx + 2]!.substring(1);
+          keyVar = tokens[idx]!.Substring(1);
+          valueVar = tokens[idx + 2]!.Substring(1);
           idx += 4;
           exprTokens = TemplateRuntime.sliceTokens(tokens, idx);
         } else if (isVar && hasDeclare) {
-          valueVar = tokens[idx]!.substring(1);
+          valueVar = tokens[idx]!.Substring(1);
           idx += 2;
           exprTokens = TemplateRuntime.sliceTokens(tokens, idx);
         } else {
@@ -3188,32 +3188,32 @@ class Parser {
           const elseBody = this.parseNodes(false);
           elseNodes = elseBody.nodes;
         }
-        nodes.add(new RangeNode(expr, keyVar, valueVar, body.nodes, elseNodes));
+        nodes.Add(new RangeNode(expr, keyVar, valueVar, body.nodes, elseNodes));
         continue;
       }
 
-      if (head === "template" && tokens.length >= 2) {
+      if (head === "template" && tokens.Length >= 2) {
         const name = TemplateRuntime.parseStringLiteral(tokens[1]!) ?? tokens[1]!;
-        const ctxTokens = tokens.length >= 3 ? TemplateRuntime.sliceTokens(tokens, 2) : ["."];
-        nodes.add(new TemplateInvokeNode(name, TemplateRuntime.parsePipeline(ctxTokens)));
+        const ctxTokens = tokens.Length >= 3 ? TemplateRuntime.sliceTokens(tokens, 2) : ["."];
+        nodes.Add(new TemplateInvokeNode(name, TemplateRuntime.parsePipeline(ctxTokens)));
         continue;
       }
 
-      if (tokens.length >= 3 && head.startsWith("$") && head !== "$" && !head.startsWith("$.")) {
+      if (tokens.Length >= 3 && head.StartsWith("$") && head !== "$" && !head.StartsWith("$.")) {
         const tok1 = tokens[1]!;
         if (tok1 === ":=" || tok1 === "=") {
-          const name = head.substring(1);
+          const name = head.Substring(1);
           const declare = tok1 === ":=";
           const expr = TemplateRuntime.parsePipeline(TemplateRuntime.sliceTokens(tokens, 2));
-          nodes.add(new AssignmentNode(name, expr, declare));
+          nodes.Add(new AssignmentNode(name, expr, declare));
           continue;
         }
       }
 
-      nodes.add(new OutputNode(TemplateRuntime.parsePipeline(tokens), true));
+      nodes.Add(new OutputNode(TemplateRuntime.parsePipeline(tokens), true));
     }
 
-    return new ParseNodesResult(nodes.toArray(), false);
+    return new ParseNodesResult(nodes.ToArray(), false);
   }
 }
 

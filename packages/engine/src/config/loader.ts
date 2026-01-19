@@ -13,7 +13,7 @@ const loadSplitConfig = (configDir: string): SiteConfig => {
   let config = new SiteConfig("Tsumo Site", "", "en-us", undefined);
 
   // Get all config files in the directory
-  const files = Directory.getFiles(configDir);
+  const files = Directory.GetFiles(configDir);
 
   // Sort files to process base config first, then params, then languages/menus
   const sortedFiles = new List<string>();
@@ -24,53 +24,53 @@ const loadSplitConfig = (configDir: string): SiteConfig => {
   const moduleFiles = new List<string>();
   const otherFiles = new List<string>();
 
-  for (let i = 0; i < files.length; i++) {
+  for (let i = 0; i < files.Length; i++) {
     const f = files[i]!;
-    const nameResult = Path.getFileName(f);
-    const name = nameResult !== undefined ? nameResult.toLowerInvariant() : "";
+    const nameResult = Path.GetFileName(f);
+    const name = nameResult !== undefined ? nameResult.ToLowerInvariant() : "";
     if (name === "hugo.toml" || name === "hugo.yaml" || name === "hugo.yml" || name === "config.toml" || name === "config.yaml" || name === "config.yml") {
-      baseFiles.add(f);
+      baseFiles.Add(f);
     } else if (name === "params.toml" || name === "params.yaml" || name === "params.yml") {
-      paramFiles.add(f);
-    } else if (name.startsWith("languages.")) {
-      langFiles.add(f);
-    } else if (name.startsWith("menus.")) {
-      menuFiles.add(f);
+      paramFiles.Add(f);
+    } else if (name.StartsWith("languages.")) {
+      langFiles.Add(f);
+    } else if (name.StartsWith("menus.")) {
+      menuFiles.Add(f);
     } else if (name === "module.toml") {
-      moduleFiles.add(f);
+      moduleFiles.Add(f);
     } else {
-      otherFiles.add(f);
+      otherFiles.Add(f);
     }
   }
 
   // Process in order: base -> params -> languages -> menus -> module -> other
-  const baseArr = baseFiles.toArray();
-  for (let i = 0; i < baseArr.length; i++) sortedFiles.add(baseArr[i]!);
-  const paramArr = paramFiles.toArray();
-  for (let i = 0; i < paramArr.length; i++) sortedFiles.add(paramArr[i]!);
-  const langArr = langFiles.toArray();
-  for (let i = 0; i < langArr.length; i++) sortedFiles.add(langArr[i]!);
-  const menuArr = menuFiles.toArray();
-  for (let i = 0; i < menuArr.length; i++) sortedFiles.add(menuArr[i]!);
-  const modArr = moduleFiles.toArray();
-  for (let i = 0; i < modArr.length; i++) sortedFiles.add(modArr[i]!);
-  const otherArr = otherFiles.toArray();
-  for (let i = 0; i < otherArr.length; i++) sortedFiles.add(otherArr[i]!);
+  const baseArr = baseFiles.ToArray();
+  for (let i = 0; i < baseArr.Length; i++) sortedFiles.Add(baseArr[i]!);
+  const paramArr = paramFiles.ToArray();
+  for (let i = 0; i < paramArr.Length; i++) sortedFiles.Add(paramArr[i]!);
+  const langArr = langFiles.ToArray();
+  for (let i = 0; i < langArr.Length; i++) sortedFiles.Add(langArr[i]!);
+  const menuArr = menuFiles.ToArray();
+  for (let i = 0; i < menuArr.Length; i++) sortedFiles.Add(menuArr[i]!);
+  const modArr = moduleFiles.ToArray();
+  for (let i = 0; i < modArr.Length; i++) sortedFiles.Add(modArr[i]!);
+  const otherArr = otherFiles.ToArray();
+  for (let i = 0; i < otherArr.Length; i++) sortedFiles.Add(otherArr[i]!);
 
-  const sorted = sortedFiles.toArray();
-  for (let i = 0; i < sorted.length; i++) {
+  const sorted = sortedFiles.ToArray();
+  for (let i = 0; i < sorted.Length; i++) {
     const filePath = sorted[i]!;
-    const fileNameResult = Path.getFileName(filePath);
-    const fileName = fileNameResult !== undefined ? fileNameResult.toLowerInvariant() : "";
+    const fileNameResult = Path.GetFileName(filePath);
+    const fileName = fileNameResult !== undefined ? fileNameResult.ToLowerInvariant() : "";
     const text = readTextFile(filePath);
 
     if (fileName === "module.toml") {
       // Parse module mounts
       const mounts = parseModuleToml(text);
       config.moduleMounts = mounts;
-    } else if (fileName.endsWith(".toml")) {
+    } else if (fileName.EndsWith(".toml")) {
       config = mergeTomlIntoConfig(config, text, fileName);
-    } else if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) {
+    } else if (fileName.EndsWith(".yaml") || fileName.EndsWith(".yml")) {
       config = mergeYamlIntoConfig(config, text, fileName);
     }
     // Skip json for now as split configs are typically toml/yaml
@@ -81,7 +81,7 @@ const loadSplitConfig = (configDir: string): SiteConfig => {
 
 export const loadSiteConfig = (siteDir: string): LoadedConfig => {
   // First check for split config directory
-  const splitConfigDir = Path.combine(siteDir, "config", "_default");
+  const splitConfigDir = Path.Combine(siteDir, "config", "_default");
   if (dirExists(splitConfigDir)) {
     const config = loadSplitConfig(splitConfigDir);
     return new LoadedConfig(splitConfigDir, config);
@@ -89,14 +89,14 @@ export const loadSiteConfig = (siteDir: string): LoadedConfig => {
 
   // Fall back to single config file
   const candidates = [
-    Path.combine(siteDir, "hugo.toml"),
-    Path.combine(siteDir, "hugo.yaml"),
-    Path.combine(siteDir, "hugo.yml"),
-    Path.combine(siteDir, "hugo.json"),
-    Path.combine(siteDir, "config.toml"),
-    Path.combine(siteDir, "config.yaml"),
-    Path.combine(siteDir, "config.yml"),
-    Path.combine(siteDir, "config.json"),
+    Path.Combine(siteDir, "hugo.toml"),
+    Path.Combine(siteDir, "hugo.yaml"),
+    Path.Combine(siteDir, "hugo.yml"),
+    Path.Combine(siteDir, "hugo.json"),
+    Path.Combine(siteDir, "config.toml"),
+    Path.Combine(siteDir, "config.yaml"),
+    Path.Combine(siteDir, "config.yml"),
+    Path.Combine(siteDir, "config.json"),
   ];
 
   const path = tryGetFirstExisting(candidates);
@@ -106,9 +106,9 @@ export const loadSiteConfig = (siteDir: string): LoadedConfig => {
   }
 
   const text = readTextFile(path);
-  const lower = path.toLowerInvariant();
+  const lower = path.ToLowerInvariant();
   const parsedConfig =
-    lower.endsWith(".toml") ? parseTomlConfig(text) : lower.endsWith(".json") ? parseJsonConfig(text) : parseYamlConfig(text);
+    lower.EndsWith(".toml") ? parseTomlConfig(text) : lower.EndsWith(".json") ? parseJsonConfig(text) : parseYamlConfig(text);
 
   return new LoadedConfig(path, parsedConfig);
 };

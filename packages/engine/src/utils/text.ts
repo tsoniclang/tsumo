@@ -16,58 +16,58 @@ const isWordSeparator = (ch: char): boolean =>
   ch === wordSeparatorSlash;
 
 export const slugify = (input: string): string => {
-  const lower = input.trim().toLowerInvariant();
-  const chars: char[] = lower.toCharArray();
+  const lower = input.Trim().ToLowerInvariant();
+  const chars: char[] = lower.ToCharArray();
   const sb = new StringBuilder();
   let wroteDash = false;
 
-  for (let i = 0; i < chars.length; i++) {
+  for (let i = 0; i < chars.Length; i++) {
     const ch = chars[i]!;
-    if (Char.isLetterOrDigit(ch)) {
-      sb.append(ch);
+    if (Char.IsLetterOrDigit(ch)) {
+      sb.Append(ch);
       wroteDash = false;
       continue;
     }
     if (isWordSeparator(ch)) {
-      if (sb.length > 0 && !wroteDash) {
-        sb.append(wordSeparatorDash);
+      if (sb.Length > 0 && !wroteDash) {
+        sb.Append(wordSeparatorDash);
         wroteDash = true;
       }
     }
   }
 
-  let out = sb.toString();
-  while (out.startsWith("-")) out = out.substring(1);
-  while (out.endsWith("-")) out = out.substring(0, out.length - 1);
+  let out = sb.ToString();
+  while (out.StartsWith("-")) out = out.Substring(1);
+  while (out.EndsWith("-")) out = out.Substring(0, out.Length - 1);
   return out;
 };
 
 export const humanizeSlug = (slug: string): string => {
   const parts = slug
-    .replace("_", "-")
-    .replace(".", "-")
-    .split("-");
+    .Replace("_", "-")
+    .Replace(".", "-")
+    .Split("-");
 
   const words = new StringBuilder();
-  for (let i = 0; i < parts.length; i++) {
+  for (let i = 0; i < parts.Length; i++) {
     const partRaw = parts[i];
     if (partRaw === undefined) continue;
-    const part = partRaw.trim();
+    const part = partRaw.Trim();
     if (part === "") continue;
-    const w = part.substring(0, 1).toUpperInvariant() + part.substring(1);
-    if (words.length > 0) words.append(" ");
-    words.append(w);
+    const w = part.Substring(0, 1).ToUpperInvariant() + part.Substring(1);
+    if (words.Length > 0) words.Append(" ");
+    words.Append(w);
   }
-  return words.toString();
+  return words.ToString();
 };
 
 export const ensureTrailingSlash = (url: string): string => {
   if (url === "") return url;
-  return url.endsWith("/") ? url : url + "/";
+  return url.EndsWith("/") ? url : url + "/";
 };
 
 export const ensureLeadingSlash = (url: string): string => {
-  const trimmed = url.trim();
+  const trimmed = url.Trim();
   if (trimmed === "") return "/";
-  return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+  return trimmed.StartsWith("/") ? trimmed : "/" + trimmed;
 };

@@ -21,11 +21,11 @@ export class Template {
     const scope = new RenderScope(pageValue, pageValue, root.site, env, undefined);
     const defs = overrides ?? new Dictionary<string, TemplateNode[]>();
     this.renderInto(sb, scope, env, defs);
-    return sb.toString();
+    return sb.ToString();
   }
 
   renderInto(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>): void {
-    for (let i = 0; i < this.nodes.length; i++) {
+    for (let i = 0; i < this.nodes.Length; i++) {
       this.nodes[i]!.render(sb, scope, env, overrides, this.defines);
     }
   }

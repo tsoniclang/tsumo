@@ -6,12 +6,12 @@ import { replaceText } from "./utils/strings.ts";
 import { humanizeSlug, slugify } from "./utils/text.ts";
 
 const ensureEmptyDir = (path: string): void => {
-  if (!Directory.exists(path)) {
-    Directory.createDirectory(path);
+  if (!Directory.Exists(path)) {
+    Directory.CreateDirectory(path);
     return;
   }
-  const entries = Directory.getFileSystemEntries(path, "*", SearchOption.topDirectoryOnly);
-  if (entries.length > 0) {
+  const entries = Directory.GetFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly);
+  if (entries.Length > 0) {
     throw new Exception(`Directory not empty: ${path}`);
   }
 };
@@ -153,7 +153,7 @@ Welcome to your new site.
 
 const helloWorldMd = (): string => `---
 title: "Hello World"
-date: "${DateTime.utcNow.toString("O")}"
+date: "${DateTime.UtcNow.ToString("O")}"
 draft: false
 description: "An end-to-end demo of tsumo with GFM markdown."
 tags: ["hello", "tsumo", "gfm"]
@@ -184,50 +184,50 @@ nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 `;
 
 export const initSite = (targetDir: string): void => {
-  const dir = Path.getFullPath(targetDir);
+  const dir = Path.GetFullPath(targetDir);
   ensureEmptyDir(dir);
 
-  const title = humanizeSlug(Path.getFileName(dir) ?? "Tsumo Site");
+  const title = humanizeSlug(Path.GetFileName(dir) ?? "Tsumo Site");
 
-  ensureDir(Path.combine(dir, "content"));
-  ensureDir(Path.combine(dir, "content", "posts"));
-  ensureDir(Path.combine(dir, "layouts", "_default"));
-  ensureDir(Path.combine(dir, "layouts", "partials"));
-  ensureDir(Path.combine(dir, "static"));
-  ensureDir(Path.combine(dir, "archetypes"));
+  ensureDir(Path.Combine(dir, "content"));
+  ensureDir(Path.Combine(dir, "content", "posts"));
+  ensureDir(Path.Combine(dir, "layouts", "_default"));
+  ensureDir(Path.Combine(dir, "layouts", "partials"));
+  ensureDir(Path.Combine(dir, "static"));
+  ensureDir(Path.Combine(dir, "archetypes"));
 
-  writeTextFile(Path.combine(dir, "hugo.toml"), defaultConfigToml(title));
-  writeTextFile(Path.combine(dir, "archetypes", "default.md"), defaultArchetype());
-  writeTextFile(Path.combine(dir, "layouts", "_default", "baseof.html"), baseofHtml());
-  writeTextFile(Path.combine(dir, "layouts", "_default", "single.html"), singleHtml());
-  writeTextFile(Path.combine(dir, "layouts", "_default", "list.html"), listHtml());
-  writeTextFile(Path.combine(dir, "layouts", "_default", "terms.html"), termsHtml());
-  writeTextFile(Path.combine(dir, "layouts", "_default", "taxonomy.html"), taxonomyHtml());
-  writeTextFile(Path.combine(dir, "layouts", "partials", "header.html"), partialHeader());
-  writeTextFile(Path.combine(dir, "layouts", "partials", "footer.html"), partialFooter());
-  writeTextFile(Path.combine(dir, "static", "style.css"), styleCss());
-  writeTextFile(Path.combine(dir, "content", "_index.md"), indexMd());
-  writeTextFile(Path.combine(dir, "content", "posts", "hello-world.md"), helloWorldMd());
+  writeTextFile(Path.Combine(dir, "hugo.toml"), defaultConfigToml(title));
+  writeTextFile(Path.Combine(dir, "archetypes", "default.md"), defaultArchetype());
+  writeTextFile(Path.Combine(dir, "layouts", "_default", "baseof.html"), baseofHtml());
+  writeTextFile(Path.Combine(dir, "layouts", "_default", "single.html"), singleHtml());
+  writeTextFile(Path.Combine(dir, "layouts", "_default", "list.html"), listHtml());
+  writeTextFile(Path.Combine(dir, "layouts", "_default", "terms.html"), termsHtml());
+  writeTextFile(Path.Combine(dir, "layouts", "_default", "taxonomy.html"), taxonomyHtml());
+  writeTextFile(Path.Combine(dir, "layouts", "partials", "header.html"), partialHeader());
+  writeTextFile(Path.Combine(dir, "layouts", "partials", "footer.html"), partialFooter());
+  writeTextFile(Path.Combine(dir, "static", "style.css"), styleCss());
+  writeTextFile(Path.Combine(dir, "content", "_index.md"), indexMd());
+  writeTextFile(Path.Combine(dir, "content", "posts", "hello-world.md"), helloWorldMd());
 };
 
 export const newContent = (siteDir: string, contentPathRaw: string): string => {
-  const dir = Path.getFullPath(siteDir);
-  const contentDir = Path.combine(dir, "content");
+  const dir = Path.GetFullPath(siteDir);
+  const contentDir = Path.Combine(dir, "content");
 
   const slash: char = "/";
-  const rel = contentPathRaw.trimStart(slash).trim();
-  const withExt = rel.toLowerInvariant().endsWith(".md") ? rel : rel + ".md";
-  const dest = Path.combine(contentDir, withExt.replace(slash, Path.directorySeparatorChar));
+  const rel = contentPathRaw.TrimStart(slash).Trim();
+  const withExt = rel.ToLowerInvariant().EndsWith(".md") ? rel : rel + ".md";
+  const dest = Path.Combine(contentDir, withExt.Replace(slash, Path.DirectorySeparatorChar));
 
   if (fileExists(dest)) throw new Exception(`File already exists: ${dest}`);
 
-  const archetypePath = Path.combine(dir, "archetypes", "default.md");
+  const archetypePath = Path.Combine(dir, "archetypes", "default.md");
   const template = fileExists(archetypePath) ? readTextFile(archetypePath) : defaultArchetype();
 
-  const fileName = Path.getFileName(withExt) ?? withExt;
-  const slug = slugify(fileName.toLowerInvariant().endsWith(".md") ? fileName.substring(0, fileName.length - 3) : fileName);
+  const fileName = Path.GetFileName(withExt) ?? withExt;
+  const slug = slugify(fileName.ToLowerInvariant().EndsWith(".md") ? fileName.Substring(0, fileName.Length - 3) : fileName);
   const title = humanizeSlug(slug);
-  const date = DateTime.utcNow.toString("O");
+  const date = DateTime.UtcNow.ToString("O");
 
   let content = template;
   content = replaceText(content, "{{ .Title }}", title);

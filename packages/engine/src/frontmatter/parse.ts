@@ -9,40 +9,40 @@ import { FrontMatter } from "./data.ts";
 import { ParsedContent } from "./parsed-content.ts";
 
 const unquote = (value: string): string => {
-  const v = value.trim();
-  if (v.length >= 2 && ((v.startsWith("\"") && v.endsWith("\"")) || (v.startsWith("'") && v.endsWith("'")))) {
-    return v.substring(1, v.length - 2);
+  const v = value.Trim();
+  if (v.Length >= 2 && ((v.StartsWith("\"") && v.EndsWith("\"")) || (v.StartsWith("'") && v.EndsWith("'")))) {
+    return v.Substring(1, v.Length - 2);
   }
   return v;
 };
 
 const parseBool = (value: string): boolean | undefined => {
-  const v = value.trim().toLowerInvariant();
+  const v = value.Trim().ToLowerInvariant();
   if (v === "true") return true;
   if (v === "false") return false;
   return undefined;
 };
 
 const parseStringArrayInline = (value: string): string[] | undefined => {
-  const v = value.trim();
-  if (!v.startsWith("[") || !v.endsWith("]")) return undefined;
-  const inner = v.substring(1, v.length - 2).trim();
+  const v = value.Trim();
+  if (!v.StartsWith("[") || !v.EndsWith("]")) return undefined;
+  const inner = v.Substring(1, v.Length - 2).Trim();
   if (inner === "") {
     const empty: string[] = [];
     return empty;
   }
-  const parts = inner.split(",");
+  const parts = inner.Split(",");
   const items = new List<string>();
-  for (let i = 0; i < parts.length; i++) {
+  for (let i = 0; i < parts.Length; i++) {
     const item = unquote(parts[i]!);
-    if (item !== "") items.add(item);
+    if (item !== "") items.Add(item);
   }
-  return items.toArray();
+  return items.ToArray();
 };
 
 const applyScalar = (fm: FrontMatter, keyRaw: string, valueRaw: string): void => {
-  const key = keyRaw.trim().toLowerInvariant();
-  const value = valueRaw.trim();
+  const key = keyRaw.Trim().ToLowerInvariant();
+  const value = valueRaw.Trim();
 
   if (key === "title") {
     fm.title = unquote(value);
@@ -50,8 +50,8 @@ const applyScalar = (fm: FrontMatter, keyRaw: string, valueRaw: string): void =>
   }
 
   if (key === "date") {
-    let parsed: DateTime = DateTime.minValue;
-    const ok = DateTime.tryParse(unquote(value), parsed);
+    let parsed: DateTime = DateTime.MinValue;
+    const ok = DateTime.TryParse(unquote(value), parsed);
     if (ok) fm.date = parsed;
     return;
   }
@@ -94,13 +94,13 @@ const applyScalar = (fm: FrontMatter, keyRaw: string, valueRaw: string): void =>
     return;
   }
 
-  const k = keyRaw.trim();
-  fm.Params.remove(k);
-  fm.Params.add(k, ParamValue.parseScalar(unquote(value)));
+  const k = keyRaw.Trim();
+  fm.Params.Remove(k);
+  fm.Params.Add(k, ParamValue.parseScalar(unquote(value)));
 };
 
 const applyArray = (fm: FrontMatter, keyRaw: string, items: string[]): void => {
-  const key = keyRaw.trim().toLowerInvariant();
+  const key = keyRaw.Trim().ToLowerInvariant();
   if (key === "tags") {
     fm.tags = items;
     return;
@@ -113,49 +113,49 @@ const applyArray = (fm: FrontMatter, keyRaw: string, items: string[]): void => {
 
 const parseYaml = (all: string[]): FrontMatter => {
   const fm = new FrontMatter();
-  for (let i = 0; i < all.length; i++) {
+  for (let i = 0; i < all.Length; i++) {
     const line = all[i]!;
-    const trimmed = line.trim();
-    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    const trimmed = line.Trim();
+    if (trimmed === "" || trimmed.StartsWith("#")) continue;
 
-    if (!line.startsWith(" ") && trimmed.contains(":")) {
-      const idx = trimmed.indexOf(":");
-      const key = trimmed.substring(0, idx).trim();
-      const rest = trimmed.substring(idx + 1).trim();
+    if (!line.StartsWith(" ") && trimmed.Contains(":")) {
+      const idx = trimmed.IndexOf(":");
+      const key = trimmed.Substring(0, idx).Trim();
+      const rest = trimmed.Substring(idx + 1).Trim();
 
       if (rest !== "") {
         applyScalar(fm, key, rest);
         continue;
       }
 
-      const keyLower = key.toLowerInvariant();
+      const keyLower = key.ToLowerInvariant();
       if (keyLower === "params") {
-        for (let j = i + 1; j < all.length; j++) {
+        for (let j = i + 1; j < all.Length; j++) {
           const next = all[j]!;
-          if (!next.startsWith("  ")) break;
-          const nt = next.trim();
-          if (nt === "" || nt.startsWith("#")) continue;
-          if (!nt.contains(":")) continue;
-          const nidx = nt.indexOf(":");
-          const pkey = nt.substring(0, nidx).trim();
-          const pval = nt.substring(nidx + 1).trim();
-          fm.Params.remove(pkey);
-          fm.Params.add(pkey, ParamValue.parseScalar(unquote(pval)));
+          if (!next.StartsWith("  ")) break;
+          const nt = next.Trim();
+          if (nt === "" || nt.StartsWith("#")) continue;
+          if (!nt.Contains(":")) continue;
+          const nidx = nt.IndexOf(":");
+          const pkey = nt.Substring(0, nidx).Trim();
+          const pval = nt.Substring(nidx + 1).Trim();
+          fm.Params.Remove(pkey);
+          fm.Params.Add(pkey, ParamValue.parseScalar(unquote(pval)));
         }
         continue;
       }
 
       if (keyLower === "tags" || keyLower === "categories") {
         const items = new List<string>();
-        for (let j = i + 1; j < all.length; j++) {
+        for (let j = i + 1; j < all.Length; j++) {
           const next = all[j]!;
-          if (!next.startsWith("  ")) break;
-          const nt = next.trim();
-          if (!nt.startsWith("-")) continue;
-          const item = nt.substring(1).trim();
-          if (item !== "") items.add(unquote(item));
+          if (!next.StartsWith("  ")) break;
+          const nt = next.Trim();
+          if (!nt.StartsWith("-")) continue;
+          const item = nt.Substring(1).Trim();
+          if (item !== "") items.Add(unquote(item));
         }
-        applyArray(fm, key, items.toArray());
+        applyArray(fm, key, items.ToArray());
         continue;
       }
 
@@ -164,42 +164,42 @@ const parseYaml = (all: string[]): FrontMatter => {
         let currentMenuName = "";
         let currentMenu: FrontMatterMenu | undefined = undefined;
 
-        for (let j = i + 1; j < all.length; j++) {
+        for (let j = i + 1; j < all.Length; j++) {
           const next = all[j]!;
-          if (!next.startsWith("  ")) break;
+          if (!next.StartsWith("  ")) break;
 
           // Check for menu name line (2 spaces, not starting with more spaces)
-          if (next.startsWith("  ") && !next.startsWith("    ")) {
-            const nt = next.trim();
-            if (nt === "" || nt.startsWith("#")) continue;
-            if (nt.endsWith(":")) {
+          if (next.StartsWith("  ") && !next.StartsWith("    ")) {
+            const nt = next.Trim();
+            if (nt === "" || nt.StartsWith("#")) continue;
+            if (nt.EndsWith(":")) {
               // New menu, e.g., "main:"
-              if (currentMenu !== undefined) menuItems.add(currentMenu);
-              currentMenuName = nt.substring(0, nt.length - 1).trim();
+              if (currentMenu !== undefined) menuItems.Add(currentMenu);
+              currentMenuName = nt.Substring(0, nt.Length - 1).Trim();
               currentMenu = new FrontMatterMenu(currentMenuName);
-            } else if (nt.contains(":")) {
+            } else if (nt.Contains(":")) {
               // Simple menu, e.g., "main: true" - just menu name, no config
-              const colonIdx = nt.indexOf(":");
-              const menuName = nt.substring(0, colonIdx).trim();
-              if (currentMenu !== undefined) menuItems.add(currentMenu);
+              const colonIdx = nt.IndexOf(":");
+              const menuName = nt.Substring(0, colonIdx).Trim();
+              if (currentMenu !== undefined) menuItems.Add(currentMenu);
               currentMenu = new FrontMatterMenu(menuName);
-              menuItems.add(currentMenu);
+              menuItems.Add(currentMenu);
               currentMenu = undefined;
             }
             continue;
           }
 
           // Check for menu properties (4+ spaces)
-          if (currentMenu !== undefined && next.startsWith("    ")) {
-            const nt = next.trim();
-            if (nt === "" || nt.startsWith("#")) continue;
-            if (!nt.contains(":")) continue;
-            const colonIdx = nt.indexOf(":");
-            const propKey = nt.substring(0, colonIdx).trim().toLowerInvariant();
-            const propVal = unquote(nt.substring(colonIdx + 1).trim());
+          if (currentMenu !== undefined && next.StartsWith("    ")) {
+            const nt = next.Trim();
+            if (nt === "" || nt.StartsWith("#")) continue;
+            if (!nt.Contains(":")) continue;
+            const colonIdx = nt.IndexOf(":");
+            const propKey = nt.Substring(0, colonIdx).Trim().ToLowerInvariant();
+            const propVal = unquote(nt.Substring(colonIdx + 1).Trim());
             if (propKey === "weight") {
               let parsed: int = 0;
-              if (Int32.tryParse(propVal, parsed)) currentMenu.weight = parsed;
+              if (Int32.TryParse(propVal, parsed)) currentMenu.weight = parsed;
             } else if (propKey === "name") currentMenu.name = propVal;
             else if (propKey === "parent") currentMenu.parent = propVal;
             else if (propKey === "identifier") currentMenu.identifier = propVal;
@@ -208,8 +208,8 @@ const parseYaml = (all: string[]): FrontMatter => {
             else if (propKey === "title") currentMenu.title = propVal;
           }
         }
-        if (currentMenu !== undefined) menuItems.add(currentMenu);
-        fm.menus = menuItems.toArray();
+        if (currentMenu !== undefined) menuItems.Add(currentMenu);
+        fm.menus = menuItems.ToArray();
       }
     }
   }
@@ -223,23 +223,23 @@ const parseToml = (lines: string[]): FrontMatter => {
   const menuBuilders = new Dictionary<string, List<FrontMatterMenu>>();
   let currentMenu: FrontMatterMenu | undefined = undefined;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!.trim();
-    if (line === "" || line.startsWith("#")) continue;
+  for (let i = 0; i < lines.Length; i++) {
+    const line = lines[i]!.Trim();
+    if (line === "" || line.StartsWith("#")) continue;
 
-    if (line.startsWith("[[") && line.endsWith("]]")) {
+    if (line.StartsWith("[[") && line.EndsWith("]]")) {
       // Array table, e.g., [[menu.main]]
-      const tableName = line.substring(2, line.length - 4).trim().toLowerInvariant();
-      if (tableName.startsWith("menu.")) {
-        const menuName = tableName.substring(5).trim();
+      const tableName = line.Substring(2, line.Length - 4).Trim().ToLowerInvariant();
+      if (tableName.StartsWith("menu.")) {
+        const menuName = tableName.Substring(5).Trim();
         currentMenu = new FrontMatterMenu(menuName);
         let entries = new List<FrontMatterMenu>();
-        const hasMenu = menuBuilders.tryGetValue(menuName, entries);
+        const hasMenu = menuBuilders.TryGetValue(menuName, entries);
         if (!hasMenu) {
           entries = new List<FrontMatterMenu>();
-          menuBuilders.add(menuName, entries);
+          menuBuilders.Add(menuName, entries);
         }
-        entries.add(currentMenu);
+        entries.Add(currentMenu);
         currentTable = tableName;
       } else {
         currentTable = tableName;
@@ -248,24 +248,24 @@ const parseToml = (lines: string[]): FrontMatter => {
       continue;
     }
 
-    if (line.startsWith("[") && line.endsWith("]")) {
-      currentTable = line.substring(1, line.length - 2).trim().toLowerInvariant();
+    if (line.StartsWith("[") && line.EndsWith("]")) {
+      currentTable = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
       currentMenu = undefined;
       continue;
     }
 
-    const eq = line.indexOf("=");
+    const eq = line.IndexOf("=");
     if (eq < 0) continue;
 
-    const keyRaw = line.substring(0, eq).trim();
-    const valueRaw = line.substring(eq + 1).trim();
+    const keyRaw = line.Substring(0, eq).Trim();
+    const valueRaw = line.Substring(eq + 1).Trim();
 
     // Handle menu table properties
-    if (currentMenu !== undefined && currentTable.startsWith("menu.")) {
-      const keyLower = keyRaw.toLowerInvariant();
+    if (currentMenu !== undefined && currentTable.StartsWith("menu.")) {
+      const keyLower = keyRaw.ToLowerInvariant();
       if (keyLower === "weight") {
         let parsed: int = 0;
-        if (Int32.tryParse(unquote(valueRaw), parsed)) currentMenu.weight = parsed;
+        if (Int32.TryParse(unquote(valueRaw), parsed)) currentMenu.weight = parsed;
       } else if (keyLower === "name") currentMenu.name = unquote(valueRaw);
       else if (keyLower === "parent") currentMenu.parent = unquote(valueRaw);
       else if (keyLower === "identifier") currentMenu.identifier = unquote(valueRaw);
@@ -276,32 +276,32 @@ const parseToml = (lines: string[]): FrontMatter => {
     }
 
     if (currentTable === "params") {
-      fm.Params.remove(keyRaw);
-      fm.Params.add(keyRaw, ParamValue.parseScalar(unquote(valueRaw)));
+      fm.Params.Remove(keyRaw);
+      fm.Params.Add(keyRaw, ParamValue.parseScalar(unquote(valueRaw)));
       continue;
     }
 
-    if (keyRaw.toLowerInvariant() === "tags") {
+    if (keyRaw.ToLowerInvariant() === "tags") {
       const arr = parseStringArrayInline(valueRaw);
       if (arr !== undefined) fm.tags = arr;
       continue;
     }
 
-    if (keyRaw.toLowerInvariant() === "categories") {
+    if (keyRaw.ToLowerInvariant() === "categories") {
       const arr = parseStringArrayInline(valueRaw);
       if (arr !== undefined) fm.categories = arr;
       continue;
     }
 
-    if (keyRaw.toLowerInvariant() === "draft") {
+    if (keyRaw.ToLowerInvariant() === "draft") {
       const b = parseBool(valueRaw);
       if (b !== undefined) fm.draft = b;
       continue;
     }
 
-    if (keyRaw.toLowerInvariant() === "date") {
-      let parsed: DateTime = DateTime.minValue;
-      const ok = DateTime.tryParse(unquote(valueRaw), parsed);
+    if (keyRaw.ToLowerInvariant() === "date") {
+      let parsed: DateTime = DateTime.MinValue;
+      const ok = DateTime.TryParse(unquote(valueRaw), parsed);
       if (ok) fm.date = parsed;
       continue;
     }
@@ -311,81 +311,81 @@ const parseToml = (lines: string[]): FrontMatter => {
 
   // Collect all menu entries
   const allMenus = new List<FrontMatterMenu>();
-  const keysIt = menuBuilders.keys.getEnumerator();
-  while (keysIt.moveNext()) {
-    const menuName = keysIt.current;
+  const keysIt = menuBuilders.Keys.GetEnumerator();
+  while (keysIt.MoveNext()) {
+    const menuName = keysIt.Current;
     let entries = new List<FrontMatterMenu>();
-    if (menuBuilders.tryGetValue(menuName, entries)) {
-      const arr = entries.toArray();
-      for (let j = 0; j < arr.length; j++) {
-        allMenus.add(arr[j]!);
+    if (menuBuilders.TryGetValue(menuName, entries)) {
+      const arr = entries.ToArray();
+      for (let j = 0; j < arr.Length; j++) {
+        allMenus.Add(arr[j]!);
       }
     }
   }
-  fm.menus = allMenus.toArray();
+  fm.menus = allMenus.ToArray();
 
   return fm;
 };
 
 const parseJsonElementStringArray = (el: JsonElement): string[] | undefined => {
-  if (el.valueKind !== JsonValueKind.array) return undefined;
+  if (el.ValueKind !== JsonValueKind.Array) return undefined;
   const items = new List<string>();
-  const it = el.enumerateArray().getEnumerator();
-  while (it.moveNext()) {
-    const cur = it.current;
-    if (cur.valueKind === JsonValueKind.string) {
-      const v = cur.getString();
-      if (v !== undefined) items.add(v);
+  const it = el.EnumerateArray().GetEnumerator();
+  while (it.MoveNext()) {
+    const cur = it.Current;
+    if (cur.ValueKind === JsonValueKind.String) {
+      const v = cur.GetString();
+      if (v !== undefined) items.Add(v);
     }
   }
-  return items.toArray();
+  return items.ToArray();
 };
 
 const parseJson = (json: string): FrontMatter => {
   const fm = new FrontMatter();
-  const doc = JsonDocument.parse(json);
-  const root = doc.rootElement;
+  const doc = JsonDocument.Parse(json);
+  const root = doc.RootElement;
 
-  if (root.valueKind === JsonValueKind.object) {
-    const props = root.enumerateObject().getEnumerator();
-    while (props.moveNext()) {
-      const p = props.current;
-      const key = p.name.toLowerInvariant();
-      const v = p.value;
+  if (root.ValueKind === JsonValueKind.Object) {
+    const props = root.EnumerateObject().GetEnumerator();
+    while (props.MoveNext()) {
+      const p = props.Current;
+      const key = p.Name.ToLowerInvariant();
+      const v = p.Value;
 
-      if (key === "title" && v.valueKind === JsonValueKind.string) {
-        fm.title = v.getString();
+      if (key === "title" && v.ValueKind === JsonValueKind.String) {
+        fm.title = v.GetString();
         continue;
       }
 
-      if (key === "description" && v.valueKind === JsonValueKind.string) {
-        fm.description = v.getString();
+      if (key === "description" && v.ValueKind === JsonValueKind.String) {
+        fm.description = v.GetString();
         continue;
       }
 
-      if (key === "slug" && v.valueKind === JsonValueKind.string) {
-        fm.slug = v.getString();
+      if (key === "slug" && v.ValueKind === JsonValueKind.String) {
+        fm.slug = v.GetString();
         continue;
       }
 
-      if (key === "layout" && v.valueKind === JsonValueKind.string) {
-        fm.layout = v.getString();
+      if (key === "layout" && v.ValueKind === JsonValueKind.String) {
+        fm.layout = v.GetString();
         continue;
       }
 
-      if (key === "type" && v.valueKind === JsonValueKind.string) {
-        fm.type = v.getString();
+      if (key === "type" && v.ValueKind === JsonValueKind.String) {
+        fm.type = v.GetString();
         continue;
       }
 
-      if (key === "draft" && (v.valueKind === JsonValueKind.true || v.valueKind === JsonValueKind.false)) {
-        fm.draft = v.getBoolean();
+      if (key === "draft" && (v.ValueKind === JsonValueKind.True || v.ValueKind === JsonValueKind.False)) {
+        fm.draft = v.GetBoolean();
         continue;
       }
 
-      if (key === "date" && v.valueKind === JsonValueKind.string) {
-        let parsed: DateTime = DateTime.minValue;
-        const ok = DateTime.tryParse(v.getString() ?? "", parsed);
+      if (key === "date" && v.ValueKind === JsonValueKind.String) {
+        let parsed: DateTime = DateTime.MinValue;
+        const ok = DateTime.TryParse(v.GetString() ?? "", parsed);
         if (ok) fm.date = parsed;
         continue;
       }
@@ -402,70 +402,70 @@ const parseJson = (json: string): FrontMatter => {
         continue;
       }
 
-      if (key === "params" && v.valueKind === JsonValueKind.object) {
-        const pp = v.enumerateObject().getEnumerator();
-        while (pp.moveNext()) {
-          const prop = pp.current;
-          const val = prop.value;
-          if (val.valueKind === JsonValueKind.string) {
-            const s = val.getString();
+      if (key === "params" && v.ValueKind === JsonValueKind.Object) {
+        const pp = v.EnumerateObject().GetEnumerator();
+        while (pp.MoveNext()) {
+          const prop = pp.Current;
+          const val = prop.Value;
+          if (val.ValueKind === JsonValueKind.String) {
+            const s = val.GetString();
             if (s !== undefined) {
-              fm.Params.remove(prop.name);
-              fm.Params.add(prop.name, ParamValue.string(s));
+              fm.Params.Remove(prop.Name);
+              fm.Params.Add(prop.Name, ParamValue.string(s));
             }
-          } else if (val.valueKind === JsonValueKind.true || val.valueKind === JsonValueKind.false) {
-            fm.Params.remove(prop.name);
-            fm.Params.add(prop.name, ParamValue.bool(val.getBoolean()));
-          } else if (val.valueKind === JsonValueKind.number) {
-            fm.Params.remove(prop.name);
-            fm.Params.add(prop.name, ParamValue.number(val.getInt32()));
+          } else if (val.ValueKind === JsonValueKind.True || val.ValueKind === JsonValueKind.False) {
+            fm.Params.Remove(prop.Name);
+            fm.Params.Add(prop.Name, ParamValue.bool(val.GetBoolean()));
+          } else if (val.ValueKind === JsonValueKind.Number) {
+            fm.Params.Remove(prop.Name);
+            fm.Params.Add(prop.Name, ParamValue.number(val.GetInt32()));
           }
         }
         continue;
       }
 
-      if (key === "menu" && v.valueKind === JsonValueKind.object) {
+      if (key === "menu" && v.ValueKind === JsonValueKind.Object) {
         const menuItems = new List<FrontMatterMenu>();
-        const menuProps = v.enumerateObject().getEnumerator();
-        while (menuProps.moveNext()) {
-          const menuProp = menuProps.current;
-          const menuName = menuProp.name;
-          const menuVal = menuProp.value;
+        const menuProps = v.EnumerateObject().GetEnumerator();
+        while (menuProps.MoveNext()) {
+          const menuProp = menuProps.Current;
+          const menuName = menuProp.Name;
+          const menuVal = menuProp.Value;
 
           const entry = new FrontMatterMenu(menuName);
 
-          if (menuVal.valueKind === JsonValueKind.object) {
-            const entryProps = menuVal.enumerateObject().getEnumerator();
-            while (entryProps.moveNext()) {
-              const ep = entryProps.current;
-              const epKey = ep.name.toLowerInvariant();
-              const epVal = ep.value;
-              if (epKey === "weight" && epVal.valueKind === JsonValueKind.number) {
-                entry.weight = epVal.getInt32();
-              } else if (epKey === "name" && epVal.valueKind === JsonValueKind.string) {
-                entry.name = epVal.getString() ?? "";
-              } else if (epKey === "parent" && epVal.valueKind === JsonValueKind.string) {
-                entry.parent = epVal.getString() ?? "";
-              } else if (epKey === "identifier" && epVal.valueKind === JsonValueKind.string) {
-                entry.identifier = epVal.getString() ?? "";
-              } else if (epKey === "pre" && epVal.valueKind === JsonValueKind.string) {
-                entry.pre = epVal.getString() ?? "";
-              } else if (epKey === "post" && epVal.valueKind === JsonValueKind.string) {
-                entry.post = epVal.getString() ?? "";
-              } else if (epKey === "title" && epVal.valueKind === JsonValueKind.string) {
-                entry.title = epVal.getString() ?? "";
+          if (menuVal.ValueKind === JsonValueKind.Object) {
+            const entryProps = menuVal.EnumerateObject().GetEnumerator();
+            while (entryProps.MoveNext()) {
+              const ep = entryProps.Current;
+              const epKey = ep.Name.ToLowerInvariant();
+              const epVal = ep.Value;
+              if (epKey === "weight" && epVal.ValueKind === JsonValueKind.Number) {
+                entry.weight = epVal.GetInt32();
+              } else if (epKey === "name" && epVal.ValueKind === JsonValueKind.String) {
+                entry.name = epVal.GetString() ?? "";
+              } else if (epKey === "parent" && epVal.ValueKind === JsonValueKind.String) {
+                entry.parent = epVal.GetString() ?? "";
+              } else if (epKey === "identifier" && epVal.ValueKind === JsonValueKind.String) {
+                entry.identifier = epVal.GetString() ?? "";
+              } else if (epKey === "pre" && epVal.ValueKind === JsonValueKind.String) {
+                entry.pre = epVal.GetString() ?? "";
+              } else if (epKey === "post" && epVal.ValueKind === JsonValueKind.String) {
+                entry.post = epVal.GetString() ?? "";
+              } else if (epKey === "title" && epVal.ValueKind === JsonValueKind.String) {
+                entry.title = epVal.GetString() ?? "";
               }
             }
           }
-          menuItems.add(entry);
+          menuItems.Add(entry);
         }
-        fm.menus = menuItems.toArray();
+        fm.menus = menuItems.ToArray();
         continue;
       }
     }
   }
 
-  doc.dispose();
+  doc.Dispose();
   return fm;
 };
 
@@ -473,16 +473,16 @@ const tryParseJsonFrontMatter = (text: string): ParsedContent | undefined => {
   const openBrace: char = "{";
   const closeBrace: char = "}";
 
-  const chars = text.toCharArray();
+  const chars = text.ToCharArray();
   let start = 0;
-  while (start < chars.length && Char.isWhiteSpace(chars[start]!)) {
+  while (start < chars.Length && Char.IsWhiteSpace(chars[start]!)) {
     start++;
   }
-  if (start >= chars.length || chars[start]! !== openBrace) return undefined;
+  if (start >= chars.Length || chars[start]! !== openBrace) return undefined;
 
   let depth = 0;
   let end = -1;
-  for (let i = start; i < chars.length; i++) {
+  for (let i = start; i < chars.Length; i++) {
     const ch = chars[i]!;
     if (ch === openBrace) depth++;
     if (ch === closeBrace) depth--;
@@ -493,8 +493,8 @@ const tryParseJsonFrontMatter = (text: string): ParsedContent | undefined => {
   }
 
   if (end <= start) return undefined;
-  const json = text.substring(start, end - start);
-  const body = text.substring(end).trimStart();
+  const json = text.Substring(start, end - start);
+  const body = text.Substring(end).TrimStart();
   return new ParsedContent(parseJson(json), body);
 };
 
@@ -503,31 +503,31 @@ export const parseContent = (text: string): ParsedContent => {
   if (json !== undefined) return json;
 
   const reader = new StringReader(text);
-  const firstLine = reader.readLine();
+  const firstLine = reader.ReadLine();
   if (firstLine === undefined) return new ParsedContent(new FrontMatter(), "");
 
-  if (firstLine.trim() === "---") {
+  if (firstLine.Trim() === "---") {
     const fmLines = new List<string>();
     while (true) {
-      const line = reader.readLine();
+      const line = reader.ReadLine();
       if (line === undefined) break;
-      if (line.trim() === "---") break;
-      fmLines.add(line);
+      if (line.Trim() === "---") break;
+      fmLines.Add(line);
     }
-    const body = reader.readToEnd().trimStart();
-    return new ParsedContent(parseYaml(fmLines.toArray()), body);
+    const body = reader.ReadToEnd().TrimStart();
+    return new ParsedContent(parseYaml(fmLines.ToArray()), body);
   }
 
-  if (firstLine.trim() === "+++") {
+  if (firstLine.Trim() === "+++") {
     const fmLines = new List<string>();
     while (true) {
-      const line = reader.readLine();
+      const line = reader.ReadLine();
       if (line === undefined) break;
-      if (line.trim() === "+++") break;
-      fmLines.add(line);
+      if (line.Trim() === "+++") break;
+      fmLines.Add(line);
     }
-    const body = reader.readToEnd().trimStart();
-    return new ParsedContent(parseToml(fmLines.toArray()), body);
+    const body = reader.ReadToEnd().TrimStart();
+    return new ParsedContent(parseToml(fmLines.ToArray()), body);
   }
 
   return new ParsedContent(new FrontMatter(), text);

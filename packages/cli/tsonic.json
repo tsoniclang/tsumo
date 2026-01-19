@@ -14,8 +14,7 @@
     "stripSymbols": true,
     "invariantGlobalization": true
   },
-  "dotnet": {
-    "typeRoots": ["../../node_modules/@tsonic/globals"],
-    "libraries": ["lib/Tsumo.Engine.dll", "lib/Markdig.dll"]
+  "references": {
+    "libraries": ["../engine/dist/net10.0/Tsumo.Engine.dll"]
   }
 }

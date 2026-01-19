@@ -47,73 +47,73 @@ const indent = (depth: int): string => {
 const appendInlinePlainText = (inline: Inline, sb: StringBuilder): void => {
   const literal = trycast<LiteralInline>(inline);
   if (literal !== null) {
-    sb.append(literal.toString());
+    sb.Append(literal.ToString());
     return;
   }
 
   const code = trycast<CodeInline>(inline);
   if (code !== null) {
-    sb.append(code.content);
+    sb.Append(code.Content);
     return;
   }
 
   const entity = trycast<HtmlEntityInline>(inline);
   if (entity !== null) {
-    sb.append(entity.transcoded.toString());
+    sb.Append(entity.Transcoded.ToString());
     return;
   }
 
   const autolink = trycast<AutolinkInline>(inline);
   if (autolink !== null) {
-    sb.append(autolink.url);
+    sb.Append(autolink.Url);
     return;
   }
 
   const lineBreak = trycast<LineBreakInline>(inline);
   if (lineBreak !== null) {
-    sb.append(" ");
+    sb.Append(" ");
     return;
   }
 
   const container = trycast<ContainerInline>(inline);
   if (container !== null) {
-    const it = container.getEnumerator();
-    while (it.moveNext()) appendInlinePlainText(it.current, sb);
-    it.dispose();
+    const it = container.GetEnumerator();
+    while (it.MoveNext()) appendInlinePlainText(it.Current, sb);
+    it.Dispose();
   }
 };
 
 const getHeadingPlainText = (heading: HeadingBlock): string => {
-  const inline = heading.inline;
+  const inline = heading.Inline;
   if (inline === undefined) return "";
 
   const sb = new StringBuilder();
   appendInlinePlainText(inline, sb);
-  return sb.toString();
+  return sb.ToString();
 };
 
 // Collect headings from AST using actual Markdig-generated IDs
 const collectHeadingsFromAst = (document: ContainerBlock): TocHeading[] => {
   const headings = new List<TocHeading>();
   collectHeadingsRecursive(document, headings);
-  return headings.toArray();
+  return headings.ToArray();
 };
 
 const collectHeadingsRecursive = (container: ContainerBlock, headings: List<TocHeading>): void => {
-  const it = container.getEnumerator();
-  while (it.moveNext()) {
-    const block = it.current;
+  const it = container.GetEnumerator();
+  while (it.MoveNext()) {
+    const block = it.Current;
 
     const heading = trycast<HeadingBlock>(block);
     if (heading !== null) {
       // Get the ID from Markdig's HtmlAttributes (set by AutoIdentifiers extension)
-      const attrs = HtmlAttributesExtensions.tryGetAttributes(heading);
-      const id = attrs !== undefined && attrs.id !== undefined ? attrs.id : "";
+      const attrs = HtmlAttributesExtensions.TryGetAttributes(heading);
+      const id = attrs !== undefined && attrs.Id !== undefined ? attrs.Id : "";
 
       // Get plain text from heading content
       const text = getHeadingPlainText(heading);
 
-      headings.add(new TocHeading(heading.level, text, id));
+      headings.Add(new TocHeading(heading.Level, text, id));
     }
 
     // Recurse into child containers
@@ -122,92 +122,92 @@ const collectHeadingsRecursive = (container: ContainerBlock, headings: List<TocH
       collectHeadingsRecursive(childContainer, headings);
     }
   }
-  it.dispose();
+  it.Dispose();
 };
 
 export const escapeHtmlText = (text: string): string => {
   let result = text;
-  result = result.replace("&", "&amp;");
-  result = result.replace("<", "&lt;");
-  result = result.replace(">", "&gt;");
-  result = result.replace("\"", "&quot;");
+  result = result.Replace("&", "&amp;");
+  result = result.Replace("<", "&lt;");
+  result = result.Replace(">", "&gt;");
+  result = result.Replace("\"", "&quot;");
   return result;
 };
 
 export const generateTableOfContents = (markdown: string): string => {
   // Parse to AST to get actual Markdig-generated IDs
-  const document = Markdown.parse(markdown, markdownPipeline);
+  const document = Markdown.Parse(markdown, markdownPipeline);
   const headings = collectHeadingsFromAst(document);
 
-  if (headings.length === 0) return `<nav id="TableOfContents"></nav>`;
+  if (headings.Length === 0) return `<nav id="TableOfContents"></nav>`;
 
   const sb = new StringBuilder();
-  sb.append(`<nav id="TableOfContents">\n`);
+  sb.Append(`<nav id="TableOfContents">\n`);
 
   const listStack = new Stack<TocListFrame>();
   let currentLevel = 0;
 
-  for (let i = 0; i < headings.length; i++) {
+  for (let i = 0; i < headings.Length; i++) {
     const h = headings[i]!;
 
     // Clamp depth increases to avoid invalid placeholder <li> elements when headings skip levels.
     let targetLevel = h.level;
     if (currentLevel !== 0 && targetLevel > currentLevel + 1) targetLevel = currentLevel + 1;
 
-    if (listStack.count === 0) {
-      sb.append(`${indent(1)}<ul>\n`);
-      listStack.push(new TocListFrame(targetLevel));
+    if (listStack.Count === 0) {
+      sb.Append(`${indent(1)}<ul>\n`);
+      listStack.Push(new TocListFrame(targetLevel));
       currentLevel = targetLevel;
     }
 
     // Move up to target level (closing lists and items as needed)
-    while (listStack.count > 0 && targetLevel < currentLevel) {
-      const top = listStack.peek();
+    while (listStack.Count > 0 && targetLevel < currentLevel) {
+      const top = listStack.Peek();
       if (top.liOpen) {
-        sb.append(`${indent(listStack.count + 1)}</li>\n`);
+        sb.Append(`${indent(listStack.Count + 1)}</li>\n`);
         top.liOpen = false;
       }
-      sb.append(`${indent(listStack.count)}</ul>\n`);
-      listStack.pop();
-      currentLevel = listStack.count > 0 ? listStack.peek().level : 0;
+      sb.Append(`${indent(listStack.Count)}</ul>\n`);
+      listStack.Pop();
+      currentLevel = listStack.Count > 0 ? listStack.Peek().level : 0;
     }
 
-    if (listStack.count === 0) {
-      sb.append(`${indent(1)}<ul>\n`);
-      listStack.push(new TocListFrame(targetLevel));
+    if (listStack.Count === 0) {
+      sb.Append(`${indent(1)}<ul>\n`);
+      listStack.Push(new TocListFrame(targetLevel));
       currentLevel = targetLevel;
     }
 
     // Same level: close previous <li> before opening a sibling
     if (targetLevel === currentLevel) {
-      const top = listStack.peek();
+      const top = listStack.Peek();
       if (top.liOpen) {
-        sb.append(`${indent(listStack.count + 1)}</li>\n`);
+        sb.Append(`${indent(listStack.Count + 1)}</li>\n`);
         top.liOpen = false;
       }
     }
 
     // Descend one level (if needed) by opening a nested <ul> within the current open <li>
     if (targetLevel > currentLevel) {
-      sb.append(`${indent(listStack.count + 1)}<ul>\n`);
-      listStack.push(new TocListFrame(targetLevel));
+      sb.Append(`${indent(listStack.Count + 1)}<ul>\n`);
+      listStack.Push(new TocListFrame(targetLevel));
       currentLevel = targetLevel;
     }
 
-    sb.append(`${indent(listStack.count + 1)}<li><a href="#${h.id}">${escapeHtmlText(h.text)}</a>\n`);
-    listStack.peek().liOpen = true;
+    sb.Append(`${indent(listStack.Count + 1)}<li><a href="#${h.id}">${escapeHtmlText(h.text)}</a>\n`);
+    listStack.Peek().liOpen = true;
   }
 
-  while (listStack.count > 0) {
-    const top = listStack.peek();
+  while (listStack.Count > 0) {
+    const top = listStack.Peek();
     if (top.liOpen) {
-      sb.append(`${indent(listStack.count + 1)}</li>\n`);
+      sb.Append(`${indent(listStack.Count + 1)}</li>\n`);
       top.liOpen = false;
     }
-    sb.append(`${indent(listStack.count)}</ul>\n`);
-    listStack.pop();
+    sb.Append(`${indent(listStack.Count)}</ul>\n`);
+    listStack.Pop();
   }
 
-  sb.append(`</nav>`);
-  return sb.toString();
+  sb.Append(`</nav>`);
+  return sb.ToString();
 };

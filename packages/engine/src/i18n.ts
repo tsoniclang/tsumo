@@ -11,26 +11,26 @@ export class I18nStore {
   }
 
   loadFromDir(dir: string): void {
-    if (!Directory.exists(dir)) return;
+    if (!Directory.Exists(dir)) return;
 
-    const files = Directory.getFiles(dir, "*", SearchOption.topDirectoryOnly);
-    for (let i = 0; i < files.length; i++) {
+    const files = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly);
+    for (let i = 0; i < files.Length; i++) {
       const file = files[i]!;
-      const ext = (Path.getExtension(file) ?? "").toLowerInvariant();
+      const ext = (Path.GetExtension(file) ?? "").ToLowerInvariant();
       if (ext !== ".yaml" && ext !== ".yml" && ext !== ".toml" && ext !== ".json") continue;
 
-      const fileName = Path.getFileNameWithoutExtension(file) ?? "";
+      const fileName = Path.GetFileNameWithoutExtension(file) ?? "";
       if (fileName === "") continue;
 
-      const lang = fileName.toLowerInvariant();
+      const lang = fileName.ToLowerInvariant();
       const content = readTextFile(file);
 
       let langDict = new Dictionary<string, string>();
-      const hasLang = this.translations.tryGetValue(lang, langDict);
+      const hasLang = this.translations.TryGetValue(lang, langDict);
       if (!hasLang) {
         langDict = new Dictionary<string, string>();
-        this.translations.remove(lang);
-        this.translations.add(lang, langDict);
+        this.translations.Remove(lang);
+        this.translations.Add(lang, langDict);
       }
 
       if (ext === ".yaml" || ext === ".yml") {
@@ -44,75 +44,75 @@ export class I18nStore {
   }
 
   private parseYamlI18n(content: string, dict: Dictionary<string, string>): void {
-    const lines = content.replaceLineEndings("\n").split("\n");
+    const lines = content.ReplaceLineEndings("\n").Split("\n");
     let currentId = "";
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.Length; i++) {
       const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
+      const line = raw.Trim();
+      if (line === "" || line.StartsWith("#")) continue;
 
-      if (line.startsWith("- id:")) {
-        const value = line.substring("- id:".length).trim();
+      if (line.StartsWith("- id:")) {
+        const value = line.Substring("- id:".Length).Trim();
         currentId = this.unquoteYaml(value);
-      } else if (line.startsWith("id:")) {
-        const value = line.substring("id:".length).trim();
+      } else if (line.StartsWith("id:")) {
+        const value = line.Substring("id:".Length).Trim();
         currentId = this.unquoteYaml(value);
-      } else if (line.startsWith("translation:") && currentId !== "") {
-        const value = line.substring("translation:".length).trim();
+      } else if (line.StartsWith("translation:") && currentId !== "") {
+        const value = line.Substring("translation:".Length).Trim();
         const translation = this.unquoteYaml(value);
-        dict.remove(currentId);
-        dict.add(currentId, translation);
+        dict.Remove(currentId);
+        dict.Add(currentId, translation);
         currentId = "";
       }
     }
   }
 
   private unquoteYaml(value: string): string {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
-      return trimmed.substring(1, trimmed.length - 2);
+    const trimmed = value.Trim();
+    if (trimmed.StartsWith("'") && trimmed.EndsWith("'")) {
+      return trimmed.Substring(1, trimmed.Length - 2);
     }
-    if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-      return trimmed.substring(1, trimmed.length - 2);
+    if (trimmed.StartsWith("\"") && trimmed.EndsWith("\"")) {
+      return trimmed.Substring(1, trimmed.Length - 2);
     }
     return trimmed;
   }
 
   private parseTomlI18n(content: string, dict: Dictionary<string, string>): void {
-    const lines = content.replaceLineEndings("\n").split("\n");
+    const lines = content.ReplaceLineEndings("\n").Split("\n");
     let currentId = "";
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.Length; i++) {
       const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
+      const line = raw.Trim();
+      if (line === "" || line.StartsWith("#")) continue;
 
-      if (line.startsWith("[") && line.endsWith("]")) {
-        currentId = line.substring(1, line.length - 2).trim();
+      if (line.StartsWith("[") && line.EndsWith("]")) {
+        currentId = line.Substring(1, line.Length - 2).Trim();
         continue;
       }
 
       const eq = indexOfText(line, "=");
       if (eq < 0) continue;
 
-      const key = line.substring(0, eq).trim().toLowerInvariant();
-      const value = this.unquoteToml(line.substring(eq + 1).trim());
+      const key = line.Substring(0, eq).Trim().ToLowerInvariant();
+      const value = this.unquoteToml(line.Substring(eq + 1).Trim());
 
       if ((key === "other" || key === "translation") && currentId !== "") {
-        dict.remove(currentId);
-        dict.add(currentId, value);
+        dict.Remove(currentId);
+        dict.Add(currentId, value);
       }
     }
   }
 
   private unquoteToml(value: string): string {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-      return trimmed.substring(1, trimmed.length - 2);
+    const trimmed = value.Trim();
+    if (trimmed.StartsWith("\"") && trimmed.EndsWith("\"")) {
+      return trimmed.Substring(1, trimmed.Length - 2);
     }
-    if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
-      return trimmed.substring(1, trimmed.length - 2);
+    if (trimmed.StartsWith("'") && trimmed.EndsWith("'")) {
+      return trimmed.Substring(1, trimmed.Length - 2);
     }
     return trimmed;
   }
@@ -124,25 +124,25 @@ export class I18nStore {
 
   translate(lang: string, key: string): string {
     let langDict = new Dictionary<string, string>();
-    const langLower = lang.toLowerInvariant();
+    const langLower = lang.ToLowerInvariant();
 
-    let hasLang = this.translations.tryGetValue(langLower, langDict);
+    let hasLang = this.translations.TryGetValue(langLower, langDict);
     if (!hasLang) {
       const dashIdx = indexOfText(langLower, "-");
       if (dashIdx > 0) {
-        const baseLang = langLower.substring(0, dashIdx);
-        hasLang = this.translations.tryGetValue(baseLang, langDict);
+        const baseLang = langLower.Substring(0, dashIdx);
+        hasLang = this.translations.TryGetValue(baseLang, langDict);
       }
     }
 
     if (!hasLang) {
-      hasLang = this.translations.tryGetValue("en", langDict);
+      hasLang = this.translations.TryGetValue("en", langDict);
     }
 
     if (!hasLang) return key;
 
     let value = "";
-    const hasKey = langDict.tryGetValue(key, value);
+    const hasKey = langDict.TryGetValue(key, value);
     return hasKey ? value : key;
   }
 }
