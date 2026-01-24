@@ -10,7 +10,7 @@ The upstream sources are copied into:
 
 We build a local `Markdig.dll` from that source via:
 
-- `packages/markdig/vendor-src/Markdig.Vendored.csproj` → `packages/markdig/vendor/net10.0/Markdig.dll` (gitignored)
+- `packages/markdig/vendor-src/Markdig.Vendored.csproj` → `libs/Markdig.dll` (committed)
 
 That assembly is used as a local DLL dependency to provide GitHub Flavored Markdown (GFM) rendering in Tsumo.
 
