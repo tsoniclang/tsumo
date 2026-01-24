@@ -4,6 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build:dll": "dotnet build vendor-src/Markdig.Vendored.csproj -c Release -o vendor/net10.0"
+    "build:dll": "dotnet build vendor-src/Markdig.Vendored.csproj -c Release -o ../../libs"
   }
 }
