@@ -92,7 +92,8 @@ const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): stri
   return `${repo}/blob/${branch}/${rel}`;
 };
 
-const maybeRewriteUrl = (urlRaw: string, ctx: DocsLinkRewriteContext): string | undefined => {
+const maybeRewriteUrl = (urlRaw: string | undefined, ctx: DocsLinkRewriteContext): string | undefined => {
+  if (urlRaw === undefined) return undefined;
   const url = urlRaw.Trim();
   if (url === "" || url.StartsWith("#") || isExternalUrl(url)) return undefined;
 
