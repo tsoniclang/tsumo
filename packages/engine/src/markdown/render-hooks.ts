@@ -153,8 +153,9 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
       const altHtml = renderInlineChildrenToHtml(link);
       const alt = stripHtmlTags(altHtml);
       const title = link.Title !== undefined ? link.Title : "";
+      const url = link.Url !== undefined ? link.Url : "";
 
-      const ctx = new ImageHookContext(link.Url, alt, title, alt, hookCtx.page);
+      const ctx = new ImageHookContext(url, alt, title, alt, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
       const hookHtml = renderImageHookTemplate(hookCtx.imageHook, hookValue, hookCtx.site, hookCtx.env);
 
@@ -166,8 +167,9 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
       const innerHtml = renderInlineChildrenToHtml(link);
       const plainText = stripHtmlTags(innerHtml);
       const title = link.Title !== undefined ? link.Title : "";
+      const url = link.Url !== undefined ? link.Url : "";
 
-      const ctx = new LinkHookContext(link.Url, innerHtml, title, plainText, hookCtx.page);
+      const ctx = new LinkHookContext(url, innerHtml, title, plainText, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
       const hookHtml = renderLinkHookTemplate(hookCtx.linkHook, hookValue, hookCtx.site, hookCtx.env);
 
