@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "build": "npm run -w @tsumo/engine build && npm run -w tsumo-cli build",
-    "typecheck": "npm run -w @tsumo/engine build && npm run -w tsumo-cli typecheck"
+    "typecheck": "npm run -w @tsumo/engine build && npm run -w tsumo-cli typecheck",
+    "selftest": "bash ./scripts/selftest.sh"
   },
   "devDependencies": {
     "tsonic": "0.0.41",

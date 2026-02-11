@@ -37,11 +37,21 @@ tsumo is implemented in TypeScript and compiled to native code with Tsonic (TS �
 - `examples/basic-blog` — example site (Hugo-style layout)
 - `examples/docs-site` — docs-mode example (mounts + nav + search)
 
+## Coding standards
+
+See `CODING-STANDARDS.md`.
+
 ## Build
 
 ```bash
 npm install
 npm run build
+```
+
+## Selftest
+
+```bash
+npm run selftest
 ```
 
 ## Try the example

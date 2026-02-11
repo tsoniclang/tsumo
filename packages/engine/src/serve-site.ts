@@ -6,7 +6,7 @@ import { FileSystemWatcher, WatcherChangeTypes } from "@tsonic/dotnet/System.IO.
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
 import { Encoding } from "@tsonic/dotnet/System.Text.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
-import { buildSite } from "./builder.ts";
+import { buildSite } from "./build-site.ts";
 import { loadDocsConfig } from "./docs/config.ts";
 import { ServeRequest } from "./models.ts";
 import { contentTypeForPath } from "./utils/mime.ts";

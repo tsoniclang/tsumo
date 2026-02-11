@@ -1,7 +1,7 @@
 {
   "$schema": "https://tsonic.org/schema/v1.json",
   "rootNamespace": "Tsumo.Cli",
-  "entryPoint": "src/App.ts",
+  "entryPoint": "src/cli-main.ts",
   "sourceRoot": "src",
   "outputDirectory": "generated",
   "outputName": "tsumo-aot",
