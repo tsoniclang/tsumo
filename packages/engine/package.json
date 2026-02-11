@@ -12,6 +12,7 @@
   "scripts": {
     "restore": "tsonic restore",
     "typecheck": "tsonic restore && tsc -p tsconfig.json",
-    "build": "tsonic restore && tsonic build"
+    "build": "tsonic restore && tsonic build",
+    "test": "tsonic test"
   }
 }
