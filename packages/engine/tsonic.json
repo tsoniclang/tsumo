@@ -14,6 +14,11 @@
     "includeSymbols": false,
     "packable": false
   },
+  "tests": {
+    "entryPoint": "src/tests/index.ts",
+    "outputDirectory": ".tsonic/generated-tests",
+    "outputName": "Tsumo.Engine.Tests"
+  },
   "buildOptions": {
     "stripSymbols": true,
     "invariantGlobalization": true

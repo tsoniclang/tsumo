@@ -8,6 +8,7 @@
   "scripts": {
     "build": "npm run -w @tsumo/engine build && npm run -w tsumo-cli build",
     "typecheck": "npm run -w @tsumo/engine build && npm run -w tsumo-cli typecheck",
+    "test": "npm run -w @tsumo/engine test",
     "selftest": "bash ./scripts/selftest.sh"
   },
   "devDependencies": {
