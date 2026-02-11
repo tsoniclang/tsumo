@@ -10,15 +10,11 @@
     "typecheck": "npm run -w @tsumo/engine build && npm run -w tsumo-cli typecheck"
   },
   "devDependencies": {
-    "@tsonic/backend": "file:../tsonic/packages/backend",
-    "@tsonic/cli": "file:../tsonic/packages/cli",
-    "@tsonic/core": "file:../core/versions/10",
-    "@tsonic/dotnet": "file:../dotnet/versions/10",
-    "@tsonic/emitter": "file:../tsonic/packages/emitter",
-    "@tsonic/frontend": "file:../tsonic/packages/frontend",
-    "@tsonic/globals": "file:../globals/versions/10",
-    "@tsonic/tsbindgen": "file:../tsbindgen",
-    "typescript": "file:../tsonic/node_modules/typescript"
+    "tsonic": "0.0.41",
+    "@tsonic/core": "10.0.9",
+    "@tsonic/dotnet": "10.0.10",
+    "@tsonic/globals": "10.0.10",
+    "typescript": "5.9.2"
   },
   "engines": {
     "node": ">=22.0.0"
