@@ -33,7 +33,6 @@ export class ScaffoldAndBuildTests {
       const req = new BuildRequest(siteDir);
       req.destinationDir = outDir;
       req.cleanDestinationDir = true;
-      req.buildDrafts = true;
 
       const result = buildSite(req);
 
@@ -41,6 +40,28 @@ export class ScaffoldAndBuildTests {
       Assert.True(File.Exists(Path.Combine(outDir, "index.html")));
       Assert.True(File.Exists(Path.Combine(outDir, "posts", "hello-world", "index.html")));
       Assert.True(result.pagesBuilt > 0);
+    } finally {
+      deleteIfExists(outDir);
+      deleteIfExists(siteDir);
+    }
+  }
+
+  public drafts_skipped_by_default(): void {
+    const siteDir = createTempDir("site");
+    const outDir = createTempDir("out");
+
+    try {
+      initSite(siteDir);
+      newContent(siteDir, "posts/my-draft.md");
+
+      const req = new BuildRequest(siteDir);
+      req.destinationDir = outDir;
+      req.cleanDestinationDir = true;
+      req.buildDrafts = false;
+
+      buildSite(req);
+
+      Assert.True(!File.Exists(Path.Combine(outDir, "posts", "my-draft", "index.html")));
     } finally {
       deleteIfExists(outDir);
       deleteIfExists(siteDir);
@@ -71,4 +92,5 @@ export class ScaffoldAndBuildTests {
 }
 
 A.on(ScaffoldAndBuildTests).method((t) => t.scaffold_then_build).add(FactAttribute);
+A.on(ScaffoldAndBuildTests).method((t) => t.drafts_skipped_by_default).add(FactAttribute);
 A.on(ScaffoldAndBuildTests).method((t) => t.new_content_then_build).add(FactAttribute);
