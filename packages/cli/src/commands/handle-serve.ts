@@ -1,7 +1,7 @@
 import { Environment } from "@tsonic/dotnet/System.js";
 import type { int } from "@tsonic/core/types.js";
 
-import { ServeRequest, servesite } from "@tsumo/engine/Tsumo.Engine.js";
+import { ServeRequest, serveSite } from "@tsumo/engine/Tsumo.Engine.js";
 
 import { logErrorLine } from "../log-error-line.ts";
 import { parseIntArg } from "../parse-int.ts";
@@ -67,5 +67,5 @@ export const handleServe = (args: readonly string[]): void => {
   serveReq.buildDrafts = serveBuildDrafts;
   serveReq.cleanDestinationDir = serveClean;
 
-  servesite.serveSite(serveReq);
+  serveSite(serveReq);
 };
