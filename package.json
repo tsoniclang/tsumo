@@ -12,7 +12,7 @@
     "selftest": "bash ./scripts/selftest.sh"
   },
   "devDependencies": {
-    "tsonic": "0.0.44",
+    "tsonic": "0.0.45",
     "@tsonic/tsbindgen": "0.7.36",
     "@tsonic/core": "10.0.11",
     "@tsonic/dotnet": "10.0.11",
