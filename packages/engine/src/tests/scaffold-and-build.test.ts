@@ -1,4 +1,4 @@
-import { attributes as A } from "@tsonic/core/attributes.js";
+import { attributes as A } from "@tsonic/core/lang.js";
 
 import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
