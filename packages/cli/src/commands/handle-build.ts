@@ -1,7 +1,7 @@
 import { Environment } from "@tsonic/dotnet/System.js";
 import type { int } from "@tsonic/core/types.js";
 
-import { BuildRequest, buildsite } from "@tsumo/engine/Tsumo.Engine.js";
+import { BuildRequest, buildSite } from "@tsumo/engine/Tsumo.Engine.js";
 
 import { logLine } from "../log-line.ts";
 
@@ -43,6 +43,6 @@ export const handleBuild = (args: readonly string[], buildArgStart: int): void =
   buildReq.buildDrafts = includeDrafts;
   buildReq.cleanDestinationDir = cleanDestinationDir;
 
-  const result = buildsite.buildSite(buildReq);
+  const result = buildSite(buildReq);
   logLine(`Built → ${result.outputDir} (${result.pagesBuilt} pages)`);
 };

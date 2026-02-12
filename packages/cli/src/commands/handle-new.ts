@@ -1,6 +1,6 @@
 import { Environment } from "@tsonic/dotnet/System.js";
 
-import { initsite, newcontent } from "@tsumo/engine/Tsumo.Engine.scaffold.js";
+import { initSite, newContent } from "@tsumo/engine/Tsumo.Engine.scaffold.js";
 
 import { logErrorLine } from "../log-error-line.ts";
 import { logLine } from "../log-line.ts";
@@ -13,7 +13,7 @@ export const handleNew = (args: readonly string[]): void => {
       return;
     }
     const dir = args[2]!;
-    initsite.initSite(dir);
+    initSite(dir);
     logLine(`Created site: ${dir}`);
     return;
   }
@@ -33,6 +33,6 @@ export const handleNew = (args: readonly string[]): void => {
     }
   }
 
-  const created = newcontent.newContent(contentSourceDir, args[1]!);
+  const created = newContent(contentSourceDir, args[1]!);
   logLine(`Created content: ${created}`);
 };
