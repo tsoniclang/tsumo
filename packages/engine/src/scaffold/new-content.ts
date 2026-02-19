@@ -18,7 +18,7 @@ categories: []
 Write your post here.
 `;
 
-export const newContent = (siteDir: string, contentPathRaw: string): string => {
+export function newContent(siteDir: string, contentPathRaw: string): string {
   const dir = Path.GetFullPath(siteDir);
   const contentDir = Path.Combine(dir, "content");
 
@@ -45,5 +45,4 @@ export const newContent = (siteDir: string, contentPathRaw: string): string => {
 
   writeTextFile(dest, content);
   return dest;
-};
-
+}

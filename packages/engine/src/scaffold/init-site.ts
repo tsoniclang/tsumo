@@ -181,7 +181,7 @@ nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 .content pre { padding: 0.75rem 1rem; background: rgba(127,127,127,0.15); overflow: auto; border-radius: 10px; }
 `;
 
-export const initSite = (targetDir: string): void => {
+export function initSite(targetDir: string): void {
   const dir = Path.GetFullPath(targetDir);
   ensureEmptyDir(dir);
 
@@ -206,5 +206,4 @@ export const initSite = (targetDir: string): void => {
   writeTextFile(Path.Combine(dir, "static", "style.css"), styleCss());
   writeTextFile(Path.Combine(dir, "content", "_index.md"), indexMd());
   writeTextFile(Path.Combine(dir, "content", "posts", "hello-world.md"), helloWorldMd());
-};
-
+}
