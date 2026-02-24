@@ -12,11 +12,11 @@
     "selftest": "bash ./scripts/selftest.sh"
   },
   "devDependencies": {
-    "tsonic": "0.0.54",
-    "@tsonic/tsbindgen": "0.7.39",
-    "@tsonic/core": "10.0.21",
-    "@tsonic/dotnet": "10.0.21",
-    "@tsonic/globals": "10.0.21",
+    "tsonic": "0.0.61",
+    "@tsonic/tsbindgen": "0.7.45",
+    "@tsonic/core": "10.0.35",
+    "@tsonic/dotnet": "10.0.35",
+    "@tsonic/globals": "10.0.35",
     "typescript": "5.9.2"
   },
   "engines": {
