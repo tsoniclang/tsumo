@@ -3,9 +3,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+if [[ -z "${TSONIC_BIN:-}" ]]; then
+  echo "FAIL: TSONIC_BIN is not set. Set it to the tsonic CLI path." >&2
+  exit 1
+fi
+
 echo "=== Building tsumo (engine + cli) ==="
-cd "$ROOT"
-npm run build
+(cd "$ROOT/packages/engine" && "$TSONIC_BIN" restore && "$TSONIC_BIN" build)
+(cd "$ROOT/packages/cli" && "$TSONIC_BIN" build)
 
 TSUMO_BIN="$ROOT/packages/cli/out/tsumo"
 if [[ ! -x "$TSUMO_BIN" ]]; then
