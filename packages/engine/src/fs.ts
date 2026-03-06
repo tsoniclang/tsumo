@@ -33,7 +33,7 @@ export const copyDirRecursive = (srcDir: string, destDir: string): void => {
   Directory.CreateDirectory(destDir);
 
   const files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
-  for (let i = 0; i < files.Length; i++) {
+  for (let i = 0; i < files.length; i++) {
     const srcFile = files[i]!;
     const rel = Path.GetRelativePath(srcDir, srcFile);
     const destFile = Path.Combine(destDir, rel);

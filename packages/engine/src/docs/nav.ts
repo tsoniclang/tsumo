@@ -5,36 +5,37 @@ import { JsonDocument, JsonElement, JsonValueKind } from "@tsonic/dotnet/System.
 import type { char, int } from "@tsonic/core/types.js";
 import { DocsMountConfig, NavItem } from "./models.ts";
 import { splitUrlSuffix } from "./url.ts";
+import { replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.ts";
 
-const normalizeSlashes = (path: string): string => path.Replace("\\", "/");
+const normalizeSlashes = (path: string): string => path.replaceAll("\\", "/");
 
 const isExternalUrl = (url: string): boolean => {
-  const lower = url.Trim().ToLowerInvariant();
-  return lower.StartsWith("http://") || lower.StartsWith("https://") || lower.StartsWith("mailto:") || lower.StartsWith("tel:") || lower.StartsWith("//");
+  const lower = url.trim().toLowerCase();
+  return lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("mailto:") || lower.startsWith("tel:") || lower.startsWith("//");
 };
 
 const isMarkdownPath = (path: string): boolean => {
-  const lower = path.Trim().ToLowerInvariant();
-  return lower.EndsWith(".md") || lower.EndsWith(".markdown");
+  const lower = path.trim().toLowerCase();
+  return lower.endsWith(".md") || lower.endsWith(".markdown");
 };
 
 const normalizeRelativePath = (baseDirKey: string, targetPath: string): string | undefined => {
-  const base = baseDirKey.Trim();
+  const base = baseDirKey.trim();
   const start = new List<string>();
   if (base !== "") {
-    const baseParts = base.Split("/");
-    for (let i = 0; i < baseParts.Length; i++) {
-      const seg = baseParts[i]!.Trim();
+    const baseParts = base.split("/");
+    for (let i = 0; i < baseParts.length; i++) {
+      const seg = baseParts[i]!.trim();
       if (seg !== "") start.Add(seg);
     }
   }
 
-  const target = normalizeSlashes(targetPath.Trim());
-  const parts = target.Split("/");
+  const target = normalizeSlashes(targetPath.trim());
+  const parts = target.split("/");
 
-  for (let i = 0; i < parts.Length; i++) {
+  for (let i = 0; i < parts.length; i++) {
     const raw = parts[i]!;
-    const seg = raw.Trim();
+    const seg = raw.trim();
     if (seg === "" || seg === ".") continue;
     if (seg === "..") {
       if (start.Count === 0) return undefined;
@@ -45,19 +46,19 @@ const normalizeRelativePath = (baseDirKey: string, targetPath: string): string |
   }
 
   const arr = start.ToArray();
-  if (arr.Length === 0) return "";
+  if (arr.length === 0) return "";
   let out = arr[0]!;
-  for (let i = 1; i < arr.Length; i++) out += "/" + arr[i]!;
+  for (let i = 1; i < arr.length; i++) out += "/" + arr[i]!;
   return out;
 };
 
 const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): string | undefined => {
   if (mount.repoUrl === undefined) return undefined;
-  const slash: char = "/";
-  const repo = mount.repoUrl.Trim().TrimEnd(slash);
+  const slash = "/";
+  const repo = trimEndChar(mount.repoUrl.trim(), slash);
   if (repo === "") return undefined;
-  const branch = mount.repoBranch.Trim() === "" ? "main" : mount.repoBranch.Trim();
-  const rel = repoRelPath.Trim().TrimStart(slash);
+  const branch = mount.repoBranch.trim() === "" ? "main" : mount.repoBranch.trim();
+  const rel = trimStartChar(repoRelPath.trim(), slash);
   if (rel === "") return undefined;
   return `${repo}/blob/${branch}/${rel}`;
 };
@@ -74,34 +75,34 @@ const resolveMarkdownNavLink = (
   linkTarget: string,
   routesByRelPathLower: Dictionary<string, string>,
 ): string | undefined => {
-  const targetRaw = linkTarget.Trim();
+  const targetRaw = linkTarget.trim();
   if (targetRaw === "") return undefined;
   if (isExternalUrl(targetRaw)) return targetRaw;
-  if (targetRaw.StartsWith("#")) return targetRaw;
+  if (targetRaw.startsWith("#")) return targetRaw;
 
   const split = splitUrlSuffix(targetRaw);
-  const pathPart = split.path.Trim();
+  const pathPart = split.path.trim();
   const suffix = split.suffix;
   if (pathPart === "") return undefined;
 
-  const slash: char = "/";
+  const slash = "/";
   const repoPathRaw = mount.repoPath;
   let repoPath = "";
-  if (repoPathRaw !== undefined && repoPathRaw.Trim() !== "") {
-    repoPath = repoPathRaw.Trim().TrimStart(slash).TrimEnd(slash);
+  if (repoPathRaw !== undefined && repoPathRaw.trim() !== "") {
+    repoPath = trimEndChar(trimStartChar(repoPathRaw.trim(), slash), slash);
   }
   const hasRepoPath = repoPath !== "";
   let resolvedRel: string | undefined = undefined;
 
-  if (pathPart.StartsWith("/")) {
-    resolvedRel = pathPart.TrimStart(slash);
+  if (pathPart.startsWith("/")) {
+    resolvedRel = trimStartChar(pathPart, slash);
   } else {
     resolvedRel = normalizeRelativePath(navDirKey, pathPart);
   }
 
   if (resolvedRel === undefined) {
     if (!hasRepoPath) return undefined;
-    const baseDir = navDirKey.Trim() === "" ? repoPath : `${repoPath}/${navDirKey}`;
+    const baseDir = navDirKey.trim() === "" ? repoPath : `${repoPath}/${navDirKey}`;
     const repoResolvedEscape = normalizeRelativePath(baseDir, pathPart);
     if (repoResolvedEscape === undefined) return undefined;
     const ghUrlEscape = computeGitHubBlobUrl(mount, repoResolvedEscape);
@@ -113,7 +114,7 @@ const resolveMarkdownNavLink = (
     return targetRaw;
   }
 
-  const key = resolvedRel.ToLowerInvariant();
+  const key = resolvedRel.toLowerCase();
   const mapped = tryGetRouteUrl(routesByRelPathLower, key);
   if (mapped !== undefined) return mapped + suffix;
 
@@ -136,13 +137,13 @@ class InlineLink {
 }
 
 const parseInlineMarkdownLink = (line: string): InlineLink | undefined => {
-  const open = line.IndexOf("[");
-  const mid = line.IndexOf("](");
+  const open = line.indexOf("[");
+  const mid = line.indexOf("](");
   if (open < 0 || mid < 0 || mid <= open) return undefined;
-  const close = line.IndexOf(")", mid + 2);
+  const close = line.indexOf(")", mid + 2);
   if (close < 0) return undefined;
-  const title = line.Substring(open + 1, mid - (open + 1)).Trim();
-  const target = line.Substring(mid + 2, close - (mid + 2)).Trim();
+  const title = substringCount(line, open + 1, mid - (open + 1)).trim();
+  const target = substringCount(line, mid + 2, close - (mid + 2)).trim();
   if (title === "" || target === "") return undefined;
   return new InlineLink(title, target);
 };
@@ -165,7 +166,7 @@ const parseTocMarkdown = (
   navDirKey: string,
   routesByRelPathLower: Dictionary<string, string>,
 ): NavItem[] => {
-  const lines = markdown.ReplaceLineEndings("\n").Split("\n");
+  const lines = replaceLineEndings(markdown, "\n").split("\n");
 
   let inToc = false;
   const groups = new List<NavGroupBuild>();
@@ -173,22 +174,22 @@ const parseTocMarkdown = (
   let currentGroup: NavGroupBuild | undefined = undefined;
   let order: int = 1;
 
-  for (let i = 0; i < lines.Length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
-    const line = raw.Trim();
+    const line = raw.trim();
     if (line === "") continue;
 
-    const lower = line.ToLowerInvariant();
+    const lower = line.toLowerCase();
 
     if (!inToc) {
       if (lower === "## table of contents") inToc = true;
       continue;
     }
 
-    if (line.StartsWith("## ") && lower !== "## table of contents") break;
+    if (line.startsWith("## ") && lower !== "## table of contents") break;
 
-    if (line.StartsWith("### ")) {
-      const title = line.Substring(4).Trim();
+    if (line.startsWith("### ")) {
+      const title = substringFrom(line, 4).trim();
       if (title !== "") {
         currentGroup = new NavGroupBuild(title, order);
         groups.Add(currentGroup);
@@ -214,14 +215,14 @@ const parseTocMarkdown = (
   const out = new List<NavItem>();
 
   const groupArr = groups.ToArray();
-  for (let i = 0; i < groupArr.Length; i++) {
+  for (let i = 0; i < groupArr.length; i++) {
     const g = groupArr[i]!;
     const groupItem = new NavItem(g.title, "", g.children.ToArray(), true, false, g.order);
     out.Add(groupItem);
   }
 
   const rootArr = rootItems.ToArray();
-  for (let i = 0; i < rootArr.Length; i++) out.Add(rootArr[i]!);
+  for (let i = 0; i < rootArr.length; i++) out.Add(rootArr[i]!);
 
   return out.ToArray();
 };
@@ -245,7 +246,7 @@ const parseNavJson = (
       const props = root.EnumerateObject().GetEnumerator();
       while (props.MoveNext()) {
         const p = props.Current;
-        if (p.Name.ToLowerInvariant() === "items") {
+        if (p.Name.toLowerCase() === "items") {
           hasItems = true;
           itemsEl = p.Value;
           break;
@@ -291,7 +292,7 @@ function parseNavJsonItems(
     const props = cur.EnumerateObject().GetEnumerator();
     while (props.MoveNext()) {
       const p = props.Current;
-      const k = p.Name.ToLowerInvariant();
+      const k = p.Name.toLowerCase();
       const v = p.Value;
       if (k === "title" && v.ValueKind === JsonValueKind.String) title = v.GetString();
       else if (k === "url" && v.ValueKind === JsonValueKind.String) url = v.GetString();
@@ -314,7 +315,7 @@ function parseNavJsonItems(
 
     if (title === undefined || finalUrl === undefined) continue;
 
-    items.Add(new NavItem(title, finalUrl, children, children.Length > 0, false, order));
+    items.Add(new NavItem(title, finalUrl, children, children.length > 0, false, order));
     order++;
   }
 
@@ -322,14 +323,14 @@ function parseNavJsonItems(
 }
 
 const joinUrlPath = (parts: string[]): string => {
-  if (parts.Length === 0) return "";
+  if (parts.length === 0) return "";
   let out = parts[0]!;
-  for (let i = 1; i < parts.Length; i++) out += "/" + parts[i]!;
+  for (let i = 1; i < parts.length; i++) out += "/" + parts[i]!;
   return out;
 };
 
 export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Dictionary<string, string>): NavItem[] => {
-  const navRaw = mount.navPath !== undefined && mount.navPath.Trim() !== "" ? mount.navPath.Trim() : "README.md";
+  const navRaw = mount.navPath !== undefined && mount.navPath.trim() !== "" ? mount.navPath.trim() : "README.md";
   const navFile = Path.IsPathRooted(navRaw) ? navRaw : Path.Combine(mount.sourceDir, navRaw);
   if (!File.Exists(navFile)) {
     const empty: NavItem[] = [];
@@ -337,18 +338,18 @@ export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Dicti
   }
 
   const rel = normalizeSlashes(Path.GetRelativePath(mount.sourceDir, navFile));
-  if (rel === "" || rel.StartsWith("..")) {
+  if (rel === "" || rel.startsWith("..")) {
     throw new Exception(`Mount nav must be inside sourceDir: ${navFile}`);
   }
 
-  const parts = rel.Split("/");
+  const parts = rel.split("/");
   const dirParts = new List<string>();
-  for (let i = 0; i < parts.Length - 1; i++) dirParts.Add(parts[i]!);
+  for (let i = 0; i < parts.length - 1; i++) dirParts.Add(parts[i]!);
   const navDirKey = joinUrlPath(dirParts.ToArray());
 
   const text = File.ReadAllText(navFile);
 
-  if (navFile.ToLowerInvariant().EndsWith(".json")) {
+  if (navFile.toLowerCase().endsWith(".json")) {
     return parseNavJson(mount, navDirKey, text, routesByRelPathLower);
   }
 

@@ -27,7 +27,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
     const props = root.EnumerateObject().GetEnumerator();
     while (props.MoveNext()) {
       const p = props.Current;
-      const key = p.Name.ToLowerInvariant();
+      const key = p.Name.toLowerCase();
       const v = p.Value;
 
       if (key === "title" && v.ValueKind === JsonValueKind.String) {
@@ -91,7 +91,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
           const cfgProps = langProp.Value.EnumerateObject().GetEnumerator();
           while (cfgProps.MoveNext()) {
             const c = cfgProps.Current;
-            const ck = c.Name.ToLowerInvariant();
+            const ck = c.Name.toLowerCase();
             const cv = c.Value;
             if (ck === "languagename" && cv.ValueKind === JsonValueKind.String) languageName = cv.GetString() ?? languageName;
             else if (ck === "languagedirection" && cv.ValueKind === JsonValueKind.String) languageDirection = cv.GetString() ?? languageDirection;
@@ -128,7 +128,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
             const itemProps = item.EnumerateObject().GetEnumerator();
             while (itemProps.MoveNext()) {
               const ip = itemProps.Current;
-              const ik = ip.Name.ToLowerInvariant();
+              const ik = ip.Name.toLowerCase();
               const iv = ip.Value;
               if (ik === "name" && iv.ValueKind === JsonValueKind.String) builder.name = iv.GetString() ?? "";
               else if (ik === "url" && iv.ValueKind === JsonValueKind.String) builder.url = iv.GetString() ?? "";
@@ -159,7 +159,7 @@ export const parseJsonConfig = (text: string): SiteConfig => {
     if (hasBuilders) {
       const entries = new List<MenuEntry>();
       const buildersArr = builders.ToArray();
-      for (let i = 0; i < buildersArr.Length; i++) entries.Add(buildersArr[i]!.toEntry());
+      for (let i = 0; i < buildersArr.length; i++) entries.Add(buildersArr[i]!.toEntry());
       menus.Remove(menuName);
       menus.Add(menuName, buildMenuHierarchy(entries.ToArray()));
     }

@@ -3,7 +3,7 @@ import { Path } from "@tsonic/dotnet/System.IO.js";
 import type { char } from "@tsonic/core/types.js";
 
 import { fileExists, readTextFile, writeTextFile } from "../fs.ts";
-import { replaceText } from "../utils/strings.ts";
+import { replaceText, substringCount, trimStartChar } from "../utils/strings.ts";
 import { humanizeSlug, slugify } from "../utils/text.ts";
 
 const defaultArchetype = (): string => `---
@@ -22,10 +22,13 @@ export const newContent = (siteDir: string, contentPathRaw: string): string => {
   const dir = Path.GetFullPath(siteDir);
   const contentDir = Path.Combine(dir, "content");
 
-  const slash: char = "/";
-  const rel = contentPathRaw.TrimStart(slash).Trim();
-  const withExt = rel.ToLowerInvariant().EndsWith(".md") ? rel : rel + ".md";
-  const dest = Path.Combine(contentDir, withExt.Replace(slash, Path.DirectorySeparatorChar));
+  const slash = "/";
+  const rel = trimStartChar(contentPathRaw, slash).trim();
+  const withExt = rel.toLowerCase().endsWith(".md") ? rel : rel + ".md";
+  const dest = Path.Combine(
+    contentDir,
+    replaceText(withExt, slash, `${Path.DirectorySeparatorChar}`)
+  );
 
   if (fileExists(dest)) throw new Exception(`File already exists: ${dest}`);
 
@@ -34,7 +37,7 @@ export const newContent = (siteDir: string, contentPathRaw: string): string => {
 
   const fileName = Path.GetFileName(withExt) ?? withExt;
   const slug = slugify(
-    fileName.ToLowerInvariant().EndsWith(".md") ? fileName.Substring(0, fileName.Length - 3) : fileName
+    fileName.toLowerCase().endsWith(".md") ? substringCount(fileName, 0, fileName.length - 3) : fileName
   );
   const title = humanizeSlug(slug);
   const date = DateTime.UtcNow.ToString("O");
@@ -46,4 +49,3 @@ export const newContent = (siteDir: string, contentPathRaw: string): string => {
   writeTextFile(dest, content);
   return dest;
 };
-

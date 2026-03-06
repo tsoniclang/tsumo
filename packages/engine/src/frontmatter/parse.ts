@@ -7,33 +7,34 @@ import { ParamValue } from "../params.ts";
 import { FrontMatterMenu } from "./menu.ts";
 import { FrontMatter } from "./data.ts";
 import { ParsedContent } from "./parsed-content.ts";
+import { substringCount, substringFrom, toChars } from "../utils/strings.ts";
 
 const unquote = (value: string): string => {
-  const v = value.Trim();
-  if (v.Length >= 2 && ((v.StartsWith("\"") && v.EndsWith("\"")) || (v.StartsWith("'") && v.EndsWith("'")))) {
-    return v.Substring(1, v.Length - 2);
+  const v = value.trim();
+  if (v.length >= 2 && ((v.startsWith("\"") && v.endsWith("\"")) || (v.startsWith("'") && v.endsWith("'")))) {
+    return substringCount(v, 1, v.length - 2);
   }
   return v;
 };
 
 const parseBool = (value: string): boolean | undefined => {
-  const v = value.Trim().ToLowerInvariant();
+  const v = value.trim().toLowerCase();
   if (v === "true") return true;
   if (v === "false") return false;
   return undefined;
 };
 
 const parseStringArrayInline = (value: string): string[] | undefined => {
-  const v = value.Trim();
-  if (!v.StartsWith("[") || !v.EndsWith("]")) return undefined;
-  const inner = v.Substring(1, v.Length - 2).Trim();
+  const v = value.trim();
+  if (!v.startsWith("[") || !v.endsWith("]")) return undefined;
+  const inner = substringCount(v, 1, v.length - 2).trim();
   if (inner === "") {
     const empty: string[] = [];
     return empty;
   }
-  const parts = inner.Split(",");
+  const parts = inner.split(",");
   const items = new List<string>();
-  for (let i = 0; i < parts.Length; i++) {
+  for (let i = 0; i < parts.length; i++) {
     const item = unquote(parts[i]!);
     if (item !== "") items.Add(item);
   }
@@ -41,8 +42,8 @@ const parseStringArrayInline = (value: string): string[] | undefined => {
 };
 
 const applyScalar = (fm: FrontMatter, keyRaw: string, valueRaw: string): void => {
-  const key = keyRaw.Trim().ToLowerInvariant();
-  const value = valueRaw.Trim();
+  const key = keyRaw.trim().toLowerCase();
+  const value = valueRaw.trim();
 
   if (key === "title") {
     fm.title = unquote(value);
@@ -94,13 +95,13 @@ const applyScalar = (fm: FrontMatter, keyRaw: string, valueRaw: string): void =>
     return;
   }
 
-  const k = keyRaw.Trim();
+  const k = keyRaw.trim();
   fm.Params.Remove(k);
   fm.Params.Add(k, ParamValue.parseScalar(unquote(value)));
 };
 
 const applyArray = (fm: FrontMatter, keyRaw: string, items: string[]): void => {
-  const key = keyRaw.Trim().ToLowerInvariant();
+  const key = keyRaw.trim().toLowerCase();
   if (key === "tags") {
     fm.tags = items;
     return;
@@ -113,32 +114,32 @@ const applyArray = (fm: FrontMatter, keyRaw: string, items: string[]): void => {
 
 const parseYaml = (all: string[]): FrontMatter => {
   const fm = new FrontMatter();
-  for (let i = 0; i < all.Length; i++) {
+  for (let i = 0; i < all.length; i++) {
     const line = all[i]!;
-    const trimmed = line.Trim();
-    if (trimmed === "" || trimmed.StartsWith("#")) continue;
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) continue;
 
-    if (!line.StartsWith(" ") && trimmed.Contains(":")) {
-      const idx = trimmed.IndexOf(":");
-      const key = trimmed.Substring(0, idx).Trim();
-      const rest = trimmed.Substring(idx + 1).Trim();
+    if (!line.startsWith(" ") && trimmed.includes(":")) {
+      const idx = trimmed.indexOf(":");
+      const key = substringCount(trimmed, 0, idx).trim();
+      const rest = substringFrom(trimmed, idx + 1).trim();
 
       if (rest !== "") {
         applyScalar(fm, key, rest);
         continue;
       }
 
-      const keyLower = key.ToLowerInvariant();
+      const keyLower = key.toLowerCase();
       if (keyLower === "params") {
-        for (let j = i + 1; j < all.Length; j++) {
+        for (let j = i + 1; j < all.length; j++) {
           const next = all[j]!;
-          if (!next.StartsWith("  ")) break;
-          const nt = next.Trim();
-          if (nt === "" || nt.StartsWith("#")) continue;
-          if (!nt.Contains(":")) continue;
-          const nidx = nt.IndexOf(":");
-          const pkey = nt.Substring(0, nidx).Trim();
-          const pval = nt.Substring(nidx + 1).Trim();
+          if (!next.startsWith("  ")) break;
+          const nt = next.trim();
+          if (nt === "" || nt.startsWith("#")) continue;
+          if (!nt.includes(":")) continue;
+          const nidx = nt.indexOf(":");
+          const pkey = substringCount(nt, 0, nidx).trim();
+          const pval = substringFrom(nt, nidx + 1).trim();
           fm.Params.Remove(pkey);
           fm.Params.Add(pkey, ParamValue.parseScalar(unquote(pval)));
         }
@@ -147,12 +148,12 @@ const parseYaml = (all: string[]): FrontMatter => {
 
       if (keyLower === "tags" || keyLower === "categories") {
         const items = new List<string>();
-        for (let j = i + 1; j < all.Length; j++) {
+        for (let j = i + 1; j < all.length; j++) {
           const next = all[j]!;
-          if (!next.StartsWith("  ")) break;
-          const nt = next.Trim();
-          if (!nt.StartsWith("-")) continue;
-          const item = nt.Substring(1).Trim();
+          if (!next.startsWith("  ")) break;
+          const nt = next.trim();
+          if (!nt.startsWith("-")) continue;
+          const item = substringFrom(nt, 1).trim();
           if (item !== "") items.Add(unquote(item));
         }
         applyArray(fm, key, items.ToArray());
@@ -164,23 +165,23 @@ const parseYaml = (all: string[]): FrontMatter => {
         let currentMenuName = "";
         let currentMenu: FrontMatterMenu | undefined = undefined;
 
-        for (let j = i + 1; j < all.Length; j++) {
+        for (let j = i + 1; j < all.length; j++) {
           const next = all[j]!;
-          if (!next.StartsWith("  ")) break;
+          if (!next.startsWith("  ")) break;
 
           // Check for menu name line (2 spaces, not starting with more spaces)
-          if (next.StartsWith("  ") && !next.StartsWith("    ")) {
-            const nt = next.Trim();
-            if (nt === "" || nt.StartsWith("#")) continue;
-            if (nt.EndsWith(":")) {
+          if (next.startsWith("  ") && !next.startsWith("    ")) {
+            const nt = next.trim();
+            if (nt === "" || nt.startsWith("#")) continue;
+            if (nt.endsWith(":")) {
               // New menu, e.g., "main:"
               if (currentMenu !== undefined) menuItems.Add(currentMenu);
-              currentMenuName = nt.Substring(0, nt.Length - 1).Trim();
+              currentMenuName = substringCount(nt, 0, nt.length - 1).trim();
               currentMenu = new FrontMatterMenu(currentMenuName);
-            } else if (nt.Contains(":")) {
+            } else if (nt.includes(":")) {
               // Simple menu, e.g., "main: true" - just menu name, no config
-              const colonIdx = nt.IndexOf(":");
-              const menuName = nt.Substring(0, colonIdx).Trim();
+              const colonIdx = nt.indexOf(":");
+              const menuName = substringCount(nt, 0, colonIdx).trim();
               if (currentMenu !== undefined) menuItems.Add(currentMenu);
               currentMenu = new FrontMatterMenu(menuName);
               menuItems.Add(currentMenu);
@@ -190,13 +191,13 @@ const parseYaml = (all: string[]): FrontMatter => {
           }
 
           // Check for menu properties (4+ spaces)
-          if (currentMenu !== undefined && next.StartsWith("    ")) {
-            const nt = next.Trim();
-            if (nt === "" || nt.StartsWith("#")) continue;
-            if (!nt.Contains(":")) continue;
-            const colonIdx = nt.IndexOf(":");
-            const propKey = nt.Substring(0, colonIdx).Trim().ToLowerInvariant();
-            const propVal = unquote(nt.Substring(colonIdx + 1).Trim());
+          if (currentMenu !== undefined && next.startsWith("    ")) {
+            const nt = next.trim();
+            if (nt === "" || nt.startsWith("#")) continue;
+            if (!nt.includes(":")) continue;
+            const colonIdx = nt.indexOf(":");
+            const propKey = substringCount(nt, 0, colonIdx).trim().toLowerCase();
+            const propVal = unquote(substringFrom(nt, colonIdx + 1).trim());
             if (propKey === "weight") {
               let parsed: int = 0;
               if (Int32.TryParse(propVal, parsed)) currentMenu.weight = parsed;
@@ -223,15 +224,15 @@ const parseToml = (lines: string[]): FrontMatter => {
   const menuBuilders = new Dictionary<string, List<FrontMatterMenu>>();
   let currentMenu: FrontMatterMenu | undefined = undefined;
 
-  for (let i = 0; i < lines.Length; i++) {
-    const line = lines[i]!.Trim();
-    if (line === "" || line.StartsWith("#")) continue;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    if (line === "" || line.startsWith("#")) continue;
 
-    if (line.StartsWith("[[") && line.EndsWith("]]")) {
+    if (line.startsWith("[[") && line.endsWith("]]")) {
       // Array table, e.g., [[menu.main]]
-      const tableName = line.Substring(2, line.Length - 4).Trim().ToLowerInvariant();
-      if (tableName.StartsWith("menu.")) {
-        const menuName = tableName.Substring(5).Trim();
+      const tableName = substringCount(line, 2, line.length - 4).trim().toLowerCase();
+      if (tableName.startsWith("menu.")) {
+        const menuName = substringFrom(tableName, 5).trim();
         currentMenu = new FrontMatterMenu(menuName);
         let entries = new List<FrontMatterMenu>();
         const hasMenu = menuBuilders.TryGetValue(menuName, entries);
@@ -248,21 +249,21 @@ const parseToml = (lines: string[]): FrontMatter => {
       continue;
     }
 
-    if (line.StartsWith("[") && line.EndsWith("]")) {
-      currentTable = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
+    if (line.startsWith("[") && line.endsWith("]")) {
+      currentTable = substringCount(line, 1, line.length - 2).trim().toLowerCase();
       currentMenu = undefined;
       continue;
     }
 
-    const eq = line.IndexOf("=");
+    const eq = line.indexOf("=");
     if (eq < 0) continue;
 
-    const keyRaw = line.Substring(0, eq).Trim();
-    const valueRaw = line.Substring(eq + 1).Trim();
+    const keyRaw = substringCount(line, 0, eq).trim();
+    const valueRaw = substringFrom(line, eq + 1).trim();
 
     // Handle menu table properties
-    if (currentMenu !== undefined && currentTable.StartsWith("menu.")) {
-      const keyLower = keyRaw.ToLowerInvariant();
+    if (currentMenu !== undefined && currentTable.startsWith("menu.")) {
+      const keyLower = keyRaw.toLowerCase();
       if (keyLower === "weight") {
         let parsed: int = 0;
         if (Int32.TryParse(unquote(valueRaw), parsed)) currentMenu.weight = parsed;
@@ -281,25 +282,25 @@ const parseToml = (lines: string[]): FrontMatter => {
       continue;
     }
 
-    if (keyRaw.ToLowerInvariant() === "tags") {
+    if (keyRaw.toLowerCase() === "tags") {
       const arr = parseStringArrayInline(valueRaw);
       if (arr !== undefined) fm.tags = arr;
       continue;
     }
 
-    if (keyRaw.ToLowerInvariant() === "categories") {
+    if (keyRaw.toLowerCase() === "categories") {
       const arr = parseStringArrayInline(valueRaw);
       if (arr !== undefined) fm.categories = arr;
       continue;
     }
 
-    if (keyRaw.ToLowerInvariant() === "draft") {
+    if (keyRaw.toLowerCase() === "draft") {
       const b = parseBool(valueRaw);
       if (b !== undefined) fm.draft = b;
       continue;
     }
 
-    if (keyRaw.ToLowerInvariant() === "date") {
+    if (keyRaw.toLowerCase() === "date") {
       let parsed: DateTime = DateTime.MinValue;
       const ok = DateTime.TryParse(unquote(valueRaw), parsed);
       if (ok) fm.date = parsed;
@@ -317,7 +318,7 @@ const parseToml = (lines: string[]): FrontMatter => {
     let entries = new List<FrontMatterMenu>();
     if (menuBuilders.TryGetValue(menuName, entries)) {
       const arr = entries.ToArray();
-      for (let j = 0; j < arr.Length; j++) {
+      for (let j = 0; j < arr.length; j++) {
         allMenus.Add(arr[j]!);
       }
     }
@@ -350,7 +351,7 @@ const parseJson = (json: string): FrontMatter => {
     const props = root.EnumerateObject().GetEnumerator();
     while (props.MoveNext()) {
       const p = props.Current;
-      const key = p.Name.ToLowerInvariant();
+      const key = p.Name.toLowerCase();
       const v = p.Value;
 
       if (key === "title" && v.ValueKind === JsonValueKind.String) {
@@ -438,7 +439,7 @@ const parseJson = (json: string): FrontMatter => {
             const entryProps = menuVal.EnumerateObject().GetEnumerator();
             while (entryProps.MoveNext()) {
               const ep = entryProps.Current;
-              const epKey = ep.Name.ToLowerInvariant();
+              const epKey = ep.Name.toLowerCase();
               const epVal = ep.Value;
               if (epKey === "weight" && epVal.ValueKind === JsonValueKind.Number) {
                 entry.weight = epVal.GetInt32();
@@ -473,16 +474,16 @@ const tryParseJsonFrontMatter = (text: string): ParsedContent | undefined => {
   const openBrace: char = "{";
   const closeBrace: char = "}";
 
-  const chars = text.ToCharArray();
+  const chars = toChars(text);
   let start = 0;
-  while (start < chars.Length && Char.IsWhiteSpace(chars[start]!)) {
+  while (start < chars.length && Char.IsWhiteSpace(chars[start]!)) {
     start++;
   }
-  if (start >= chars.Length || chars[start]! !== openBrace) return undefined;
+  if (start >= chars.length || chars[start]! !== openBrace) return undefined;
 
   let depth = 0;
   let end = -1;
-  for (let i = start; i < chars.Length; i++) {
+  for (let i = start; i < chars.length; i++) {
     const ch = chars[i]!;
     if (ch === openBrace) depth++;
     if (ch === closeBrace) depth--;
@@ -493,8 +494,8 @@ const tryParseJsonFrontMatter = (text: string): ParsedContent | undefined => {
   }
 
   if (end <= start) return undefined;
-  const json = text.Substring(start, end - start);
-  const body = text.Substring(end).TrimStart();
+  const json = substringCount(text, start, end - start);
+  const body = substringFrom(text, end).trimStart();
   return new ParsedContent(parseJson(json), body);
 };
 
@@ -506,27 +507,27 @@ export const parseContent = (text: string): ParsedContent => {
   const firstLine = reader.ReadLine();
   if (firstLine === undefined) return new ParsedContent(new FrontMatter(), "");
 
-  if (firstLine.Trim() === "---") {
+  if (firstLine.trim() === "---") {
     const fmLines = new List<string>();
     while (true) {
       const line = reader.ReadLine();
       if (line === undefined) break;
-      if (line.Trim() === "---") break;
+      if (line.trim() === "---") break;
       fmLines.Add(line);
     }
-    const body = reader.ReadToEnd().TrimStart();
+    const body = reader.ReadToEnd().trimStart();
     return new ParsedContent(parseYaml(fmLines.ToArray()), body);
   }
 
-  if (firstLine.Trim() === "+++") {
+  if (firstLine.trim() === "+++") {
     const fmLines = new List<string>();
     while (true) {
       const line = reader.ReadLine();
       if (line === undefined) break;
-      if (line.Trim() === "+++") break;
+      if (line.trim() === "+++") break;
       fmLines.Add(line);
     }
-    const body = reader.ReadToEnd().TrimStart();
+    const body = reader.ReadToEnd().trimStart();
     return new ParsedContent(parseToml(fmLines.ToArray()), body);
   }
 

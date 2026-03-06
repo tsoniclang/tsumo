@@ -120,7 +120,7 @@ export class TemplateInvokeNode extends TemplateNode {
     }
 
     const nextScope = new RenderScope(dot, dot, scope.site, scope.env, undefined);
-    for (let i = 0; i < nodes.Length; i++) nodes[i]!.render(sb, nextScope, env, overrides, defines);
+    for (let i = 0; i < nodes.length; i++) nodes[i]!.render(sb, nextScope, env, overrides, defines);
   }
 }
 
@@ -145,10 +145,10 @@ export class IfNode extends TemplateNode {
   ): void {
     const value = this.condition.eval(scope, env, overrides, defines);
     if (isTruthy(value)) {
-      for (let i = 0; i < this.thenNodes.Length; i++) this.thenNodes[i]!.render(sb, scope, env, overrides, defines);
+      for (let i = 0; i < this.thenNodes.length; i++) this.thenNodes[i]!.render(sb, scope, env, overrides, defines);
       return;
     }
-    for (let i = 0; i < this.elseNodes.Length; i++) this.elseNodes[i]!.render(sb, scope, env, overrides, defines);
+    for (let i = 0; i < this.elseNodes.length; i++) this.elseNodes[i]!.render(sb, scope, env, overrides, defines);
   }
 }
 
@@ -169,7 +169,7 @@ export class RangeNode extends TemplateNode {
   }
 
   private renderBody(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): void {
-    for (let j = 0; j < this.body.Length; j++) this.body[j]!.render(sb, scope, env, overrides, defines);
+    for (let j = 0; j < this.body.length; j++) this.body[j]!.render(sb, scope, env, overrides, defines);
   }
 
   override render(
@@ -183,11 +183,11 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof PageArrayValue) {
       const pages: PageContext[] = value.value;
-      if (pages.Length === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+      if (pages.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      for (let i = 0; i < pages.Length; i++) {
+      for (let i = 0; i < pages.length; i++) {
         const valueScope = new RenderScope(scope.root, new PageValue(pages[i]!), scope.site, scope.env, scope);
         if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, new PageValue(pages[i]!));
         if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
@@ -198,11 +198,11 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof StringArrayValue) {
       const items: string[] = value.value;
-      if (items.Length === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+      if (items.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      for (let i = 0; i < items.Length; i++) {
+      for (let i = 0; i < items.length; i++) {
         const itemValue = new StringValue(items[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
         if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
@@ -214,11 +214,11 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof DocsMountArrayValue) {
       const mounts: DocsMountContext[] = value.value;
-      if (mounts.Length === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+      if (mounts.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      for (let i = 0; i < mounts.Length; i++) {
+      for (let i = 0; i < mounts.length; i++) {
         const itemValue = new DocsMountValue(mounts[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
         if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
@@ -230,11 +230,11 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof NavArrayValue) {
       const items: NavItem[] = value.value;
-      if (items.Length === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+      if (items.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      for (let i = 0; i < items.Length; i++) {
+      for (let i = 0; i < items.length; i++) {
         const itemValue = new NavItemValue(items[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
         if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
@@ -246,11 +246,11 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof SitesArrayValue) {
       const sites: SiteContext[] = value.value;
-      if (sites.Length === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+      if (sites.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      for (let i = 0; i < sites.Length; i++) {
+      for (let i = 0; i < sites.length; i++) {
         const itemValue = new SiteValue(sites[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
         if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
@@ -263,11 +263,11 @@ export class RangeNode extends TemplateNode {
     if (value instanceof MenuArrayValue) {
       const items: MenuEntry[] = value.value;
       const site = value.site;
-      if (items.Length === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+      if (items.length === 0) {
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      for (let i = 0; i < items.Length; i++) {
+      for (let i = 0; i < items.length; i++) {
         const itemValue = new MenuEntryValue(items[i]!, site);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
         if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
@@ -280,7 +280,7 @@ export class RangeNode extends TemplateNode {
     if (value instanceof AnyArrayValue) {
       const items = value.value;
       if (items.Count === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
       const it = items.GetEnumerator();
@@ -298,7 +298,7 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof DictValue) {
       if (value.value.Count === 0) {
-        for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+        for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
       const it = value.value.GetEnumerator();
@@ -314,7 +314,7 @@ export class RangeNode extends TemplateNode {
       return;
     }
 
-    for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+    for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
   }
 }
 
@@ -340,10 +340,10 @@ export class WithNode extends TemplateNode {
     const value = this.expr.eval(scope, env, overrides, defines);
     if (isTruthy(value)) {
       const nextScope = new RenderScope(scope.root, value, scope.site, scope.env, scope);
-      for (let i = 0; i < this.body.Length; i++) this.body[i]!.render(sb, nextScope, env, overrides, defines);
+      for (let i = 0; i < this.body.length; i++) this.body[i]!.render(sb, nextScope, env, overrides, defines);
       return;
     }
-    for (let i = 0; i < this.elseBody.Length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
+    for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
   }
 }
 
@@ -373,10 +373,10 @@ export class BlockNode extends TemplateNode {
     const nextScope = new RenderScope(scope.root, dot, scope.site, scope.env, scope);
 
     if (hasOverride) {
-      for (let i = 0; i < overrideNodes.Length; i++) overrideNodes[i]!.render(sb, nextScope, env, overrides, defines);
+      for (let i = 0; i < overrideNodes.length; i++) overrideNodes[i]!.render(sb, nextScope, env, overrides, defines);
       return;
     }
 
-    for (let i = 0; i < this.fallback.Length; i++) this.fallback[i]!.render(sb, nextScope, env, overrides, defines);
+    for (let i = 0; i < this.fallback.length; i++) this.fallback[i]!.render(sb, nextScope, env, overrides, defines);
   }
 }

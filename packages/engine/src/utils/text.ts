@@ -1,6 +1,7 @@
 import { Char } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { char } from "@tsonic/core/types.js";
+import { replaceText, substringCount, trimEndChar, toChars } from "./strings.ts";
 
 const wordSeparatorSpace: char = " ";
 const wordSeparatorDash: char = "-";
@@ -16,12 +17,12 @@ const isWordSeparator = (ch: char): boolean =>
   ch === wordSeparatorSlash;
 
 export const slugify = (input: string): string => {
-  const lower = input.Trim().ToLowerInvariant();
-  const chars: char[] = lower.ToCharArray();
+  const lower = input.trim().toLowerCase();
+  const chars = toChars(lower);
   const sb = new StringBuilder();
   let wroteDash = false;
 
-  for (let i = 0; i < chars.Length; i++) {
+  for (let i = 0; i < chars.length; i++) {
     const ch = chars[i]!;
     if (Char.IsLetterOrDigit(ch)) {
       sb.Append(ch);
@@ -37,24 +38,21 @@ export const slugify = (input: string): string => {
   }
 
   let out = sb.ToString();
-  while (out.StartsWith("-")) out = out.Substring(1);
-  while (out.EndsWith("-")) out = out.Substring(0, out.Length - 1);
+  while (out.startsWith("-")) out = out.substring(1);
+  out = trimEndChar(out, "-");
   return out;
 };
 
 export const humanizeSlug = (slug: string): string => {
-  const parts = slug
-    .Replace("_", "-")
-    .Replace(".", "-")
-    .Split("-");
+  const parts = replaceText(replaceText(slug, "_", "-"), ".", "-").split("-");
 
   const words = new StringBuilder();
-  for (let i = 0; i < parts.Length; i++) {
+  for (let i = 0; i < parts.length; i++) {
     const partRaw = parts[i];
     if (partRaw === undefined) continue;
-    const part = partRaw.Trim();
+    const part = partRaw.trim();
     if (part === "") continue;
-    const w = part.Substring(0, 1).ToUpperInvariant() + part.Substring(1);
+    const w = substringCount(part, 0, 1).toUpperCase() + part.substring(1);
     if (words.Length > 0) words.Append(" ");
     words.Append(w);
   }
@@ -63,11 +61,11 @@ export const humanizeSlug = (slug: string): string => {
 
 export const ensureTrailingSlash = (url: string): string => {
   if (url === "") return url;
-  return url.EndsWith("/") ? url : url + "/";
+  return url.endsWith("/") ? url : url + "/";
 };
 
 export const ensureLeadingSlash = (url: string): string => {
-  const trimmed = url.Trim();
+  const trimmed = url.trim();
   if (trimmed === "") return "/";
-  return trimmed.StartsWith("/") ? trimmed : "/" + trimmed;
+  return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
 };

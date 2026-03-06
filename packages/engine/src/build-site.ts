@@ -16,6 +16,7 @@ import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.ts";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.ts";
 import { buildDocsSite } from "./docs/builder.ts";
 import { buildMenuHierarchy, flattenMenuEntries } from "./menus.ts";
+import { replaceText, substringCount, trimEndChar, trimStartChar } from "./utils/strings.ts";
 
 class ContentPageBuild {
   readonly sourcePath: string;
@@ -112,41 +113,41 @@ class ListPageContent {
   }
 }
 
-const normalizeSlashes = (path: string): string => path.Replace("\\", "/");
+const normalizeSlashes = (path: string): string => path.replaceAll("\\", "/");
 
-const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).Split("/");
+const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).split("/");
 
-const isBranchIndexFile = (name: string): boolean => name.ToLowerInvariant() === "_index.md";
+const isBranchIndexFile = (name: string): boolean => name.toLowerCase() === "_index.md";
 
-const isLeafBundleIndexFile = (name: string): boolean => name.ToLowerInvariant() === "index.md";
+const isLeafBundleIndexFile = (name: string): boolean => name.toLowerCase() === "index.md";
 
 const withoutMdExtension = (fileName: string): string => {
-  const lower = fileName.ToLowerInvariant();
-  return lower.EndsWith(".md") ? fileName.Substring(0, fileName.Length - 3) : fileName;
+  const lower = fileName.toLowerCase();
+  return lower.endsWith(".md") ? substringCount(fileName, 0, fileName.length - 3) : fileName;
 };
 
 const buildPageFile = (dirKey: string, fileName: string, filePath: string): PageFile => {
-  const slash: char = "/";
-  const dir = dirKey === "" ? "" : dirKey.TrimEnd(slash) + "/";
+  const slash = "/";
+  const dir = dirKey === "" ? "" : trimEndChar(dirKey, slash) + "/";
   return new PageFile(Path.GetFullPath(filePath), dir, withoutMdExtension(fileName));
 };
 
 const joinUrlPath = (parts: string[]): string => {
-  if (parts.Length === 0) return "";
+  if (parts.length === 0) return "";
   let out = parts[0]!;
-  for (let i = 1; i < parts.Length; i++) out += "/" + parts[i]!;
+  for (let i = 1; i < parts.length; i++) out += "/" + parts[i]!;
   return out;
 };
 
 const containsSlash = (s: string): boolean => {
-  const idx = s.IndexOf("/");
+  const idx = s.indexOf("/");
   return idx >= 0;
 };
 
 const combineOutputRelPath = (urlParts: string[]): string => {
-  if (urlParts.Length === 0) return "index.html";
+  if (urlParts.length === 0) return "index.html";
   let p = urlParts[0]!;
-  for (let i = 1; i < urlParts.Length; i++) {
+  for (let i = 1; i < urlParts.length; i++) {
     p = Path.Combine(p, urlParts[i]!);
   }
   return Path.Combine(p, "index.html");
@@ -159,18 +160,18 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
   Directory.CreateDirectory(destDir);
 
   const files = Directory.GetFiles(srcDir, "*", SearchOption.TopDirectoryOnly);
-  for (let i = 0; i < files.Length; i++) {
+  for (let i = 0; i < files.length; i++) {
     const srcFile = files[i]!;
-    if (srcFile.ToLowerInvariant().EndsWith(".md")) continue;
+    if (srcFile.toLowerCase().endsWith(".md")) continue;
     const destFile = Path.Combine(destDir, Path.GetFileName(srcFile) ?? "");
     File.Copy(srcFile, destFile, true);
   }
 
   const dirs = Directory.GetDirectories(srcDir, "*", SearchOption.TopDirectoryOnly);
-  for (let i = 0; i < dirs.Length; i++) {
+  for (let i = 0; i < dirs.length; i++) {
     const child = dirs[i]!;
     if (isBundleDir(child)) continue;
-    if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).Length > 0) continue;
+    if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).length > 0) continue;
     const childName = Path.GetFileName(child);
     if (childName === undefined || childName === "") continue;
     copyBundleResources(child, Path.Combine(destDir, childName));
@@ -179,23 +180,23 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
 
 // Find a page by its path reference
 const findPageByRef = (pages: PageContext[], pageRef: string): PageContext | undefined => {
-  const slash: char = "/";
-  const normalizedRef = pageRef.Trim().TrimStart(slash).TrimEnd(slash).ToLowerInvariant();
+  const slash = "/";
+  const normalizedRef = trimEndChar(trimStartChar(pageRef.trim(), slash), slash).toLowerCase();
   if (normalizedRef === "") return undefined;
 
-  for (let i = 0; i < pages.Length; i++) {
+  for (let i = 0; i < pages.length; i++) {
     const page = pages[i]!;
-    const normalizedPermalink = page.relPermalink.TrimStart(slash).TrimEnd(slash).ToLowerInvariant();
+    const normalizedPermalink = trimEndChar(trimStartChar(page.relPermalink, slash), slash).toLowerCase();
     if (normalizedPermalink === normalizedRef) return page;
   }
 
   // Also try matching by section/slug pattern
-  for (let i = 0; i < pages.Length; i++) {
+  for (let i = 0; i < pages.length; i++) {
     const page = pages[i]!;
     // Check if pageRef matches the slug
-    if (page.slug.ToLowerInvariant() === normalizedRef) return page;
+    if (page.slug.toLowerCase() === normalizedRef) return page;
     // Check section/slug pattern
-    const sectionSlug = (page.section + "/" + page.slug).ToLowerInvariant();
+    const sectionSlug = (page.section + "/" + page.slug).toLowerCase();
     if (sectionSlug === normalizedRef) return page;
   }
 
@@ -211,7 +212,7 @@ const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void =
     }
   }
   // Resolve children recursively
-  for (let i = 0; i < entry.children.Length; i++) {
+  for (let i = 0; i < entry.children.length; i++) {
     resolveMenuEntryPageRef(entry.children[i]!, pages);
   }
 };
@@ -226,7 +227,7 @@ const resolveMenuPageRefs = (site: SiteContext): void => {
     let entries: MenuEntry[] = [];
     const hasEntries = menus.TryGetValue(menuName, entries);
     if (hasEntries) {
-      for (let i = 0; i < entries.Length; i++) {
+      for (let i = 0; i < entries.length; i++) {
         resolveMenuEntryPageRef(entries[i]!, pages);
       }
     }
@@ -243,10 +244,10 @@ const integrateFrontmatterMenus = (
   // Build a dictionary of pages keyed by lowercase filename for safe lookup
   const pagesByFilename = new Dictionary<string, PageContext>();
   const allPages = site.pages;
-  for (let i = 0; i < allPages.Length; i++) {
+  for (let i = 0; i < allPages.length; i++) {
     const page = allPages[i]!;
     if (page.File !== undefined) {
-      const key = page.File.Filename.ToLowerInvariant();
+      const key = page.File.Filename.toLowerCase();
       pagesByFilename.Remove(key);
       pagesByFilename.Add(key, page);
     }
@@ -255,17 +256,17 @@ const integrateFrontmatterMenus = (
   // Collect all frontmatter menu entries per menu name
   const frontmatterEntriesPerMenu = new Dictionary<string, List<MenuEntry>>();
 
-  for (let i = 0; i < pageBuilds.Length; i++) {
+  for (let i = 0; i < pageBuilds.length; i++) {
     const pageBuild = pageBuilds[i]!;
-    if (pageBuild.menus.Length === 0) continue;
+    if (pageBuild.menus.length === 0) continue;
 
     // Look up the page context by filename
-    const filenameKey = pageBuild.file.Filename.ToLowerInvariant();
+    const filenameKey = pageBuild.file.Filename.toLowerCase();
     let pageContext: PageContext = allPages[0]!;
     const foundPage = pagesByFilename.TryGetValue(filenameKey, pageContext);
     if (!foundPage) continue;
 
-    for (let j = 0; j < pageBuild.menus.Length; j++) {
+    for (let j = 0; j < pageBuild.menus.length; j++) {
       const fmMenu = pageBuild.menus[j]!;
       const menuName = fmMenu.menu;
 
@@ -301,7 +302,7 @@ const integrateFrontmatterMenus = (
   while (keysIt.MoveNext()) menuNamesList.Add(keysIt.Current);
   keysIt.Dispose();
   const menuNames = menuNamesList.ToArray();
-  for (let i = 0; i < menuNames.Length; i++) {
+  for (let i = 0; i < menuNames.length; i++) {
     const menuName = menuNames[i]!;
 
     // Get existing menu entries (may already have hierarchy from config)
@@ -321,11 +322,11 @@ const integrateFrontmatterMenus = (
 
     // Combine all entries into a flat list
     const combined = new List<MenuEntry>();
-    for (let j = 0; j < flatExisting.Length; j++) {
+    for (let j = 0; j < flatExisting.length; j++) {
       const entry = flatExisting[j]!;
       combined.Add(entry);
     }
-    for (let j = 0; j < fmEntries.Length; j++) {
+    for (let j = 0; j < fmEntries.length; j++) {
       const entry = fmEntries[j]!;
       combined.Add(entry);
     }
@@ -346,8 +347,8 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
 
-  if (request.baseURL !== undefined && request.baseURL.Trim() !== "") {
-    config.baseURL = ensureTrailingSlash(request.baseURL.Trim());
+  if (request.baseURL !== undefined && request.baseURL.trim() !== "") {
+    config.baseURL = ensureTrailingSlash(request.baseURL.trim());
   }
 
   const outDir = Path.IsPathRooted(request.destinationDir)
@@ -377,14 +378,14 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const pages = new List<ContentPageBuild>();
   const listIndex = new Dictionary<string, ListPageContent>();
 
-  for (let i = 0; i < mdFiles.Length; i++) {
+  for (let i = 0; i < mdFiles.length; i++) {
     const filePath = mdFiles[i]!;
     const rel = normalizeSlashes(Path.GetRelativePath(contentDir, filePath));
     const parts = splitPath(rel);
-    const fileName = parts.Length > 0 ? parts[parts.Length - 1]! : rel;
+    const fileName = parts.length > 0 ? parts[parts.length - 1]! : rel;
 
     const dirPartsList = new List<string>();
-    for (let j = 0; j < parts.Length - 1; j++) dirPartsList.Add(parts[j]!);
+    for (let j = 0; j < parts.length - 1; j++) dirPartsList.Add(parts[j]!);
     const dirParts = dirPartsList.ToArray();
     const dirRel = joinUrlPath(dirParts);
 
@@ -405,23 +406,23 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       continue;
     }
 
-    const section = dirParts.Length > 0 ? dirParts[0]! : "";
+    const section = dirParts.length > 0 ? dirParts[0]! : "";
     let pageType = fm.type;
-    if (pageType === undefined || pageType.Trim() === "") {
+    if (pageType === undefined || pageType.trim() === "") {
       pageType = section !== "" ? section : "page";
     }
 
-    const isLeafBundle = isLeafBundleIndexFile(fileName) && dirParts.Length > 0;
-    const defaultLeafName = isLeafBundle ? dirParts[dirParts.Length - 1]! : withoutMdExtension(fileName);
+    const isLeafBundle = isLeafBundleIndexFile(fileName) && dirParts.length > 0;
+    const defaultLeafName = isLeafBundle ? dirParts[dirParts.length - 1]! : withoutMdExtension(fileName);
     const title = fm.title ?? humanizeSlug(defaultLeafName);
 
     const slug = fm.slug ?? slugify(defaultLeafName);
     const urlPartsList = new List<string>();
     if (isLeafBundle === true) {
-      for (let j = 0; j < dirParts.Length - 1; j++) urlPartsList.Add(dirParts[j]!);
+      for (let j = 0; j < dirParts.length - 1; j++) urlPartsList.Add(dirParts[j]!);
       urlPartsList.Add(slug);
     } else {
-      for (let j = 0; j < dirParts.Length; j++) urlPartsList.Add(dirParts[j]!);
+      for (let j = 0; j < dirParts.length; j++) urlPartsList.Add(dirParts[j]!);
       urlPartsList.Add(slug);
     }
     const urlParts = urlPartsList.ToArray();
@@ -462,8 +463,8 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   // Build language contexts for multilingual support
   const allLanguages = new List<LanguageContext>();
-  if (config.languages.Length > 0) {
-    for (let i = 0; i < config.languages.Length; i++) {
+  if (config.languages.length > 0) {
+    for (let i = 0; i < config.languages.length; i++) {
       const langConfig = config.languages[i]!;
       allLanguages.Add(new LanguageContext(langConfig.lang, langConfig.languageName, langConfig.languageDirection));
     }
@@ -471,7 +472,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   // Create site with multilingual settings
   // For now, build the default (first) language; full multilingual build will iterate through all
-  const currentLang = config.languages.Length > 0 ? config.languages[0] : undefined;
+  const currentLang = config.languages.length > 0 ? config.languages[0] : undefined;
   const site = new SiteContext(config, emptyPages, currentLang, allLanguages.Count > 0 ? allLanguages.ToArray() : undefined);
 
   // Set up Sites array (for now, just this site; full implementation would have all language sites)
@@ -484,7 +485,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const placeholderHtml = new HtmlString("");
 
   const pageBuilds = pages.ToArray();
-  for (let i = 0; i < pageBuilds.Length; i++) {
+  for (let i = 0; i < pageBuilds.length; i++) {
     const p = pageBuilds[i]!;
     const ctx = new PageContext(
       p.title,
@@ -641,7 +642,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   while (sectionKeysIt.MoveNext()) sectionKeysList.Add(sectionKeysIt.Current);
   const sectionKeys = sectionKeysList.ToArray();
 
-  for (let i = 0; i < sectionKeys.Length; i++) {
+  for (let i = 0; i < sectionKeys.length; i++) {
     const section = sectionKeys[i]!;
 
     let list: PageContext[] = emptyPages;
@@ -730,19 +731,19 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   }
 
   const nestedListDirs = listDirKeys.ToArray();
-  for (let i = 0; i < nestedListDirs.Length; i++) {
+  for (let i = 0; i < nestedListDirs.length; i++) {
     const dirKey = nestedListDirs[i]!;
     const urlPrefix = combineUrl(splitPath(dirKey));
 
     const listPages = new List<PageContext>();
-    for (let j = 0; j < pageContextArr.Length; j++) {
+    for (let j = 0; j < pageContextArr.length; j++) {
       const p = pageContextArr[j]!;
-      if (p.relPermalink.StartsWith(urlPrefix)) listPages.Add(p);
+      if (p.relPermalink.startsWith(urlPrefix)) listPages.Add(p);
     }
 
     const dirParts = splitPath(dirKey);
-    const leaf = dirParts.Length > 0 ? dirParts[dirParts.Length - 1]! : dirKey;
-    const section = dirParts.Length > 0 ? dirParts[0]! : "";
+    const leaf = dirParts.length > 0 ? dirParts[dirParts.length - 1]! : dirKey;
+    const section = dirParts.length > 0 ? dirParts[0]! : "";
 
     let title = humanizeSlug(leaf);
     let nestedRawBody = "";
@@ -814,8 +815,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     sitemapUrlSet.Add(ctx.relPermalink, true);
 
     if (listSourceDir !== undefined) {
-      const slash: char = "/";
-      const destDir = Path.Combine(outDir, dirKey.Replace(slash, Path.DirectorySeparatorChar));
+      const slash = "/";
+      const destDir = Path.Combine(
+        outDir,
+        replaceText(dirKey, slash, `${Path.DirectorySeparatorChar}`)
+      );
       copyBundleResources(listSourceDir, destDir);
     }
   }
@@ -823,12 +827,12 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   const buildTaxonomy = (taxonomy: string, getTerms: (page: PageContext) => string[]): void => {
     const byTerm = new Dictionary<string, List<PageContext>>();
 
-    for (let i = 0; i < pageContextArr.Length; i++) {
+    for (let i = 0; i < pageContextArr.length; i++) {
       const page = pageContextArr[i]!;
       const terms = getTerms(page);
-      for (let j = 0; j < terms.Length; j++) {
+      for (let j = 0; j < terms.length; j++) {
         const raw = terms[j]!;
-        const termText = raw.Trim();
+        const termText = raw.trim();
         if (termText === "") continue;
         const termSlug = slugify(termText);
         if (termSlug === "") continue;
@@ -853,7 +857,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const termPagesOut = new List<PageContext>();
 
     const termSlugs = termKeys.ToArray();
-    for (let i = 0; i < termSlugs.Length; i++) {
+    for (let i = 0; i < termSlugs.length; i++) {
       const termSlug = termSlugs[i]!;
       let pagesForTermList = new List<PageContext>();
       const ok = byTerm.TryGetValue(termSlug, pagesForTermList);
@@ -956,7 +960,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   buildTaxonomy("categories", (page: PageContext) => page.categories);
 
   const singles = pageBuilds;
-  for (let i = 0; i < singles.Length; i++) {
+  for (let i = 0; i < singles.length; i++) {
     const p = singles[i]!;
 
     const ctx = pageContextArr[i]!;
@@ -973,7 +977,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     }
 
     const templateType = p.type !== "" ? p.type : p.section;
-    const layoutCandidates = p.layout !== undefined && p.layout.Trim() !== ""
+    const layoutCandidates = p.layout !== undefined && p.layout.trim() !== ""
       ? [
           `${templateType}/${p.layout}.html`,
           `${p.section}/${p.layout}.html`,

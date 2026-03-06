@@ -10,6 +10,7 @@ import { generateTableOfContents } from "./toc.ts";
 import { RenderHookContext, renderMarkdownWithHooks } from "./render-hooks.ts";
 import { processShortcodes, createOrdinalTracker } from "./shortcodes.ts";
 import { normalizeNewlines, findSummaryDividerIndex, summaryMarkerLength, firstBlock } from "./render-basic.ts";
+import { substringCount, substringFrom } from "../utils/strings.ts";
 
 export const renderMarkdownWithShortcodes = (
   markdownRaw: string,
@@ -27,7 +28,7 @@ export const renderMarkdownWithShortcodes = (
 
   // Filter markdown-notation shortcodes and process them first
   const mdCalls = new List<ShortcodeCall>();
-  for (let i = 0; i < calls.Length; i++) {
+  for (let i = 0; i < calls.length; i++) {
     const call = calls[i]!;
     if (call.isMarkdown) mdCalls.Add(call);
   }
@@ -35,8 +36,8 @@ export const renderMarkdownWithShortcodes = (
   if (mdCalls.Count > 0) {
     // Sort descending by startIndex
     const mdArr = mdCalls.ToArray();
-    for (let i = 0; i < mdArr.Length; i++) {
-      for (let j = i + 1; j < mdArr.Length; j++) {
+    for (let i = 0; i < mdArr.length; i++) {
+      for (let j = i + 1; j < mdArr.length; j++) {
         if (mdArr[j]!.startIndex > mdArr[i]!.startIndex) {
           const tmp = mdArr[i]!;
           mdArr[i] = mdArr[j]!;
@@ -45,7 +46,7 @@ export const renderMarkdownWithShortcodes = (
       }
     }
 
-    for (let i = 0; i < mdArr.Length; i++) {
+    for (let i = 0; i < mdArr.length; i++) {
       const call = mdArr[i]!;
       const replacement = processShortcodes(
         call.inner !== "" ? call.inner : "",
@@ -76,7 +77,7 @@ export const renderMarkdownWithShortcodes = (
         const emptyOverrides = new Dictionary<string, TemplateNode[]>();
         template.renderInto(sb, scope, env, emptyOverrides);
         const output = sb.ToString();
-        textAfterMarkdownShortcodes = textAfterMarkdownShortcodes.Substring(0, call.startIndex) + output + textAfterMarkdownShortcodes.Substring(call.endIndex);
+        textAfterMarkdownShortcodes = substringCount(textAfterMarkdownShortcodes, 0, call.startIndex) + output + substringFrom(textAfterMarkdownShortcodes, call.endIndex);
       }
     }
   }
@@ -94,16 +95,16 @@ export const renderMarkdownWithShortcodes = (
   let plainText: string;
 
   if (moreIndex >= 0) {
-    const before = textAfterMarkdownShortcodes.Substring(0, moreIndex);
-    const after = textAfterMarkdownShortcodes.Substring(moreIndex + summaryMarkerLength);
+    const before = substringCount(textAfterMarkdownShortcodes, 0, moreIndex);
+    const after = substringFrom(textAfterMarkdownShortcodes, moreIndex + summaryMarkerLength);
     const full = before + after;
     // Use hook-aware rendering if hooks are present, otherwise use standard rendering
     if (hookCtx.hasAnyHooks()) {
       html = renderMarkdownWithHooks(full, hookCtx);
-      summaryHtml = renderMarkdownWithHooks(before, hookCtx).Trim();
+      summaryHtml = renderMarkdownWithHooks(before, hookCtx).trim();
     } else {
       html = Markdown.ToHtml(full, markdownPipeline);
-      summaryHtml = Markdown.ToHtml(before, markdownPipeline).Trim();
+      summaryHtml = Markdown.ToHtml(before, markdownPipeline).trim();
     }
     plainText = Markdown.ToPlainText(full, markdownPipeline);
   } else {
@@ -117,15 +118,15 @@ export const renderMarkdownWithShortcodes = (
     if (summarySource === "") {
       summaryHtml = "";
     } else if (hookCtx.hasAnyHooks()) {
-      summaryHtml = renderMarkdownWithHooks(summarySource, hookCtx).Trim();
+      summaryHtml = renderMarkdownWithHooks(summarySource, hookCtx).trim();
     } else {
-      summaryHtml = Markdown.ToHtml(summarySource, markdownPipeline).Trim();
+      summaryHtml = Markdown.ToHtml(summarySource, markdownPipeline).trim();
     }
   }
 
   // Step 5: Process standard-notation shortcodes ({{< ... >}}) AFTER markdown rendering
   const htmlCalls = parseShortcodes(html);
-  if (htmlCalls.Length > 0) {
+  if (htmlCalls.length > 0) {
     html = processShortcodes(html, page, site, env, ordinalTracker, undefined, recursionGuard);
   }
 

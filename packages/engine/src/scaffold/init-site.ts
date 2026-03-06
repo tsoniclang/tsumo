@@ -9,7 +9,7 @@ const ensureEmptyDir = (path: string): void => {
     return;
   }
   const entries = Directory.GetFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly);
-  if (entries.Length > 0) {
+  if (entries.length > 0) {
     throw new Exception(`Directory not empty: ${path}`);
   }
 };

@@ -2,6 +2,7 @@ import type { int } from "@tsonic/core/types.js";
 import { Int32 } from "@tsonic/dotnet/System.js";
 import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { TemplateValue } from "./base.ts";
+import { compareText, substringCount, substringFrom } from "../../utils/strings.ts";
 
 /**
  * Represents a version string with semver comparison semantics.
@@ -23,8 +24,8 @@ export class VersionStringValue extends TemplateValue {
     const aParts = VersionStringValue.parseVersion(a);
     const bParts = VersionStringValue.parseVersion(b);
 
-    const aLen = aParts.Length;
-    const bLen = bParts.Length;
+    const aLen = aParts.length;
+    const bLen = bParts.length;
     const maxLen = aLen > bLen ? aLen : bLen;
 
     for (let i = 0; i < maxLen; i++) {
@@ -39,13 +40,13 @@ export class VersionStringValue extends TemplateValue {
   private static parseVersion(v: string): int[] {
     // Remove common prefixes like "v" or "V"
     let cleaned = v;
-    if (cleaned.StartsWith("v") || cleaned.StartsWith("V")) {
-      cleaned = cleaned.Substring(1);
+    if (cleaned.startsWith("v") || cleaned.startsWith("V")) {
+      cleaned = substringFrom(cleaned, 1);
     }
     // Split by dots and convert to numbers
-    const parts = cleaned.Split(".");
+    const parts = cleaned.split(".");
     const result = new List<int>();
-    for (let i = 0; i < parts.Length; i++) {
+    for (let i = 0; i < parts.length; i++) {
       const part = parts[i]!;
       // Extract leading numeric portion (handles cases like "1-beta")
       const num = VersionStringValue.extractLeadingNumber(part);
@@ -56,10 +57,10 @@ export class VersionStringValue extends TemplateValue {
 
   private static extractLeadingNumber(s: string): int {
     let numStr = "";
-    for (let i = 0; i < s.Length; i++) {
-      const ch = s.Substring(i, 1);
+    for (let i = 0; i < s.length; i++) {
+      const ch = substringCount(s, i, 1);
       // Check if ch is a digit (0-9) using compareTo for C# compatibility
-      if (ch.CompareTo("0") >= 0 && ch.CompareTo("9") <= 0) {
+      if (compareText(ch, "0") >= 0 && compareText(ch, "9") <= 0) {
         numStr = numStr + ch;
       } else {
         break;

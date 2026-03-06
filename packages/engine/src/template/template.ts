@@ -25,7 +25,7 @@ export class Template {
   }
 
   renderInto(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>): void {
-    for (let i = 0; i < this.nodes.Length; i++) {
+    for (let i = 0; i < this.nodes.length; i++) {
       this.nodes[i]!.render(sb, scope, env, overrides, this.defines);
     }
   }

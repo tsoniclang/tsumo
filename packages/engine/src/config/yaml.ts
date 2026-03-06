@@ -7,6 +7,7 @@ import { ParamValue } from "../params.ts";
 import { buildMenuHierarchy } from "../menus.ts";
 import { MenuEntryBuilder } from "./builders.ts";
 import { unquote } from "./helpers.ts";
+import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
 
 export const parseYamlConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
@@ -18,40 +19,40 @@ export const parseYamlConfig = (text: string): SiteConfig => {
   const params = new Dictionary<string, ParamValue>();
   const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
 
-  const lines = text.ReplaceLineEndings("\n").Split("\n");
+  const lines = replaceLineEndings(text, "\n").split("\n");
 
   let inParams = false;
   let inMenu = false;
   let currentMenuName = "";
   let currentMenuEntry: MenuEntryBuilder | undefined = undefined;
 
-  for (let i = 0; i < lines.Length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
-    const line = raw.Trim();
-    if (line === "" || line.StartsWith("#")) continue;
+    const line = raw.trim();
+    if (line === "" || line.startsWith("#")) continue;
 
     // Check for top-level sections
-    if (!raw.StartsWith(" ")) {
+    if (!raw.startsWith(" ")) {
       inParams = false;
       inMenu = false;
       currentMenuName = "";
       currentMenuEntry = undefined;
     }
 
-    if (!raw.StartsWith(" ") && line.ToLowerInvariant() === "params:") {
+    if (!raw.startsWith(" ") && line.toLowerCase() === "params:") {
       inParams = true;
       continue;
     }
 
-    if (!raw.StartsWith(" ") && line.ToLowerInvariant() === "menu:") {
+    if (!raw.startsWith(" ") && line.toLowerCase() === "menu:") {
       inMenu = true;
       continue;
     }
 
-    if (inParams && raw.StartsWith("  ") && line.Contains(":")) {
-      const idx = line.IndexOf(":");
-      const key = line.Substring(0, idx).Trim();
-      const val = unquote(line.Substring(idx + 1).Trim());
+    if (inParams && raw.startsWith("  ") && line.includes(":")) {
+      const idx = line.indexOf(":");
+      const key = substringCount(line, 0, idx).trim();
+      const val = unquote(substringFrom(line, idx + 1).trim());
       params.Remove(key);
       params.Add(key, ParamValue.parseScalar(val));
       continue;
@@ -60,8 +61,8 @@ export const parseYamlConfig = (text: string): SiteConfig => {
     // Parse menu entries (YAML format: menu: main: - name: ...)
     if (inMenu) {
       // Menu name at 2 spaces indent (e.g., "  main:")
-      if (raw.StartsWith("  ") && !raw.StartsWith("    ") && line.EndsWith(":")) {
-        currentMenuName = line.Substring(0, line.Length - 1).Trim();
+      if (raw.startsWith("  ") && !raw.startsWith("    ") && line.endsWith(":")) {
+        currentMenuName = substringCount(line, 0, line.length - 1).trim();
         if (!menuBuilders.ContainsKey(currentMenuName)) {
           menuBuilders.Add(currentMenuName, new List<MenuEntryBuilder>());
         }
@@ -70,7 +71,7 @@ export const parseYamlConfig = (text: string): SiteConfig => {
       }
 
       // New menu entry at 4 spaces indent starting with "-"
-      if (raw.StartsWith("    ") && !raw.StartsWith("      ") && line.StartsWith("-") && currentMenuName !== "") {
+      if (raw.startsWith("    ") && !raw.startsWith("      ") && line.startsWith("-") && currentMenuName !== "") {
         currentMenuEntry = new MenuEntryBuilder(currentMenuName);
         let entries = new List<MenuEntryBuilder>();
         if (menuBuilders.TryGetValue(currentMenuName, entries)) {
@@ -78,11 +79,11 @@ export const parseYamlConfig = (text: string): SiteConfig => {
         }
 
         // Check for inline entry (e.g., "    - name: About")
-        const rest = line.Substring(1).Trim();
-        if (rest.Contains(":")) {
-          const colonIdx = rest.IndexOf(":");
-          const propKey = rest.Substring(0, colonIdx).Trim().ToLowerInvariant();
-          const propVal = unquote(rest.Substring(colonIdx + 1).Trim());
+        const rest = substringFrom(line, 1).trim();
+        if (rest.includes(":")) {
+          const colonIdx = rest.indexOf(":");
+          const propKey = substringCount(rest, 0, colonIdx).trim().toLowerCase();
+          const propVal = unquote(substringFrom(rest, colonIdx + 1).trim());
           if (propKey === "name") currentMenuEntry.name = propVal;
           else if (propKey === "url") currentMenuEntry.url = propVal;
           else if (propKey === "pageref") currentMenuEntry.pageRef = propVal;
@@ -100,10 +101,10 @@ export const parseYamlConfig = (text: string): SiteConfig => {
       }
 
       // Menu entry properties at 6 spaces indent
-      if (raw.StartsWith("      ") && currentMenuEntry !== undefined && line.Contains(":")) {
-        const colonIdx = line.IndexOf(":");
-        const propKey = line.Substring(0, colonIdx).Trim().ToLowerInvariant();
-        const propVal = unquote(line.Substring(colonIdx + 1).Trim());
+      if (raw.startsWith("      ") && currentMenuEntry !== undefined && line.includes(":")) {
+        const colonIdx = line.indexOf(":");
+        const propKey = substringCount(line, 0, colonIdx).trim().toLowerCase();
+        const propVal = unquote(substringFrom(line, colonIdx + 1).trim());
         if (propKey === "name") currentMenuEntry.name = propVal;
         else if (propKey === "url") currentMenuEntry.url = propVal;
         else if (propKey === "pageref") currentMenuEntry.pageRef = propVal;
@@ -120,10 +121,10 @@ export const parseYamlConfig = (text: string): SiteConfig => {
       }
     }
 
-    if (!raw.StartsWith(" ") && line.Contains(":")) {
-      const idx = line.IndexOf(":");
-      const key = line.Substring(0, idx).Trim().ToLowerInvariant();
-      const val = unquote(line.Substring(idx + 1).Trim());
+    if (!raw.startsWith(" ") && line.includes(":")) {
+      const idx = line.indexOf(":");
+      const key = substringCount(line, 0, idx).trim().toLowerCase();
+      const val = unquote(substringFrom(line, idx + 1).trim());
       if (key === "title") title = val;
       else if (key === "baseurl") baseURL = val;
       else if (key === "languagecode") languageCode = val;
@@ -147,7 +148,7 @@ export const parseYamlConfig = (text: string): SiteConfig => {
     if (hasBuilders) {
       const entries = new List<MenuEntry>();
       const buildersArr = builders.ToArray();
-      for (let j = 0; j < buildersArr.Length; j++) entries.Add(buildersArr[j]!.toEntry());
+      for (let j = 0; j < buildersArr.length; j++) entries.Add(buildersArr[j]!.toEntry());
       config.Menus.Remove(menuName);
       config.Menus.Add(menuName, buildMenuHierarchy(entries.ToArray()));
     }
@@ -161,7 +162,7 @@ export const parseYamlConfig = (text: string): SiteConfig => {
  * For split configs, this handles hugo.yaml, params.yaml, etc.
  */
 export const mergeYamlIntoConfig = (config: SiteConfig, text: string, fileName: string): SiteConfig => {
-  const lowerFileName = fileName.ToLowerInvariant();
+  const lowerFileName = fileName.toLowerCase();
 
   // For base config files, parse and merge the key fields
   if (lowerFileName === "hugo.yaml" || lowerFileName === "hugo.yml" || lowerFileName === "config.yaml" || lowerFileName === "config.yml") {
@@ -191,17 +192,17 @@ export const mergeYamlIntoConfig = (config: SiteConfig, text: string, fileName: 
 
   // For params.yaml, parse all keys as params
   if (lowerFileName === "params.yaml" || lowerFileName === "params.yml") {
-    const lines = text.ReplaceLineEndings("\n").Split("\n");
-    for (let i = 0; i < lines.Length; i++) {
+    const lines = replaceLineEndings(text, "\n").split("\n");
+    for (let i = 0; i < lines.length; i++) {
       const raw = lines[i]!;
-      const line = raw.Trim();
-      if (line === "" || line.StartsWith("#")) continue;
-      if (raw.StartsWith(" ")) continue; // Skip nested for now
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
+      if (raw.startsWith(" ")) continue; // Skip nested for now
 
-      if (line.Contains(":")) {
-        const idx = line.IndexOf(":");
-        const key = line.Substring(0, idx).Trim();
-        const val = unquote(line.Substring(idx + 1).Trim());
+      if (line.includes(":")) {
+        const idx = line.indexOf(":");
+        const key = substringCount(line, 0, idx).trim();
+        const val = unquote(substringFrom(line, idx + 1).trim());
         config.Params.Remove(key);
         config.Params.Add(key, ParamValue.parseScalar(val));
       }

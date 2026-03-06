@@ -11,6 +11,7 @@ import { loadDocsConfig } from "./docs/config.ts";
 import { ServeRequest } from "./models.ts";
 import { contentTypeForPath } from "./utils/mime.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
+import { replaceText, trimStartChar } from "./utils/strings.ts";
 
 const logLine = (message: string): void => {
   Console.WriteLine("{0}", message);
@@ -37,31 +38,36 @@ const sendText = (response: HttpListenerResponse, statusCode: int, contentType: 
 const sendBytes = (response: HttpListenerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
   response.StatusCode = statusCode;
   response.ContentType = contentType;
-  response.ContentLength64 = bytes.Length;
+  response.ContentLength64 = bytes.length;
   const output = response.OutputStream;
-  output.Write(bytes, 0, bytes.Length);
+  output.Write(bytes, 0, bytes.length);
   output.Close();
   response.Close();
 };
 
 const resolveRequestPath = (outDir: string, requestPath: string): string | undefined => {
   const outFull = Path.GetFullPath(outDir);
-  const outPrefix = outFull.EndsWith(Path.DirectorySeparatorChar) ? outFull : outFull + Path.DirectorySeparatorChar;
-  const slash: char = "/";
-  const rel = requestPath.TrimStart(slash).Replace(slash, Path.DirectorySeparatorChar);
+  const dirSeparator = `${Path.DirectorySeparatorChar}`;
+  const outPrefix = outFull.endsWith(dirSeparator) ? outFull : outFull + dirSeparator;
+  const slash = "/";
+  const rel = replaceText(
+    trimStartChar(requestPath, slash),
+    slash,
+    `${Path.DirectorySeparatorChar}`
+  );
 
-  if (rel === "" || requestPath.EndsWith("/")) {
+  if (rel === "" || requestPath.endsWith("/")) {
     const p = Path.GetFullPath(Path.Combine(outFull, rel, "index.html"));
-    if (p.StartsWith(outPrefix) && File.Exists(p)) return p;
+    if (p.startsWith(outPrefix) && File.Exists(p)) return p;
     return undefined;
   }
 
   const direct = Path.GetFullPath(Path.Combine(outFull, rel));
-  if (direct.StartsWith(outPrefix) && File.Exists(direct)) return direct;
+  if (direct.startsWith(outPrefix) && File.Exists(direct)) return direct;
 
   if (!Path.HasExtension(rel)) {
     const p = Path.GetFullPath(Path.Combine(outFull, rel, "index.html"));
-    if (p.StartsWith(outPrefix) && File.Exists(p)) return p;
+    if (p.startsWith(outPrefix) && File.Exists(p)) return p;
   }
 
   return undefined;
@@ -84,7 +90,7 @@ const handleRequest = (outDir: string, ctx: HttpListenerContext): void => {
   }
 
   const ct = contentTypeForPath(filePath);
-  if (ct.StartsWith("text/") || ct.StartsWith("application/json") || ct.StartsWith("application/xml")) {
+  if (ct.startsWith("text/") || ct.startsWith("application/json") || ct.startsWith("application/xml")) {
     const body = File.ReadAllText(filePath);
     sendText(response, 200, ct, body);
     return;
@@ -116,7 +122,7 @@ const watchLoop = (req: ServeRequest, outDir: string): void => {
     if (archetypes !== undefined) watchers.Add(archetypes);
   } else {
     const mounts = docsConfig.config.mounts;
-    for (let i = 0; i < mounts.Length; i++) {
+    for (let i = 0; i < mounts.length; i++) {
       const m = mounts[i]!;
       const w = createWatcher(m.sourceDir, "*.*", true);
       if (w !== undefined) watchers.Add(w);
@@ -131,11 +137,11 @@ const watchLoop = (req: ServeRequest, outDir: string): void => {
   if (staticDir !== undefined) watchers.Add(staticDir);
 
   const watcherArr = watchers.ToArray();
-  if (watcherArr.Length === 0) return;
+  if (watcherArr.length === 0) return;
 
   while (true) {
     let changed = false;
-    for (let i = 0; i < watcherArr.Length; i++) {
+    for (let i = 0; i < watcherArr.length; i++) {
       const res = watcherArr[i]!.WaitForChanged(WatcherChangeTypes.All, 250);
       if (!res.TimedOut) {
         changed = true;
@@ -155,11 +161,11 @@ const watchLoop = (req: ServeRequest, outDir: string): void => {
 };
 
 export const serveSite = (req: ServeRequest): void => {
-  const host = req.host.Trim() === "" ? "localhost" : req.host.Trim();
+  const host = req.host.trim() === "" ? "localhost" : req.host.trim();
   const port = req.port;
   const prefix = `http://${host}:${port}/`;
 
-  if (req.baseURL === undefined || req.baseURL.Trim() === "") {
+  if (req.baseURL === undefined || req.baseURL.trim() === "") {
     req.baseURL = ensureTrailingSlash(prefix);
   }
 

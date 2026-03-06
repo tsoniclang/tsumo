@@ -3,28 +3,29 @@ import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import type { char } from "@tsonic/core/types.js";
 import { LayoutEnvironment } from "../layouts.ts";
 import { PageContext, SiteConfig } from "../models.ts";
+import { trimEndChar, trimStartChar } from "../utils/strings.ts";
 
 export const combineUrl = (parts: string[]): string => {
-  const slash: char = "/";
+  const slash = "/";
   const sb = new List<string>();
-  for (let i = 0; i < parts.Length; i++) {
-    const p = parts[i]!.Trim();
-    if (p !== "") sb.Add(p.TrimStart(slash).TrimEnd(slash));
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]!.trim();
+    if (p !== "") sb.Add(trimEndChar(trimStartChar(p, slash), slash));
   }
   const arr = sb.ToArray();
   let out = "/";
-  for (let i = 0; i < arr.Length; i++) {
+  for (let i = 0; i < arr.length; i++) {
     out += arr[i]!;
-    if (!out.EndsWith("/")) out += "/";
+    if (!out.endsWith("/")) out += "/";
   }
   return out === "//" ? "/" : out;
 };
 
 export const resolveThemeDir = (siteDir: string, config: SiteConfig, themesDir?: string): string | undefined => {
   if (config.theme === undefined) return undefined;
-  const themeName = config.theme.Trim();
+  const themeName = config.theme.trim();
   if (themeName === "") return undefined;
-  const themesDirTrimmed = themesDir !== undefined ? themesDir.Trim() : "";
+  const themesDirTrimmed = themesDir !== undefined ? themesDir.trim() : "";
   if (themesDirTrimmed !== "") {
     const themesBase = Path.IsPathRooted(themesDirTrimmed) ? themesDirTrimmed : Path.Combine(siteDir, themesDirTrimmed);
     const candidate = Path.Combine(themesBase, themeName);
@@ -36,7 +37,7 @@ export const resolveThemeDir = (siteDir: string, config: SiteConfig, themesDir?:
 };
 
 export const selectTemplate = (env: LayoutEnvironment, candidates: string[]): string | undefined => {
-  for (let i = 0; i < candidates.Length; i++) {
+  for (let i = 0; i < candidates.length; i++) {
     const p = candidates[i]!;
     const t = env.getTemplate(p);
     if (t !== undefined) return p;

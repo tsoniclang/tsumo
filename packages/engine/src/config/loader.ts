@@ -24,17 +24,17 @@ const loadSplitConfig = (configDir: string): SiteConfig => {
   const moduleFiles = new List<string>();
   const otherFiles = new List<string>();
 
-  for (let i = 0; i < files.Length; i++) {
+  for (let i = 0; i < files.length; i++) {
     const f = files[i]!;
     const nameResult = Path.GetFileName(f);
-    const name = nameResult !== undefined ? nameResult.ToLowerInvariant() : "";
+    const name = nameResult !== undefined ? nameResult.toLowerCase() : "";
     if (name === "hugo.toml" || name === "hugo.yaml" || name === "hugo.yml" || name === "config.toml" || name === "config.yaml" || name === "config.yml") {
       baseFiles.Add(f);
     } else if (name === "params.toml" || name === "params.yaml" || name === "params.yml") {
       paramFiles.Add(f);
-    } else if (name.StartsWith("languages.")) {
+    } else if (name.startsWith("languages.")) {
       langFiles.Add(f);
-    } else if (name.StartsWith("menus.")) {
+    } else if (name.startsWith("menus.")) {
       menuFiles.Add(f);
     } else if (name === "module.toml") {
       moduleFiles.Add(f);
@@ -45,32 +45,32 @@ const loadSplitConfig = (configDir: string): SiteConfig => {
 
   // Process in order: base -> params -> languages -> menus -> module -> other
   const baseArr = baseFiles.ToArray();
-  for (let i = 0; i < baseArr.Length; i++) sortedFiles.Add(baseArr[i]!);
+  for (let i = 0; i < baseArr.length; i++) sortedFiles.Add(baseArr[i]!);
   const paramArr = paramFiles.ToArray();
-  for (let i = 0; i < paramArr.Length; i++) sortedFiles.Add(paramArr[i]!);
+  for (let i = 0; i < paramArr.length; i++) sortedFiles.Add(paramArr[i]!);
   const langArr = langFiles.ToArray();
-  for (let i = 0; i < langArr.Length; i++) sortedFiles.Add(langArr[i]!);
+  for (let i = 0; i < langArr.length; i++) sortedFiles.Add(langArr[i]!);
   const menuArr = menuFiles.ToArray();
-  for (let i = 0; i < menuArr.Length; i++) sortedFiles.Add(menuArr[i]!);
+  for (let i = 0; i < menuArr.length; i++) sortedFiles.Add(menuArr[i]!);
   const modArr = moduleFiles.ToArray();
-  for (let i = 0; i < modArr.Length; i++) sortedFiles.Add(modArr[i]!);
+  for (let i = 0; i < modArr.length; i++) sortedFiles.Add(modArr[i]!);
   const otherArr = otherFiles.ToArray();
-  for (let i = 0; i < otherArr.Length; i++) sortedFiles.Add(otherArr[i]!);
+  for (let i = 0; i < otherArr.length; i++) sortedFiles.Add(otherArr[i]!);
 
   const sorted = sortedFiles.ToArray();
-  for (let i = 0; i < sorted.Length; i++) {
+  for (let i = 0; i < sorted.length; i++) {
     const filePath = sorted[i]!;
     const fileNameResult = Path.GetFileName(filePath);
-    const fileName = fileNameResult !== undefined ? fileNameResult.ToLowerInvariant() : "";
+    const fileName = fileNameResult !== undefined ? fileNameResult.toLowerCase() : "";
     const text = readTextFile(filePath);
 
     if (fileName === "module.toml") {
       // Parse module mounts
       const mounts = parseModuleToml(text);
       config.moduleMounts = mounts;
-    } else if (fileName.EndsWith(".toml")) {
+    } else if (fileName.endsWith(".toml")) {
       config = mergeTomlIntoConfig(config, text, fileName);
-    } else if (fileName.EndsWith(".yaml") || fileName.EndsWith(".yml")) {
+    } else if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) {
       config = mergeYamlIntoConfig(config, text, fileName);
     }
     // Skip json for now as split configs are typically toml/yaml
@@ -106,9 +106,9 @@ export const loadSiteConfig = (siteDir: string): LoadedConfig => {
   }
 
   const text = readTextFile(path);
-  const lower = path.ToLowerInvariant();
+  const lower = path.toLowerCase();
   const parsedConfig =
-    lower.EndsWith(".toml") ? parseTomlConfig(text) : lower.EndsWith(".json") ? parseJsonConfig(text) : parseYamlConfig(text);
+    lower.endsWith(".toml") ? parseTomlConfig(text) : lower.endsWith(".json") ? parseJsonConfig(text) : parseYamlConfig(text);
 
   return new LoadedConfig(path, parsedConfig);
 };

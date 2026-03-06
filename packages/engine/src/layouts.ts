@@ -7,6 +7,7 @@ import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./te
 import type { ResourceManager } from "./resources.ts";
 import { I18nStore } from "./i18n.ts";
 import { ModuleMount } from "./models.ts";
+import { replaceText, trimStartChar } from "./utils/strings.ts";
 
 export class LayoutEnvironment extends TemplateEnvironment {
   private readonly siteLayoutsDir: string;
@@ -33,7 +34,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
 
     // Process module mounts
     if (mounts !== undefined) {
-      for (let i = 0; i < mounts.Length; i++) {
+      for (let i = 0; i < mounts.length; i++) {
         const mount = mounts[i]!;
         if (mount.target === "layouts") {
           // Resolve mount source relative to siteDir
@@ -60,10 +61,10 @@ export class LayoutEnvironment extends TemplateEnvironment {
   }
 
   override getTemplate(relPathRaw: string): Template | undefined {
-    const slash: char = "/";
-    const relPath = relPathRaw.TrimStart(slash).Trim();
-    const withExt = relPath.EndsWith(".html") ? relPath : relPath + ".html";
-    const relOs = withExt.Replace(slash, Path.DirectorySeparatorChar);
+    const slash = "/";
+    const relPath = trimStartChar(relPathRaw, slash).trim();
+    const withExt = relPath.endsWith(".html") ? relPath : relPath + ".html";
+    const relOs = replaceText(withExt, slash, `${Path.DirectorySeparatorChar}`);
 
     const sitePath = Path.Combine(this.siteLayoutsDir, relOs);
     let resolved: string | undefined = undefined;
@@ -77,7 +78,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
     // Check mounted layout directories
     if (resolved === undefined) {
       const mountDirs = this.mountedLayoutDirs.ToArray();
-      for (let i = 0; i < mountDirs.Length; i++) {
+      for (let i = 0; i < mountDirs.length; i++) {
         const mountPath = Path.Combine(mountDirs[i]!, relOs);
         if (fileExists(mountPath)) {
           resolved = mountPath;
@@ -119,14 +120,14 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
     // Check mounted layout directories
     const mountDirs = this.mountedLayoutDirs.ToArray();
-    for (let j = 0; j < mountDirs.Length; j++) {
+    for (let j = 0; j < mountDirs.length; j++) {
       candidates.Add(Path.Combine(mountDirs[j]!, "shortcodes", name + ".html"));
       candidates.Add(Path.Combine(mountDirs[j]!, "_shortcodes", name + ".html"));
     }
 
     let resolved: string | undefined = undefined;
     const candArr = candidates.ToArray();
-    for (let i = 0; i < candArr.Length; i++) {
+    for (let i = 0; i < candArr.length; i++) {
       const p = candArr[i]!;
       if (fileExists(p)) {
         resolved = p;
@@ -158,14 +159,14 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
     // Check mounted layout directories
     const hookMountDirs = this.mountedLayoutDirs.ToArray();
-    for (let j = 0; j < hookMountDirs.Length; j++) {
+    for (let j = 0; j < hookMountDirs.length; j++) {
       candidates.Add(Path.Combine(hookMountDirs[j]!, "_markup", hookName + ".html"));
       candidates.Add(Path.Combine(hookMountDirs[j]!, "_default", "_markup", hookName + ".html"));
     }
 
     let resolved: string | undefined = undefined;
     const candArr = candidates.ToArray();
-    for (let i = 0; i < candArr.Length; i++) {
+    for (let i = 0; i < candArr.length; i++) {
       const p = candArr[i]!;
       if (fileExists(p)) {
         resolved = p;

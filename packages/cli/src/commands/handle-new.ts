@@ -6,8 +6,8 @@ import { logErrorLine } from "../log-error-line.ts";
 import { logLine } from "../log-line.ts";
 
 export const handleNew = (args: readonly string[]): void => {
-  if (args.Length >= 2 && args[1] === "site") {
-    if (args.Length < 3) {
+  if (args.length >= 2 && args[1] === "site") {
+    if (args.length < 3) {
       logErrorLine("Missing <dir> for `tsumo new site`");
       Environment.ExitCode = 2;
       return;
@@ -18,16 +18,16 @@ export const handleNew = (args: readonly string[]): void => {
     return;
   }
 
-  if (args.Length < 2) {
+  if (args.length < 2) {
     logErrorLine("Missing <path.md> for `tsumo new`");
     Environment.ExitCode = 2;
     return;
   }
 
   let contentSourceDir = Environment.CurrentDirectory;
-  for (let i = 2; i < args.Length; i++) {
+  for (let i = 2; i < args.length; i++) {
     const a = args[i]!;
-    if ((a === "--source" || a === "-s") && i + 1 < args.Length) {
+    if ((a === "--source" || a === "-s") && i + 1 < args.length) {
       contentSourceDir = args[i + 1]!;
       i++;
     }
