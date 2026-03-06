@@ -18,6 +18,7 @@ import {
 } from "../template/index.ts";
 import { PageContext, SiteContext } from "../models.ts";
 import { markdownPipeline, setupRenderer } from "./pipeline.ts";
+import { substringCount } from "../utils/strings.ts";
 
 // Render hook context for passing to Markdig renderer interceptors
 export class RenderHookContext {
@@ -63,8 +64,8 @@ const renderInlineChildrenToHtml = (container: ContainerInline): string => {
 const stripHtmlTags = (html: string): string => {
   const result = new StringBuilder();
   let inTag = false;
-  for (let i = 0; i < html.Length; i++) {
-    const c = html.Substring(i, 1);
+  for (let i = 0; i < html.length; i++) {
+    const c = substringCount(html, i, 1);
     if (c === "<") {
       inTag = true;
       continue;
@@ -144,7 +145,7 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
 
   // Now perform replacements
   const linkArr = linksToRewrite.ToArray();
-  for (let i = 0; i < linkArr.Length; i++) {
+  for (let i = 0; i < linkArr.length; i++) {
     const link = linkArr[i]!;
     const isImage = link.IsImage;
 
@@ -218,7 +219,7 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
 
   const headingArr = headingsToRewrite.ToArray();
   const indexArr = headingIndices.ToArray();
-  for (let i = headingArr.Length - 1; i >= 0; i--) {
+  for (let i = headingArr.length - 1; i >= 0; i--) {
     const heading = headingArr[i]!;
     const headingIdx = indexArr[i]!;
 

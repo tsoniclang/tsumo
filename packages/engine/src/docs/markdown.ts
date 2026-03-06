@@ -7,7 +7,7 @@ import type { Block, ContainerBlock, LeafBlock, LinkReferenceDefinition, Markdow
 import type { ContainerInline, LinkInline } from "markdig-types/Markdig.Syntax.Inlines.js";
 import { MarkdownResult, markdownPipeline } from "../markdown.ts";
 import { DocsMountConfig } from "./models.ts";
-import { indexOfText, indexOfTextIgnoreCase } from "../utils/strings.ts";
+import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.ts";
 import { splitUrlSuffix } from "./url.ts";
 
 export class DocsLinkRewriteContext {
@@ -29,42 +29,42 @@ export class DocsLinkRewriteContext {
   }
 }
 
-const normalizeSlashes = (path: string): string => path.Replace("\\", "/");
+const normalizeSlashes = (path: string): string => path.replaceAll("\\", "/");
 
 const isExternalUrl = (url: string): boolean => {
-  const lower = url.Trim().ToLowerInvariant();
+  const lower = url.trim().toLowerCase();
   return (
-    lower.StartsWith("http://") ||
-    lower.StartsWith("https://") ||
-    lower.StartsWith("mailto:") ||
-    lower.StartsWith("tel:") ||
-    lower.StartsWith("javascript:") ||
-    lower.StartsWith("//")
+    lower.startsWith("http://") ||
+    lower.startsWith("https://") ||
+    lower.startsWith("mailto:") ||
+    lower.startsWith("tel:") ||
+    lower.startsWith("javascript:") ||
+    lower.startsWith("//")
   );
 };
 
 const isMarkdownLink = (path: string): boolean => {
-  const lower = path.Trim().ToLowerInvariant();
-  return lower.EndsWith(".md") || lower.EndsWith(".markdown");
+  const lower = path.trim().toLowerCase();
+  return lower.endsWith(".md") || lower.endsWith(".markdown");
 };
 
 const normalizeRelativePath = (baseDirKey: string, targetPath: string): string | undefined => {
-  const base = baseDirKey.Trim();
+  const base = baseDirKey.trim();
   const start = new List<string>();
   if (base !== "") {
-    const baseParts = base.Split("/");
-    for (let i = 0; i < baseParts.Length; i++) {
-      const seg = baseParts[i]!.Trim();
+    const baseParts = base.split("/");
+    for (let i = 0; i < baseParts.length; i++) {
+      const seg = baseParts[i]!.trim();
       if (seg !== "") start.Add(seg);
     }
   }
 
-  const target = normalizeSlashes(targetPath.Trim());
-  const parts = target.Split("/");
+  const target = normalizeSlashes(targetPath.trim());
+  const parts = target.split("/");
 
-  for (let i = 0; i < parts.Length; i++) {
+  for (let i = 0; i < parts.length; i++) {
     const raw = parts[i]!;
-    const seg = raw.Trim();
+    const seg = raw.trim();
     if (seg === "" || seg === ".") continue;
     if (seg === "..") {
       if (start.Count === 0) return undefined;
@@ -75,47 +75,47 @@ const normalizeRelativePath = (baseDirKey: string, targetPath: string): string |
   }
 
   const arr = start.ToArray();
-  if (arr.Length === 0) return "";
+  if (arr.length === 0) return "";
   let out = arr[0]!;
-  for (let i = 1; i < arr.Length; i++) out += "/" + arr[i]!;
+  for (let i = 1; i < arr.length; i++) out += "/" + arr[i]!;
   return out;
 };
 
 const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): string | undefined => {
   if (mount.repoUrl === undefined) return undefined;
-  const slash: char = "/";
-  const repo = mount.repoUrl.Trim().TrimEnd(slash);
+  const slash = "/";
+  const repo = trimEndChar(mount.repoUrl.trim(), slash);
   if (repo === "") return undefined;
-  const branch = mount.repoBranch.Trim() === "" ? "main" : mount.repoBranch.Trim();
-  const rel = repoRelPath.Trim().TrimStart(slash);
+  const branch = mount.repoBranch.trim() === "" ? "main" : mount.repoBranch.trim();
+  const rel = trimStartChar(repoRelPath.trim(), slash);
   if (rel === "") return undefined;
   return `${repo}/blob/${branch}/${rel}`;
 };
 
 const maybeRewriteUrl = (urlRaw: string | undefined, ctx: DocsLinkRewriteContext): string | undefined => {
   if (urlRaw === undefined) return undefined;
-  const url = urlRaw.Trim();
-  if (url === "" || url.StartsWith("#") || isExternalUrl(url)) return undefined;
+  const url = urlRaw.trim();
+  if (url === "" || url.startsWith("#") || isExternalUrl(url)) return undefined;
 
   const split = splitUrlSuffix(url);
-  const pathPart = split.path.Trim();
+  const pathPart = split.path.trim();
   const suffix = split.suffix;
   if (pathPart === "") return undefined;
 
-  const slash: char = "/";
+  const slash = "/";
 
-  const mountPrefixLower = ctx.mount.urlPrefix.ToLowerInvariant();
-  const pathLower = pathPart.ToLowerInvariant();
+  const mountPrefixLower = ctx.mount.urlPrefix.toLowerCase();
+  const pathLower = pathPart.toLowerCase();
 
   let resolvedRel: string | undefined = undefined;
   let escaped = false;
 
-  if (pathPart.StartsWith("/")) {
+  if (pathPart.startsWith("/")) {
     // Only rewrite site-absolute paths that are within the mount prefix.
     if (mountPrefixLower === "/") {
-      resolvedRel = pathPart.TrimStart(slash);
-    } else if (pathLower.StartsWith(mountPrefixLower)) {
-      resolvedRel = pathPart.Substring(ctx.mount.urlPrefix.Length).TrimStart(slash);
+      resolvedRel = trimStartChar(pathPart, slash);
+    } else if (pathLower.startsWith(mountPrefixLower)) {
+      resolvedRel = trimStartChar(substringFrom(pathPart, ctx.mount.urlPrefix.length), slash);
     } else {
       return undefined;
     }
@@ -131,10 +131,10 @@ const maybeRewriteUrl = (urlRaw: string | undefined, ctx: DocsLinkRewriteContext
 
     // Best-effort: rewrite to GitHub if mount has repo info.
     const repoPathRaw = ctx.mount.repoPath;
-    if (repoPathRaw === undefined || repoPathRaw.Trim() === "") return undefined;
+    if (repoPathRaw === undefined || repoPathRaw.trim() === "") return undefined;
 
-    const repoPath = repoPathRaw.Trim().TrimStart(slash).TrimEnd(slash);
-    const baseDir = ctx.currentDirKey.Trim() === "" ? repoPath : `${repoPath}/${ctx.currentDirKey}`;
+    const repoPath = trimEndChar(trimStartChar(repoPathRaw.trim(), slash), slash);
+    const baseDir = ctx.currentDirKey.trim() === "" ? repoPath : `${repoPath}/${ctx.currentDirKey}`;
     const repoRel = normalizeRelativePath(baseDir, pathPart);
     if (repoRel === undefined) return undefined;
     const gh = computeGitHubBlobUrl(ctx.mount, repoRel);
@@ -146,7 +146,7 @@ const maybeRewriteUrl = (urlRaw: string | undefined, ctx: DocsLinkRewriteContext
   // Only rewrite markdown file links to generated routes.
   if (!isMarkdownLink(resolvedRel)) return undefined;
 
-  const key = resolvedRel.ToLowerInvariant();
+  const key = resolvedRel.toLowerCase();
   let mapped = "";
   const ok = ctx.relPermalinkByRelPathLower.TryGetValue(key, mapped);
   return ok ? mapped + suffix : undefined;
@@ -194,18 +194,18 @@ const rewriteLinks = (document: MarkdownDocument, ctx: DocsLinkRewriteContext): 
   rewriteInBlock(document, ctx);
 };
 
-const normalizeNewlines = (text: string): string => text.ReplaceLineEndings("\n");
+const normalizeNewlines = (text: string): string => replaceLineEndings(text, "\n");
 
 const summaryMarker = "<!--more-->";
-const summaryMarkerLength = summaryMarker.Length;
+const summaryMarkerLength = summaryMarker.length;
 
 const findSummaryDividerIndex = (markdown: string): int => indexOfTextIgnoreCase(markdown, summaryMarker);
 
 const firstBlock = (markdown: string): string => {
-  const text = markdown.Trim();
+  const text = markdown.trim();
   if (text === "") return "";
   const idx = indexOfText(text, "\n\n");
-  return idx >= 0 ? text.Substring(0, idx) : text;
+  return idx >= 0 ? substringCount(text, 0, idx) : text;
 };
 
 const renderWithRewrites = (markdown: string, ctx: DocsLinkRewriteContext): string => {
@@ -219,14 +219,14 @@ export const renderDocsMarkdown = (markdownRaw: string, ctx: DocsLinkRewriteCont
   const moreIndex = findSummaryDividerIndex(markdown);
 
   if (moreIndex >= 0) {
-    const before = markdown.Substring(0, moreIndex);
-    const after = markdown.Substring(moreIndex + summaryMarkerLength);
+    const before = substringCount(markdown, 0, moreIndex);
+    const after = substringFrom(markdown, moreIndex + summaryMarkerLength);
     const full = before + after;
-    return new MarkdownResult(renderWithRewrites(full, ctx), renderWithRewrites(before, ctx).Trim(), Markdown.ToPlainText(full, markdownPipeline), "");
+    return new MarkdownResult(renderWithRewrites(full, ctx), renderWithRewrites(before, ctx).trim(), Markdown.ToPlainText(full, markdownPipeline), "");
   }
 
   const html = renderWithRewrites(markdown, ctx);
   const summarySource = firstBlock(markdown);
-  const summaryHtml = summarySource === "" ? "" : renderWithRewrites(summarySource, ctx).Trim();
+  const summaryHtml = summarySource === "" ? "" : renderWithRewrites(summarySource, ctx).trim();
   return new MarkdownResult(html, summaryHtml, Markdown.ToPlainText(markdown, markdownPipeline), "");
 };

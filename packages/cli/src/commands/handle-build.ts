@@ -13,18 +13,18 @@ export const handleBuild = (args: readonly string[], buildArgStart: int): void =
   let includeDrafts = false;
   let cleanDestinationDir = true;
 
-  for (let i = buildArgStart; i < args.Length; i++) {
+  for (let i = buildArgStart; i < args.length; i++) {
     const a = args[i]!;
-    if ((a === "--source" || a === "-s") && i + 1 < args.Length) {
+    if ((a === "--source" || a === "-s") && i + 1 < args.length) {
       buildSourceDir = args[i + 1]!;
       i++;
-    } else if ((a === "--destination" || a === "-d") && i + 1 < args.Length) {
+    } else if ((a === "--destination" || a === "-d") && i + 1 < args.length) {
       buildDestinationDir = args[i + 1]!;
       i++;
-    } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.Length) {
+    } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.length) {
       buildBaseURL = args[i + 1]!;
       i++;
-    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.Length) {
+    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.length) {
       buildThemesDir = args[i + 1]!;
       i++;
     } else if (a === "-D" || a === "--buildDrafts" || a === "--buildDrafts") {

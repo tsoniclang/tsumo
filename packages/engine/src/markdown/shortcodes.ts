@@ -4,6 +4,7 @@ import type { int } from "@tsonic/core/types.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.ts";
 import { ShortcodeContext, ShortcodeValue, RenderScope, TemplateEnvironment, TemplateNode, PageValue } from "../template/index.ts";
 import { PageContext, SiteContext } from "../models.ts";
+import { substringCount, substringFrom } from "../utils/strings.ts";
 
 // Shortcode execution ordinal tracker
 export class ShortcodeOrdinalTracker {
@@ -93,16 +94,16 @@ export const processShortcodes = (
   recursionGuard: Dictionary<string, boolean>,
 ): string => {
   const calls = parseShortcodes(text);
-  if (calls.Length === 0) return text;
+  if (calls.length === 0) return text;
 
   // Sort by startIndex descending to process from end to beginning
   const sorted = new List<ShortcodeCall>();
-  for (let i = 0; i < calls.Length; i++) sorted.Add(calls[i]!);
+  for (let i = 0; i < calls.length; i++) sorted.Add(calls[i]!);
 
   // Simple bubble sort by startIndex descending
   const arr = sorted.ToArray();
-  for (let i = 0; i < arr.Length; i++) {
-    for (let j = i + 1; j < arr.Length; j++) {
+  for (let i = 0; i < arr.length; i++) {
+    for (let j = i + 1; j < arr.length; j++) {
       if (arr[j]!.startIndex > arr[i]!.startIndex) {
         const tmp = arr[i]!;
         arr[i] = arr[j]!;
@@ -112,14 +113,14 @@ export const processShortcodes = (
   }
 
   let result = text;
-  for (let i = 0; i < arr.Length; i++) {
+  for (let i = 0; i < arr.length; i++) {
     const call = arr[i]!;
 
     // Skip comment shortcodes ({{</* ... */>}} or {{%/* ... */%}})
     // These are handled by parseShortcodes skipping them already
 
     const replacement = executeShortcode(call, page, site, env, ordinalTracker, parent, recursionGuard);
-    result = result.Substring(0, call.startIndex) + replacement + result.Substring(call.endIndex);
+    result = substringCount(result, 0, call.startIndex) + replacement + substringFrom(result, call.endIndex);
   }
 
   return result;

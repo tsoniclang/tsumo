@@ -7,6 +7,7 @@ import { ParamValue } from "../params.ts";
 import { buildMenuHierarchy } from "../menus.ts";
 import { MenuEntryBuilder, LanguageConfigBuilder } from "./builders.ts";
 import { unquote, sortLanguages } from "./helpers.ts";
+import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
 
 /**
  * Parse module.toml to extract mount configurations.
@@ -17,16 +18,16 @@ import { unquote, sortLanguages } from "./helpers.ts";
  */
 export const parseModuleToml = (text: string): ModuleMount[] => {
   const mounts = new List<ModuleMount>();
-  const lines = text.ReplaceLineEndings("\n").Split("\n");
+  const lines = replaceLineEndings(text, "\n").split("\n");
 
   let inMount = false;
   let currentSource = "";
   let currentTarget = "";
 
-  for (let i = 0; i < lines.Length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
-    const line = raw.Trim();
-    if (line === "" || line.StartsWith("#")) continue;
+    const line = raw.trim();
+    if (line === "" || line.startsWith("#")) continue;
 
     if (line === "[[mounts]]") {
       // Save previous mount if valid
@@ -39,10 +40,10 @@ export const parseModuleToml = (text: string): ModuleMount[] => {
       continue;
     }
 
-    if (inMount && line.Contains("=")) {
-      const eq = line.IndexOf("=");
-      const key = line.Substring(0, eq).Trim().ToLowerInvariant();
-      const value = unquote(line.Substring(eq + 1).Trim());
+    if (inMount && line.includes("=")) {
+      const eq = line.indexOf("=");
+      const key = substringCount(line, 0, eq).trim().toLowerCase();
+      const value = unquote(substringFrom(line, eq + 1).trim());
 
       if (key === "source") currentSource = value;
       else if (key === "target") currentTarget = value;
@@ -60,7 +61,7 @@ export const parseModuleToml = (text: string): ModuleMount[] => {
 // Helper to parse a TOML value (handles booleans, numbers, strings)
 // Arrays are treated as strings for now
 const parseTomlValue = (value: string): ParamValue => {
-  const v = value.Trim();
+  const v = value.trim();
 
   // Boolean
   if (v === "true") return ParamValue.bool(true);
@@ -86,24 +87,24 @@ export const parseTomlConfig = (text: string): SiteConfig => {
   const languages = new List<LanguageConfigBuilder>();
   const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
 
-  const lines = text.ReplaceLineEndings("\n").Split("\n");
+  const lines = replaceLineEndings(text, "\n").split("\n");
 
   let table = "";
   let isArrayTable = false;
   let currentMenuEntry: MenuEntryBuilder | undefined = undefined;
 
-  for (let i = 0; i < lines.Length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
-    const line = raw.Trim();
-    if (line === "" || line.StartsWith("#")) continue;
+    const line = raw.trim();
+    if (line === "" || line.startsWith("#")) continue;
 
-    if (line.StartsWith("[[") && line.EndsWith("]]")) {
-      const tableName = line.Substring(2, line.Length - 4).Trim().ToLowerInvariant();
+    if (line.startsWith("[[") && line.endsWith("]]")) {
+      const tableName = substringCount(line, 2, line.length - 4).trim().toLowerCase();
       table = tableName;
       isArrayTable = true;
 
-      if (tableName.StartsWith("menu.")) {
-        const menuName = tableName.Substring("menu.".Length).Trim();
+      if (tableName.startsWith("menu.")) {
+        const menuName = substringFrom(tableName, "menu.".length).trim();
         currentMenuEntry = new MenuEntryBuilder(menuName);
         let entries = new List<MenuEntryBuilder>();
         const hasMenu = menuBuilders.TryGetValue(menuName, entries);
@@ -119,21 +120,21 @@ export const parseTomlConfig = (text: string): SiteConfig => {
       continue;
     }
 
-    if (line.StartsWith("[") && line.EndsWith("]")) {
-      table = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
+    if (line.startsWith("[") && line.endsWith("]")) {
+      table = substringCount(line, 1, line.length - 2).trim().toLowerCase();
       isArrayTable = false;
       currentMenuEntry = undefined;
       continue;
     }
 
-    const eq = line.IndexOf("=");
+    const eq = line.indexOf("=");
     if (eq < 0) continue;
 
-    const key = line.Substring(0, eq).Trim();
-    const value = unquote(line.Substring(eq + 1).Trim());
+    const key = substringCount(line, 0, eq).trim();
+    const value = unquote(substringFrom(line, eq + 1).trim());
 
-    if (isArrayTable && currentMenuEntry !== undefined && table.StartsWith("menu.")) {
-      const menuKey = key.ToLowerInvariant();
+    if (isArrayTable && currentMenuEntry !== undefined && table.startsWith("menu.")) {
+      const menuKey = key.toLowerCase();
       if (menuKey === "name") currentMenuEntry.name = value;
       else if (menuKey === "url") currentMenuEntry.url = value;
       else if (menuKey === "pageref") currentMenuEntry.pageRef = value;
@@ -155,14 +156,14 @@ export const parseTomlConfig = (text: string): SiteConfig => {
       continue;
     }
 
-    if (table.StartsWith("languages.")) {
-      const lang = table.Substring("languages.".Length).Trim();
+    if (table.startsWith("languages.")) {
+      const lang = substringFrom(table, "languages.".length).trim();
       if (lang !== "") {
         let entry: LanguageConfigBuilder | undefined = undefined;
         const existing = languages.ToArray();
-        for (let j = 0; j < existing.Length; j++) {
+        for (let j = 0; j < existing.length; j++) {
           const cur = existing[j]!;
-          if (cur.lang.ToLowerInvariant() === lang) {
+          if (cur.lang.toLowerCase() === lang) {
             entry = cur;
             break;
           }
@@ -172,7 +173,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
           languages.Add(entry);
         }
 
-        const langKey = key.ToLowerInvariant();
+        const langKey = key.toLowerCase();
         if (langKey === "languagename") entry.languageName = value;
         else if (langKey === "languagedirection") entry.languageDirection = value;
         else if (langKey === "contentdir") entry.contentDir = value;
@@ -184,7 +185,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
       }
     }
 
-    const k = key.ToLowerInvariant();
+    const k = key.toLowerCase();
     if (k === "title") title = value;
     else if (k === "baseurl") baseURL = value;
     else if (k === "languagecode") {
@@ -200,7 +201,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
   if (languages.Count > 0) {
     const langConfigs = new List<LanguageConfig>();
     const arr = languages.ToArray();
-    for (let i = 0; i < arr.Length; i++) langConfigs.Add(arr[i]!.toConfig());
+    for (let i = 0; i < arr.length; i++) langConfigs.Add(arr[i]!.toConfig());
     config.languages = sortLanguages(langConfigs.ToArray());
     const selected = config.languages[0]!;
     config.contentDir = selected.contentDir;
@@ -216,7 +217,7 @@ export const parseTomlConfig = (text: string): SiteConfig => {
     if (hasBuilders) {
       const entries = new List<MenuEntry>();
       const buildersArr = builders.ToArray();
-      for (let i = 0; i < buildersArr.Length; i++) entries.Add(buildersArr[i]!.toEntry());
+      for (let i = 0; i < buildersArr.length; i++) entries.Add(buildersArr[i]!.toEntry());
       config.Menus.Remove(menuName);
       config.Menus.Add(menuName, buildMenuHierarchy(entries.ToArray()));
     }
@@ -234,30 +235,30 @@ export const parseTomlConfig = (text: string): SiteConfig => {
  * - menus.*.toml: menu definitions
  */
 export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: string): SiteConfig => {
-  const lines = text.ReplaceLineEndings("\n").Split("\n");
-  const lowerFileName = fileName.ToLowerInvariant();
+  const lines = replaceLineEndings(text, "\n").split("\n");
+  const lowerFileName = fileName.toLowerCase();
 
   // Handle params.toml - all keys go into config.Params
   if (lowerFileName === "params.toml") {
     let table = "";
     let nestedPrefix = "";
 
-    for (let i = 0; i < lines.Length; i++) {
+    for (let i = 0; i < lines.length; i++) {
       const raw = lines[i]!;
-      const line = raw.Trim();
-      if (line === "" || line.StartsWith("#")) continue;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
 
-      if (line.StartsWith("[") && line.EndsWith("]") && !line.StartsWith("[[")) {
-        table = line.Substring(1, line.Length - 2).Trim();
+      if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
+        table = substringCount(line, 1, line.length - 2).trim();
         nestedPrefix = table === "" ? "" : table + ".";
         continue;
       }
 
-      const eq = line.IndexOf("=");
+      const eq = line.indexOf("=");
       if (eq < 0) continue;
 
-      const key = nestedPrefix + line.Substring(0, eq).Trim();
-      const value = line.Substring(eq + 1).Trim();
+      const key = nestedPrefix + substringCount(line, 0, eq).trim();
+      const value = substringFrom(line, eq + 1).trim();
       config.Params.Remove(key);
       config.Params.Add(key, parseTomlValue(value));
     }
@@ -270,17 +271,17 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
     let currentLang = "";
     let inParamsTable = false;
 
-    for (let i = 0; i < lines.Length; i++) {
+    for (let i = 0; i < lines.length; i++) {
       const raw = lines[i]!;
-      const line = raw.Trim();
-      if (line === "" || line.StartsWith("#")) continue;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
 
-      if (line.StartsWith("[") && line.EndsWith("]") && !line.StartsWith("[[")) {
-        const tableName = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
+      if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
+        const tableName = substringCount(line, 1, line.length - 2).trim().toLowerCase();
 
         // Check for [en.params] style table (language-specific params, skip for now)
-        if (tableName.Contains(".params")) {
-          currentLang = tableName.Substring(0, tableName.IndexOf("."));
+        if (tableName.includes(".params")) {
+          currentLang = substringCount(tableName, 0, tableName.indexOf("."));
           inParamsTable = true;
         } else {
           currentLang = tableName;
@@ -297,11 +298,11 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
 
       if (currentLang === "" || inParamsTable) continue;
 
-      const eq = line.IndexOf("=");
+      const eq = line.indexOf("=");
       if (eq < 0) continue;
 
-      const key = line.Substring(0, eq).Trim().ToLowerInvariant();
-      const value = unquote(line.Substring(eq + 1).Trim());
+      const key = substringCount(line, 0, eq).trim().toLowerCase();
+      const value = unquote(substringFrom(line, eq + 1).trim());
 
       let builder = new LanguageConfigBuilder(currentLang);
       const gotBuilder = langBuilders.TryGetValue(currentLang, builder);
@@ -327,7 +328,7 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
     }
 
     config.languages = sortLanguages(newLangs.ToArray());
-    if (config.languages.Length > 0) {
+    if (config.languages.length > 0) {
       const selected = config.languages[0]!;
       config.contentDir = selected.contentDir;
       config.languageCode = selected.lang;
@@ -337,19 +338,19 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
   }
 
   // Handle languages.*.toml (per-language files, e.g., languages.en.toml)
-  if (lowerFileName.StartsWith("languages.") && lowerFileName.EndsWith(".toml")) {
-    const prefixLen = "languages.".Length;
-    const suffixLen = ".toml".Length;
-    const extractLen = lowerFileName.Length - prefixLen - suffixLen;
+  if (lowerFileName.startsWith("languages.") && lowerFileName.endsWith(".toml")) {
+    const prefixLen = "languages.".length;
+    const suffixLen = ".toml".length;
+    const extractLen = lowerFileName.length - prefixLen - suffixLen;
     if (extractLen <= 0) return config;
-    const langCode = lowerFileName.Substring(prefixLen, extractLen);
+    const langCode = substringCount(lowerFileName, prefixLen, extractLen);
     if (langCode === "") return config;
 
     // Find or create language entry
     let langBuilder: LanguageConfigBuilder | undefined = undefined;
     const existingLangs = config.languages;
-    for (let i = 0; i < existingLangs.Length; i++) {
-      if (existingLangs[i]!.lang.ToLowerInvariant() === langCode) {
+    for (let i = 0; i < existingLangs.length; i++) {
+      if (existingLangs[i]!.lang.toLowerCase() === langCode) {
         langBuilder = new LanguageConfigBuilder(langCode);
         langBuilder.languageName = existingLangs[i]!.languageName;
         langBuilder.languageDirection = existingLangs[i]!.languageDirection;
@@ -363,21 +364,21 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
     }
 
     let table = "";
-    for (let i = 0; i < lines.Length; i++) {
+    for (let i = 0; i < lines.length; i++) {
       const raw = lines[i]!;
-      const line = raw.Trim();
-      if (line === "" || line.StartsWith("#")) continue;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
 
-      if (line.StartsWith("[") && line.EndsWith("]") && !line.StartsWith("[[")) {
-        table = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
+      if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
+        table = substringCount(line, 1, line.length - 2).trim().toLowerCase();
         continue;
       }
 
-      const eq = line.IndexOf("=");
+      const eq = line.indexOf("=");
       if (eq < 0) continue;
 
-      const key = line.Substring(0, eq).Trim().ToLowerInvariant();
-      const value = unquote(line.Substring(eq + 1).Trim());
+      const key = substringCount(line, 0, eq).trim().toLowerCase();
+      const value = unquote(substringFrom(line, eq + 1).trim());
 
       if (key === "languagename") langBuilder.languageName = value;
       else if (key === "languagedirection") langBuilder.languageDirection = value;
@@ -392,8 +393,8 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
     // Update or add language config
     const newLangs = new List<LanguageConfig>();
     let found = false;
-    for (let i = 0; i < existingLangs.Length; i++) {
-      if (existingLangs[i]!.lang.ToLowerInvariant() === langCode) {
+    for (let i = 0; i < existingLangs.length; i++) {
+      if (existingLangs[i]!.lang.toLowerCase() === langCode) {
         newLangs.Add(langBuilder.toConfig());
         found = true;
       } else {
@@ -408,18 +409,18 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
   }
 
   // Handle menus.*.toml (e.g., menus.en.toml)
-  if (lowerFileName.StartsWith("menus.") && lowerFileName.EndsWith(".toml")) {
+  if (lowerFileName.startsWith("menus.") && lowerFileName.endsWith(".toml")) {
     const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
     let currentMenuEntry: MenuEntryBuilder | undefined = undefined;
     let currentMenuName = "";
 
-    for (let i = 0; i < lines.Length; i++) {
+    for (let i = 0; i < lines.length; i++) {
       const raw = lines[i]!;
-      const line = raw.Trim();
-      if (line === "" || line.StartsWith("#")) continue;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
 
-      if (line.StartsWith("[[") && line.EndsWith("]]")) {
-        const tableName = line.Substring(2, line.Length - 4).Trim().ToLowerInvariant();
+      if (line.startsWith("[[") && line.endsWith("]]")) {
+        const tableName = substringCount(line, 2, line.length - 4).trim().toLowerCase();
         currentMenuName = tableName;
         currentMenuEntry = new MenuEntryBuilder(tableName);
 
@@ -436,11 +437,11 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
 
       if (currentMenuEntry === undefined) continue;
 
-      const eq = line.IndexOf("=");
+      const eq = line.indexOf("=");
       if (eq < 0) continue;
 
-      const key = line.Substring(0, eq).Trim().ToLowerInvariant();
-      const value = unquote(line.Substring(eq + 1).Trim());
+      const key = substringCount(line, 0, eq).trim().toLowerCase();
+      const value = unquote(substringFrom(line, eq + 1).trim());
 
       if (key === "name") currentMenuEntry.name = value;
       else if (key === "url") currentMenuEntry.url = value;
@@ -465,7 +466,7 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
       if (hasBuilders) {
         const entries = new List<MenuEntry>();
         const buildersArr = builders.ToArray();
-        for (let j = 0; j < buildersArr.Length; j++) entries.Add(buildersArr[j]!.toEntry());
+        for (let j = 0; j < buildersArr.length; j++) entries.Add(buildersArr[j]!.toEntry());
         config.Menus.Remove(menuName);
         config.Menus.Add(menuName, buildMenuHierarchy(entries.ToArray()));
       }
@@ -477,21 +478,21 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
   if (lowerFileName === "hugo.toml" || lowerFileName === "config.toml") {
     let table = "";
 
-    for (let i = 0; i < lines.Length; i++) {
+    for (let i = 0; i < lines.length; i++) {
       const raw = lines[i]!;
-      const line = raw.Trim();
-      if (line === "" || line.StartsWith("#")) continue;
+      const line = raw.trim();
+      if (line === "" || line.startsWith("#")) continue;
 
-      if (line.StartsWith("[") && line.EndsWith("]") && !line.StartsWith("[[")) {
-        table = line.Substring(1, line.Length - 2).Trim().ToLowerInvariant();
+      if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
+        table = substringCount(line, 1, line.length - 2).trim().toLowerCase();
         continue;
       }
 
-      const eq = line.IndexOf("=");
+      const eq = line.indexOf("=");
       if (eq < 0) continue;
 
-      const key = line.Substring(0, eq).Trim().ToLowerInvariant();
-      const value = unquote(line.Substring(eq + 1).Trim());
+      const key = substringCount(line, 0, eq).trim().toLowerCase();
+      const value = unquote(substringFrom(line, eq + 1).trim());
 
       if (table === "") {
         if (key === "title") config.title = value;
@@ -502,7 +503,7 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
         else if (key === "copyright") config.copyright = value;
       } else if (table === "params") {
         config.Params.Remove(key);
-        config.Params.Add(key, parseTomlValue(line.Substring(eq + 1).Trim()));
+        config.Params.Add(key, parseTomlValue(substringFrom(line, eq + 1).trim()));
       }
     }
     return config;

@@ -2,14 +2,14 @@ import { DateTime } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { PageContext, SiteConfig } from "./models.ts";
 import { escapeHtml } from "./utils/html.ts";
-import { replaceText } from "./utils/strings.ts";
+import { replaceText, substringFrom } from "./utils/strings.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
 
 const toAbsoluteUrl = (baseURL: string, relPermalink: string): string => {
   const base = ensureTrailingSlash(baseURL);
   if (base === "") return relPermalink;
   if (relPermalink === "/") return base;
-  const rel = relPermalink.StartsWith("/") ? relPermalink.Substring(1) : relPermalink;
+  const rel = relPermalink.startsWith("/") ? substringFrom(relPermalink, 1) : relPermalink;
   return base + rel;
 };
 
@@ -40,7 +40,7 @@ export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
   sb.Append("</lastBuildDate>\n");
   sb.Append("<generator>tsumo</generator>\n");
 
-  for (let i = 0; i < pages.Length; i++) {
+  for (let i = 0; i < pages.length; i++) {
     const p = pages[i]!;
     const link = toAbsoluteUrl(config.baseURL, p.relPermalink);
     let parsed: DateTime = DateTime.MinValue;
@@ -79,7 +79,7 @@ export const renderSitemap = (config: SiteConfig, relPermalinks: string[]): stri
   const sb = new StringBuilder();
   sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
   sb.Append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
-  for (let i = 0; i < relPermalinks.Length; i++) {
+  for (let i = 0; i < relPermalinks.length; i++) {
     const rel = relPermalinks[i]!;
     const loc = toAbsoluteUrl(config.baseURL, rel);
     sb.Append("<url>");

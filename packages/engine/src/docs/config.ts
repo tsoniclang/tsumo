@@ -6,6 +6,7 @@ import type { char } from "@tsonic/core/types.js";
 import { fileExists, readTextFile } from "../fs.ts";
 import { DocsMountConfig, DocsSiteConfig } from "./models.ts";
 import { ensureLeadingSlash, ensureTrailingSlash } from "../utils/text.ts";
+import { trimEndChar, trimStartChar } from "../utils/strings.ts";
 
 export class LoadedDocsConfig {
   readonly path: string;
@@ -20,11 +21,11 @@ export class LoadedDocsConfig {
 const readString = (doc: JsonDocument, propName: string): string | undefined => {
   const root = doc.RootElement;
   if (root.ValueKind !== JsonValueKind.Object) return undefined;
-  const propNameLower = propName.ToLowerInvariant();
+  const propNameLower = propName.toLowerCase();
   const props = root.EnumerateObject().GetEnumerator();
   while (props.MoveNext()) {
     const p = props.Current;
-    if (p.Name.ToLowerInvariant() === propNameLower) {
+    if (p.Name.toLowerCase() === propNameLower) {
       if (p.Value.ValueKind === JsonValueKind.String) return p.Value.GetString();
       return undefined;
     }
@@ -35,11 +36,11 @@ const readString = (doc: JsonDocument, propName: string): string | undefined => 
 const readBool = (doc: JsonDocument, propName: string): boolean | undefined => {
   const root = doc.RootElement;
   if (root.ValueKind !== JsonValueKind.Object) return undefined;
-  const propNameLower = propName.ToLowerInvariant();
+  const propNameLower = propName.toLowerCase();
   const props = root.EnumerateObject().GetEnumerator();
   while (props.MoveNext()) {
     const p = props.Current;
-    if (p.Name.ToLowerInvariant() !== propNameLower) continue;
+    if (p.Name.toLowerCase() !== propNameLower) continue;
     if (p.Value.ValueKind === JsonValueKind.True) return true;
     if (p.Value.ValueKind === JsonValueKind.False) return false;
     return undefined;
@@ -48,12 +49,12 @@ const readBool = (doc: JsonDocument, propName: string): boolean | undefined => {
 };
 
 const normalizePrefix = (raw: string): string => {
-  const p = ensureLeadingSlash(raw.Trim());
+  const p = ensureLeadingSlash(raw.trim());
   return ensureTrailingSlash(p);
 };
 
 const resolveSourceDir = (siteDir: string, raw: string): string => {
-  if (raw.Trim() === "") throw new Exception("Docs mount `source` cannot be empty");
+  if (raw.trim() === "") throw new Exception("Docs mount `source` cannot be empty");
   return Path.IsPathRooted(raw) ? Path.GetFullPath(raw) : Path.GetFullPath(Path.Combine(siteDir, raw));
 };
 
@@ -65,7 +66,7 @@ const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
   const props = root.EnumerateObject().GetEnumerator();
   while (props.MoveNext()) {
     const p = props.Current;
-    if (p.Name.ToLowerInvariant() !== "mounts") continue;
+    if (p.Name.toLowerCase() !== "mounts") continue;
     if (p.Value.ValueKind !== JsonValueKind.Array) return empty;
 
     const mounts = new List<DocsMountConfig>();
@@ -85,7 +86,7 @@ const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
       const mp = el.EnumerateObject().GetEnumerator();
       while (mp.MoveNext()) {
         const prop = mp.Current;
-        const key = prop.Name.ToLowerInvariant();
+        const key = prop.Name.toLowerCase();
         const v = prop.Value;
 
         if (key === "name" && v.ValueKind === JsonValueKind.String) name = v.GetString();
@@ -100,12 +101,12 @@ const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
       if (source === undefined || prefix === undefined) continue;
       const sourceDir = resolveSourceDir(siteDir, source);
       const urlPrefix = normalizePrefix(prefix);
-      const slash: char = "/";
+      const slash = "/";
       let mountName = name;
       if (mountName === undefined) {
-        mountName = urlPrefix === "/" ? "Docs" : urlPrefix.TrimStart(slash).TrimEnd(slash);
-      } else if (mountName.Trim() === "") {
-        mountName = urlPrefix === "/" ? "Docs" : urlPrefix.TrimStart(slash).TrimEnd(slash);
+        mountName = urlPrefix === "/" ? "Docs" : trimEndChar(trimStartChar(urlPrefix, slash), slash);
+      } else if (mountName.trim() === "") {
+        mountName = urlPrefix === "/" ? "Docs" : trimEndChar(trimStartChar(urlPrefix, slash), slash);
       }
 
       let finalRepoPath = repoPath;
@@ -138,7 +139,7 @@ export const loadDocsConfig = (siteDir: string): LoadedDocsConfig | undefined =>
 
   doc.Dispose();
 
-  if (mounts.Length === 0) throw new Exception("tsumo.docs.json has no mounts");
+  if (mounts.length === 0) throw new Exception("tsumo.docs.json has no mounts");
 
   const config = new DocsSiteConfig(mounts, strictLinks, generateSearchIndex, searchIndexFileName, homeMount, siteName);
   return new LoadedDocsConfig(candidate, config);

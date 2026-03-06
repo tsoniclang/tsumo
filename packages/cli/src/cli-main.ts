@@ -14,10 +14,10 @@ const VERSION = "0.0.0";
 export function main(): void {
   const argv = Environment.GetCommandLineArgs();
   const argsList = new List<string>();
-  for (let i = 1; i < argv.Length; i++) argsList.Add(argv[i]!);
+  for (let i = 1; i < argv.length; i++) argsList.Add(argv[i]!);
   const args = argsList.ToArray();
 
-  const first = args.Length > 0 ? args[0]! : "";
+  const first = args.length > 0 ? args[0]! : "";
   if (first === "-h" || first === "--help" || first === "help") {
     printUsage();
     return;
@@ -28,7 +28,7 @@ export function main(): void {
     return;
   }
 
-  const cmd = first === "" || first.StartsWith("-") ? "build" : first;
+  const cmd = first === "" || first.startsWith("-") ? "build" : first;
 
   if (cmd === "new") {
     handleNew(args);

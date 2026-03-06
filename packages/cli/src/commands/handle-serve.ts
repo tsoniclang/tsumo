@@ -17,24 +17,24 @@ export const handleServe = (args: readonly string[]): void => {
   let serveBuildDrafts = false;
   let serveClean = true;
 
-  for (let i = 1; i < args.Length; i++) {
+  for (let i = 1; i < args.length; i++) {
     const a = args[i]!;
-    if ((a === "--source" || a === "-s") && i + 1 < args.Length) {
+    if ((a === "--source" || a === "-s") && i + 1 < args.length) {
       serveSourceDir = args[i + 1]!;
       i++;
-    } else if ((a === "--destination" || a === "-d") && i + 1 < args.Length) {
+    } else if ((a === "--destination" || a === "-d") && i + 1 < args.length) {
       serveDestinationDir = args[i + 1]!;
       i++;
-    } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.Length) {
+    } else if ((a === "--baseURL" || a === "--baseurl") && i + 1 < args.length) {
       serveBaseURL = args[i + 1]!;
       i++;
-    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.Length) {
+    } else if ((a === "--themesDir" || a === "--themesdir") && i + 1 < args.length) {
       serveThemesDir = args[i + 1]!;
       i++;
-    } else if ((a === "--host" || a === "--bind") && i + 1 < args.Length) {
+    } else if ((a === "--host" || a === "--bind") && i + 1 < args.length) {
       serveHost = args[i + 1]!;
       i++;
-    } else if ((a === "--port" || a === "-p") && i + 1 < args.Length) {
+    } else if ((a === "--port" || a === "-p") && i + 1 < args.length) {
       const portText = args[i + 1]!;
       const p = parseIntArg(portText);
       if (p === undefined) {

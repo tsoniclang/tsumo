@@ -49,7 +49,7 @@ export class ShortcodeContext {
     }
     let idx: int = 0;
     const parsed = Int32.TryParse(keyOrIndex, idx);
-    if (parsed && idx >= 0 && idx < this.positionalParams.Length) {
+    if (parsed && idx >= 0 && idx < this.positionalParams.length) {
       return ParamValue.string(this.positionalParams[idx]!);
     }
     return undefined;

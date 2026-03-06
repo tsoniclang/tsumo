@@ -127,10 +127,10 @@ const collectHeadingsRecursive = (container: ContainerBlock, headings: List<TocH
 
 export const escapeHtmlText = (text: string): string => {
   let result = text;
-  result = result.Replace("&", "&amp;");
-  result = result.Replace("<", "&lt;");
-  result = result.Replace(">", "&gt;");
-  result = result.Replace("\"", "&quot;");
+  result = result.replaceAll("&", "&amp;");
+  result = result.replaceAll("<", "&lt;");
+  result = result.replaceAll(">", "&gt;");
+  result = result.replaceAll("\"", "&quot;");
   return result;
 };
 
@@ -139,7 +139,7 @@ export const generateTableOfContents = (markdown: string): string => {
   const document = Markdown.Parse(markdown, markdownPipeline);
   const headings = collectHeadingsFromAst(document);
 
-  if (headings.Length === 0) return `<nav id="TableOfContents"></nav>`;
+  if (headings.length === 0) return `<nav id="TableOfContents"></nav>`;
 
   const sb = new StringBuilder();
   sb.Append(`<nav id="TableOfContents">\n`);
@@ -147,7 +147,7 @@ export const generateTableOfContents = (markdown: string): string => {
   const listStack = new Stack<TocListFrame>();
   let currentLevel = 0;
 
-  for (let i = 0; i < headings.Length; i++) {
+  for (let i = 0; i < headings.length; i++) {
     const h = headings[i]!;
 
     // Clamp depth increases to avoid invalid placeholder <li> elements when headings skip levels.
