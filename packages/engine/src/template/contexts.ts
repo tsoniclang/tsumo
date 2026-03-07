@@ -1,16 +1,15 @@
-import { Int32 } from "@tsonic/dotnet/System.js";
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import type { int } from "@tsonic/core/types.js";
 import { PageContext, SiteContext } from "../models.ts";
 import { ParamValue } from "../params.ts";
 import { innerDeindent } from "../shortcode.ts";
+import { parseInt32 } from "../utils/int32.ts";
 import { TemplateValue } from "./values.ts";
 
 export class ShortcodeContext {
   readonly name: string;
   readonly Page: PageContext;
   readonly Site: SiteContext;
-  readonly Params: Dictionary<string, ParamValue>;
+  readonly Params: Map<string, ParamValue>;
   readonly positionalParams: string[];
   readonly IsNamedParams: boolean;
   readonly Inner: string;
@@ -22,7 +21,7 @@ export class ShortcodeContext {
     name: string,
     page: PageContext,
     site: SiteContext,
-    params: Dictionary<string, ParamValue>,
+    params: Map<string, ParamValue>,
     positionalParams: string[],
     isNamedParams: boolean,
     inner: string,
@@ -43,13 +42,10 @@ export class ShortcodeContext {
 
   Get(keyOrIndex: string): ParamValue | undefined {
     if (this.IsNamedParams) {
-      let value: ParamValue = ParamValue.string("");
-      const found = this.Params.TryGetValue(keyOrIndex, value);
-      return found ? value : undefined;
+      return this.Params.get(keyOrIndex);
     }
-    let idx: int = 0;
-    const parsed = Int32.TryParse(keyOrIndex, idx);
-    if (parsed && idx >= 0 && idx < this.positionalParams.length) {
+    const idx = parseInt32(keyOrIndex);
+    if (idx !== undefined && idx >= 0 && idx < this.positionalParams.length) {
       return ParamValue.string(this.positionalParams[idx]!);
     }
     return undefined;

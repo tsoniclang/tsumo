@@ -1,11 +1,9 @@
-import { DateTime } from "@tsonic/dotnet/System.js";
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { ParamValue } from "../params.ts";
 import { FrontMatterMenu } from "./menu.ts";
 
 export class FrontMatter {
   title: string | undefined;
-  date: DateTime | undefined;
+  date: Date | undefined;
   draft: boolean;
   tags: string[];
   categories: string[];
@@ -13,7 +11,7 @@ export class FrontMatter {
   slug: string | undefined;
   layout: string | undefined;
   type: string | undefined;
-  Params: Dictionary<string, ParamValue>;
+  Params: Map<string, ParamValue>;
   menus: FrontMatterMenu[];
 
   constructor() {
@@ -27,7 +25,7 @@ export class FrontMatter {
     this.slug = undefined;
     this.layout = undefined;
     this.type = undefined;
-    this.Params = new Dictionary<string, ParamValue>();
+    this.Params = new Map<string, ParamValue>();
     const emptyMenus: FrontMatterMenu[] = [];
     this.menus = emptyMenus;
   }

@@ -1,4 +1,5 @@
-import { DateTime, Exception } from "@tsonic/dotnet/System.js";
+import { statSync } from "node:fs";
+import { Exception } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
@@ -356,22 +357,18 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
 
       const baseName = withoutMdExtension(r.fileName);
       const title = fm.title ?? humanizeSlug(baseName);
-      const dateUtc = fm.date ?? File.GetLastWriteTimeUtc(r.sourcePath);
-      const dateString = dateUtc.ToString("O");
-      const lastmodString = File.GetLastWriteTimeUtc(r.sourcePath).ToString("O");
+      const dateUtc = fm.date ?? statSync(r.sourcePath).mtime;
+      const dateString = dateUtc.toISOString();
+      const lastmodString = statSync(r.sourcePath).mtime.toISOString();
       const file = new PageFile(Path.GetFullPath(r.sourcePath), r.dirKey === "" ? "" : r.dirKey + "/", baseName);
 
       const params = fm.Params;
-      params.Remove("mount");
-      params.Add("mount", ParamValue.string(mount.name));
-      params.Remove("mountPrefix");
-      params.Add("mountPrefix", ParamValue.string(mount.urlPrefix));
-      params.Remove("relPath");
-      params.Add("relPath", ParamValue.string(r.relPath));
+      params.set("mount", ParamValue.string(mount.name));
+      params.set("mountPrefix", ParamValue.string(mount.urlPrefix));
+      params.set("relPath", ParamValue.string(r.relPath));
       const editUrl = computeEditUrl(mount, r.relPath);
       if (editUrl !== undefined) {
-        params.Remove("editURL");
-        params.Add("editURL", ParamValue.string(editUrl));
+        params.set("editURL", ParamValue.string(editUrl));
       }
 
       const ctx = new PageContext(
@@ -462,7 +459,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       "",
       emptyStrings,
       emptyStrings,
-      new Dictionary<string, ParamValue>(),
+      new Map<string, ParamValue>(),
       undefined,
       site.Language,
       emptyTranslations,
@@ -515,7 +512,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       let summary = new HtmlString("");
       let plain = "";
       let description = "";
-      let params = new Dictionary<string, ParamValue>();
+      let params = new Map<string, ParamValue>();
       let draft = false;
       let dateString = "";
       let lastmodString = "";
@@ -538,27 +535,22 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
           const plainText = Markdown.ToPlainText(parsed.body, markdownPipeline);
           plain = plainText;
           searchDocs.Add(new SearchDoc(title, relPermalink, mount.name, plainText));
-          const dateUtc = fm.date ?? File.GetLastWriteTimeUtc(idxRoute.sourcePath);
-          dateString = dateUtc.ToString("O");
-          lastmodString = File.GetLastWriteTimeUtc(idxRoute.sourcePath).ToString("O");
+          const dateUtc = fm.date ?? statSync(idxRoute.sourcePath).mtime;
+          dateString = dateUtc.toISOString();
+          lastmodString = statSync(idxRoute.sourcePath).mtime.toISOString();
           file = new PageFile(Path.GetFullPath(idxRoute.sourcePath), dirKey === "" ? "" : dirKey + "/", "_index");
           params = fm.Params;
-          params.Remove("relPath");
-          params.Add("relPath", ParamValue.string(idxRoute.relPath));
+          params.set("relPath", ParamValue.string(idxRoute.relPath));
           const editUrl = computeEditUrl(mount, idxRoute.relPath);
           if (editUrl !== undefined) {
-            params.Remove("editURL");
-            params.Add("editURL", ParamValue.string(editUrl));
+            params.set("editURL", ParamValue.string(editUrl));
           }
         }
       }
 
-      params.Remove("mount");
-      params.Add("mount", ParamValue.string(mount.name));
-      params.Remove("mountPrefix");
-      params.Add("mountPrefix", ParamValue.string(mount.urlPrefix));
-      params.Remove("dirKey");
-      params.Add("dirKey", ParamValue.string(dirKey));
+      params.set("mount", ParamValue.string(mount.name));
+      params.set("mountPrefix", ParamValue.string(mount.urlPrefix));
+      params.set("dirKey", ParamValue.string(dirKey));
 
       const slug = dirSlug;
       const sectionCtx = new PageContext(
@@ -619,10 +611,8 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   if (chosenHome !== undefined) {
     for (let i = 0; i < mountRoots.length; i++) {
       const m = mountRoots[i]!;
-      let mountNameParam = ParamValue.string("");
-      m.Params.TryGetValue("mount", mountNameParam);
-      let mountPrefixParam = ParamValue.string("");
-      m.Params.TryGetValue("mountPrefix", mountPrefixParam);
+      const mountNameParam = m.Params.get("mount") ?? ParamValue.string("");
+      const mountPrefixParam = m.Params.get("mountPrefix") ?? ParamValue.string("");
       const mountName = mountNameParam.stringValue;
       const mountPrefix = mountPrefixParam.stringValue;
       if (mountName.toLowerCase() === chosenHome || mountPrefix.toLowerCase() === chosenHome) {
@@ -652,7 +642,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     homeDescription,
     emptyStrings,
     emptyStrings,
-    new Dictionary<string, ParamValue>(),
+    new Map<string, ParamValue>(),
     undefined,
     site.Language,
     emptyTranslations,

@@ -333,15 +333,8 @@ class TemplateRuntime {
 
       if (cur instanceof MenusValue) {
         const site = cur.site;
-        let entries: MenuEntry[] = [];
-        const hasMenu = site.Menus.TryGetValue(seg, entries);
-        if (hasMenu) {
-          cur = new MenuArrayValue(entries, site);
-        } else {
-          const lowerSeg = seg.toLowerCase();
-          const hasMenuLower = site.Menus.TryGetValue(lowerSeg, entries);
-          cur = hasMenuLower ? new MenuArrayValue(entries, site) : TemplateRuntime.nil;
-        }
+        const entries = site.Menus.get(seg) ?? site.Menus.get(seg.toLowerCase());
+        cur = entries !== undefined ? new MenuArrayValue(entries, site) : TemplateRuntime.nil;
         continue;
       }
 
@@ -448,28 +441,16 @@ class TemplateRuntime {
 
       if (cur instanceof TaxonomiesValue) {
         const site = cur.site;
-        let terms: Dictionary<string, PageContext[]> = new Dictionary<string, PageContext[]>();
-        const found = site.Taxonomies.TryGetValue(seg, terms);
-        if (found) {
-          cur = new TaxonomyTermsValue(terms, site);
-        } else {
-          const lowerSeg = seg.toLowerCase();
-          const foundLower = site.Taxonomies.TryGetValue(lowerSeg, terms);
-          cur = foundLower ? new TaxonomyTermsValue(terms, site) : TemplateRuntime.nil;
-        }
+        const terms = site.Taxonomies.get(seg) ?? site.Taxonomies.get(seg.toLowerCase());
+        cur = terms !== undefined ? new TaxonomyTermsValue(terms, site) : TemplateRuntime.nil;
         continue;
       }
 
       if (cur instanceof TaxonomyTermsValue) {
         const termsDict = cur.terms;
         const site = cur.site;
-        let pages: PageContext[] = [];
-        const found = termsDict.TryGetValue(seg, pages);
-        if (found) {
-          cur = new PageArrayValue(pages);
-        } else {
-          cur = TemplateRuntime.nil;
-        }
+        const pages = termsDict.get(seg) ?? termsDict.get(seg.toLowerCase());
+        cur = pages !== undefined ? new PageArrayValue(pages) : TemplateRuntime.nil;
         continue;
       }
 
@@ -675,18 +656,15 @@ class TemplateRuntime {
     return new DictValue(mapped);
   }
 
-  static wrapParamDict(dict: Dictionary<string, ParamValue>): DictValue {
+  static wrapParamDict(dict: Map<string, ParamValue>): DictValue {
     const mapped = new Dictionary<string, TemplateValue>();
-    const it = dict.GetEnumerator();
-    while (it.MoveNext()) {
-      const kv = it.Current;
-      const pv = kv.Value;
+    for (const [key, pv] of dict) {
       const kind = pv.kind;
       let tv: TemplateValue = new StringValue(pv.stringValue);
       if (kind === ParamKind.Bool) tv = new BoolValue(pv.boolValue);
       if (kind === ParamKind.Number) tv = new NumberValue(pv.numberValue);
-      mapped.Remove(kv.Key);
-      mapped.Add(kv.Key, tv);
+      mapped.Remove(key);
+      mapped.Add(key, tv);
     }
     return new DictValue(mapped);
   }

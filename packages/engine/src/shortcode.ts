@@ -1,11 +1,10 @@
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import type { int } from "@tsonic/core/types.js";
 import { indexOfText, indexOfTextFrom, lastIndexOfText, substringCount, substringFrom } from "./utils/strings.ts";
 import { ParamValue } from "./params.ts";
 
 export class ShortcodeCall {
   readonly name: string;
-  readonly params: Dictionary<string, ParamValue>;
+  readonly params: Map<string, ParamValue>;
   readonly positionalParams: string[];
   readonly isNamedParams: boolean;
   readonly inner: string;
@@ -16,7 +15,7 @@ export class ShortcodeCall {
 
   constructor(
     name: string,
-    params: Dictionary<string, ParamValue>,
+    params: Map<string, ParamValue>,
     positionalParams: string[],
     isNamedParams: boolean,
     inner: string,
@@ -152,9 +151,9 @@ const parseUnquotedValue = (state: ParseState): string => {
   return result;
 };
 
-const parseParams = (argsText: string): { params: Dictionary<string, ParamValue>; positional: string[]; isNamed: boolean } => {
-  const params = new Dictionary<string, ParamValue>();
-  const positional = new List<string>();
+const parseParams = (argsText: string): { params: Map<string, ParamValue>; positional: string[]; isNamed: boolean } => {
+  const params = new Map<string, ParamValue>();
+  const positional: string[] = [];
   let isNamed = false;
 
   const state = new ParseState(argsText.trim());
@@ -193,20 +192,19 @@ const parseParams = (argsText: string): { params: Dictionary<string, ParamValue>
       } else {
         value = parseUnquotedValue(state);
       }
-      params.Remove(key);
-      params.Add(key, ParamValue.parseScalar(value));
+      params.set(key, ParamValue.parseScalar(value));
     } else {
       if (key === "") {
         const q = state.peek(0);
         if (q === "\"" || q === "'") key = parseQuotedString(state);
       }
       if (key !== "") {
-        positional.Add(key);
+        positional.push(key);
       }
     }
   }
 
-  return { params, positional: positional.ToArray(), isNamed };
+  return { params, positional, isNamed };
 };
 
 const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: boolean): { inner: string; endPos: int } | undefined => {
@@ -246,7 +244,7 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
 };
 
 export const parseShortcodes = (text: string): ShortcodeCall[] => {
-  const results = new List<ShortcodeCall>();
+  const results: ShortcodeCall[] = [];
   let pos = 0;
 
   while (pos < text.length) {
@@ -330,7 +328,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         openPos,
         closePos + closeSuffix.length,
       );
-      results.Add(call);
+      results.push(call);
       pos = closePos + closeSuffix.length;
       continue;
     }
@@ -350,7 +348,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         openPos,
         closeResult.endPos,
       );
-      results.Add(call);
+      results.push(call);
       pos = closeResult.endPos;
     } else {
       const call = new ShortcodeCall(
@@ -364,12 +362,12 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         openPos,
         tagEndPos,
       );
-      results.Add(call);
+      results.push(call);
       pos = tagEndPos;
     }
   }
 
-  return results.ToArray();
+  return results;
 };
 
 export const innerDeindent = (inner: string): string => {
@@ -392,11 +390,11 @@ export const innerDeindent = (inner: string): string => {
 
   if (minIndent <= 0) return inner;
 
-  const result = new List<string>();
+  const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     if (line.trim() === "") {
-      result.Add(line);
+      result.push(line);
       continue;
     }
     let removed = 0;
@@ -413,10 +411,10 @@ export const innerDeindent = (inner: string): string => {
         break;
       }
     }
-    result.Add(substringFrom(line, startIdx));
+    result.push(substringFrom(line, startIdx));
   }
 
-  const arr = result.ToArray();
+  const arr = result;
   let out = "";
   for (let i = 0; i < arr.length; i++) {
     if (i > 0) out += "\n";

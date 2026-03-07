@@ -1,163 +1,180 @@
-import { Console } from "@tsonic/dotnet/System.js";
-import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { HttpListener, HttpListenerContext, HttpListenerResponse } from "@tsonic/dotnet/System.Net.js";
-import { ThreadPool } from "@tsonic/dotnet/System.Threading.js";
-import { FileSystemWatcher, WatcherChangeTypes } from "@tsonic/dotnet/System.IO.js";
-import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
-import { Encoding } from "@tsonic/dotnet/System.Text.js";
-import type { byte, char, int } from "@tsonic/core/types.js";
+import { readFileSync, statSync } from "node:fs";
+import type { Buffer } from "node:buffer";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { extname, resolve, sep } from "node:path";
+import type { int } from "@tsonic/core/types.js";
 import { buildSite } from "./build-site.ts";
 import { loadDocsConfig } from "./docs/config.ts";
+import { dirExists, fileExists, listFilesRecursive } from "./fs.ts";
 import { ServeRequest } from "./models.ts";
 import { contentTypeForPath } from "./utils/mime.ts";
 import { ensureTrailingSlash } from "./utils/text.ts";
-import { replaceText, trimStartChar } from "./utils/strings.ts";
 
 const logLine = (message: string): void => {
-  Console.WriteLine("{0}", message);
+  console.log(message);
 };
 
 const logErrorLine = (message: string): void => {
-  Console.Error.WriteLine("{0}", message);
+  console.error(message);
 };
 
-const sendText = (response: HttpListenerResponse, statusCode: int, contentType: string, body: string): void => {
-  response.StatusCode = statusCode;
-  response.ContentType = contentType;
-
-  const buffer = Encoding.UTF8.GetBytes(body);
-  const bufferLength = Encoding.UTF8.GetByteCount(body);
-  response.ContentLength64 = bufferLength;
-
-  const output = response.OutputStream;
-  output.Write(buffer, 0, bufferLength);
-  output.Close();
-  response.Close();
+const sendText = (response: ServerResponse, statusCode: int, contentType: string, body: string): void => {
+  response.statusCode = statusCode;
+  response.setHeader("Content-Type", contentType);
+  response.end(body);
 };
 
-const sendBytes = (response: HttpListenerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
-  response.StatusCode = statusCode;
-  response.ContentType = contentType;
-  response.ContentLength64 = bytes.length;
-  const output = response.OutputStream;
-  output.Write(bytes, 0, bytes.length);
-  output.Close();
-  response.Close();
+const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: Buffer): void => {
+  response.statusCode = statusCode;
+  response.setHeader("Content-Type", contentType);
+  response.end(bytes);
+};
+
+const isTextLikeContentType = (contentType: string): boolean => {
+  return (
+    contentType.startsWith("text/") ||
+    contentType.startsWith("application/json") ||
+    contentType.startsWith("application/xml") ||
+    contentType.endsWith("+xml")
+  );
+};
+
+const getRequestPath = (request: IncomingMessage): string => {
+  const raw = request.url ?? "/";
+  const queryIndex = raw.indexOf("?");
+  const hashIndex = raw.indexOf("#");
+  let end = raw.length;
+  if (queryIndex >= 0 && queryIndex < end) end = queryIndex;
+  if (hashIndex >= 0 && hashIndex < end) end = hashIndex;
+  const path = raw.substring(0, end);
+  return path === "" ? "/" : path;
+};
+
+const safeResolveUnderRoot = (rootDir: string, requestPath: string, suffix?: string): string | undefined => {
+  const rootFull = resolve(rootDir);
+  const prefix = rootFull.endsWith(sep) ? rootFull : rootFull + sep;
+  const candidate = suffix === undefined
+    ? resolve(rootFull, "." + requestPath)
+    : resolve(rootFull, "." + requestPath, suffix);
+  if (candidate !== rootFull && !candidate.startsWith(prefix)) {
+    return undefined;
+  }
+  return candidate;
 };
 
 const resolveRequestPath = (outDir: string, requestPath: string): string | undefined => {
-  const outFull = Path.GetFullPath(outDir);
-  const dirSeparator = `${Path.DirectorySeparatorChar}`;
-  const outPrefix = outFull.endsWith(dirSeparator) ? outFull : outFull + dirSeparator;
-  const slash = "/";
-  const rel = replaceText(
-    trimStartChar(requestPath, slash),
-    slash,
-    `${Path.DirectorySeparatorChar}`
-  );
-
-  if (rel === "" || requestPath.endsWith("/")) {
-    const p = Path.GetFullPath(Path.Combine(outFull, rel, "index.html"));
-    if (p.startsWith(outPrefix) && File.Exists(p)) return p;
-    return undefined;
+  if (requestPath === "/" || requestPath.endsWith("/")) {
+    const indexPath = safeResolveUnderRoot(outDir, requestPath, "index.html");
+    return indexPath !== undefined && fileExists(indexPath) ? indexPath : undefined;
   }
 
-  const direct = Path.GetFullPath(Path.Combine(outFull, rel));
-  if (direct.startsWith(outPrefix) && File.Exists(direct)) return direct;
+  const directPath = safeResolveUnderRoot(outDir, requestPath);
+  if (directPath !== undefined && fileExists(directPath)) {
+    return directPath;
+  }
 
-  if (!Path.HasExtension(rel)) {
-    const p = Path.GetFullPath(Path.Combine(outFull, rel, "index.html"));
-    if (p.startsWith(outPrefix) && File.Exists(p)) return p;
+  if (extname(requestPath) === "") {
+    const indexPath = safeResolveUnderRoot(outDir, requestPath, "index.html");
+    if (indexPath !== undefined && fileExists(indexPath)) {
+      return indexPath;
+    }
   }
 
   return undefined;
 };
 
-const handleRequest = (outDir: string, ctx: HttpListenerContext): void => {
-  const request = ctx.Request;
-  const response = ctx.Response;
-  const url = request.Url;
-  if (url === undefined) {
-    sendText(response, 400, "text/plain; charset=utf-8", "Bad Request");
-    return;
-  }
-
-  const path = url.AbsolutePath;
-  const filePath = resolveRequestPath(outDir, path);
+const handleRequest = (outDir: string, request: IncomingMessage, response: ServerResponse): void => {
+  const requestPath = getRequestPath(request);
+  const filePath = resolveRequestPath(outDir, requestPath);
   if (filePath === undefined) {
     sendText(response, 404, "text/plain; charset=utf-8", "Not Found");
     return;
   }
 
-  const ct = contentTypeForPath(filePath);
-  if (ct.startsWith("text/") || ct.startsWith("application/json") || ct.startsWith("application/xml")) {
-    const body = File.ReadAllText(filePath);
-    sendText(response, 200, ct, body);
+  const contentType = contentTypeForPath(filePath);
+  if (isTextLikeContentType(contentType)) {
+    sendText(response, 200, contentType, readFileSync(filePath, "utf-8"));
     return;
   }
 
-  const bytes = File.ReadAllBytes(filePath);
-  sendBytes(response, 200, ct, bytes);
+  sendBytes(response, 200, contentType, readFileSync(filePath));
 };
 
-const createWatcher = (path: string, filter: string, includeSubdirectories: boolean): FileSystemWatcher | undefined => {
-  if (!Directory.Exists(path)) return undefined;
-  const w = new FileSystemWatcher(path);
-  w.IncludeSubdirectories = includeSubdirectories;
-  w.Filter = filter;
-  w.EnableRaisingEvents = true;
-  return w;
-};
-
-const watchLoop = (req: ServeRequest, outDir: string): void => {
-  const siteDir = Path.GetFullPath(req.siteDir);
-  const watchers = new List<FileSystemWatcher>();
-
+const collectWatchTargets = (req: ServeRequest): string[] => {
+  const siteDir = resolve(req.siteDir);
+  const targets: string[] = [];
   const docsConfig = loadDocsConfig(siteDir);
 
   if (docsConfig === undefined) {
-    const content = createWatcher(Path.Combine(siteDir, "content"), "*.*", true);
-    if (content !== undefined) watchers.Add(content);
-    const archetypes = createWatcher(Path.Combine(siteDir, "archetypes"), "*.*", true);
-    if (archetypes !== undefined) watchers.Add(archetypes);
+    targets.push(resolve(siteDir, "content"));
+    targets.push(resolve(siteDir, "archetypes"));
   } else {
     const mounts = docsConfig.config.mounts;
     for (let i = 0; i < mounts.length; i++) {
-      const m = mounts[i]!;
-      const w = createWatcher(m.sourceDir, "*.*", true);
-      if (w !== undefined) watchers.Add(w);
+      targets.push(resolve(mounts[i]!.sourceDir));
     }
-    const docsCfg = createWatcher(siteDir, "tsumo.docs.json", false);
-    if (docsCfg !== undefined) watchers.Add(docsCfg);
+    targets.push(resolve(siteDir, "tsumo.docs.json"));
   }
 
-  const layouts = createWatcher(Path.Combine(siteDir, "layouts"), "*.*", true);
-  if (layouts !== undefined) watchers.Add(layouts);
-  const staticDir = createWatcher(Path.Combine(siteDir, "static"), "*.*", true);
-  if (staticDir !== undefined) watchers.Add(staticDir);
+  targets.push(resolve(siteDir, "layouts"));
+  targets.push(resolve(siteDir, "static"));
+  return targets;
+};
 
-  const watcherArr = watchers.ToArray();
-  if (watcherArr.length === 0) return;
+const createWatchSnapshot = (targets: string[]): Map<string, number> => {
+  const snapshot = new Map<string, number>();
 
-  while (true) {
-    let changed = false;
-    for (let i = 0; i < watcherArr.length; i++) {
-      const res = watcherArr[i]!.WaitForChanged(WatcherChangeTypes.All, 250);
-      if (!res.TimedOut) {
-        changed = true;
-        break;
-      }
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i]!;
+    if (fileExists(target)) {
+      snapshot.set(target, statSync(target).mtimeMs);
+      continue;
+    }
+    if (!dirExists(target)) {
+      continue;
     }
 
-    if (!changed) continue;
+    const files = listFilesRecursive(target, "*");
+    for (let j = 0; j < files.length; j++) {
+      const filePath = files[j]!;
+      snapshot.set(filePath, statSync(filePath).mtimeMs);
+    }
+  }
 
+  return snapshot;
+};
+
+const snapshotsEqual = (left: Map<string, number>, right: Map<string, number>): boolean => {
+  if (left.size !== right.size) return false;
+  for (const [filePath, stamp] of left.entries()) {
+    if (right.get(filePath) !== stamp) return false;
+  }
+  return true;
+};
+
+const startWatchLoop = (req: ServeRequest, onRebuild: (outputDir: string) => void): void => {
+  const targets = collectWatchTargets(req);
+  let snapshot = createWatchSnapshot(targets);
+  let rebuilding = false;
+
+  setInterval(() => {
+    if (rebuilding) return;
+
+    const next = createWatchSnapshot(targets);
+    if (snapshotsEqual(snapshot, next)) return;
+
+    snapshot = next;
+    rebuilding = true;
     try {
-      buildSite(req);
-      logLine(`[tsumo] rebuilt → ${outDir}`);
+      const result = buildSite(req);
+      onRebuild(result.outputDir);
+      logLine(`[tsumo] rebuilt → ${result.outputDir}`);
     } catch {
       logErrorLine("[tsumo] rebuild failed");
+    } finally {
+      rebuilding = false;
     }
-  }
+  }, 250 as int);
 };
 
 export const serveSite = (req: ServeRequest): void => {
@@ -169,29 +186,26 @@ export const serveSite = (req: ServeRequest): void => {
     req.baseURL = ensureTrailingSlash(prefix);
   }
 
-  const result = buildSite(req);
+  let outputDir = buildSite(req).outputDir;
 
-  const listener = new HttpListener();
-  listener.Prefixes.Add(prefix);
-  listener.Start();
+  const server = createServer((request: IncomingMessage, response: ServerResponse) => {
+    handleRequest(outputDir, request, response);
+  });
 
-  logLine("");
-  logLine("=================================");
-  logLine("  tsumo server");
-  logLine(`  Serving: ${result.outputDir}`);
-  logLine(`  URL: ${prefix}`);
-  logLine("=================================");
-  logLine("");
-  logLine("Press Ctrl+C to stop");
+  server.listen(port, host, () => {
+    logLine("");
+    logLine("=================================");
+    logLine("  tsumo server");
+    logLine(`  Serving: ${outputDir}`);
+    logLine(`  URL: ${prefix}`);
+    logLine("=================================");
+    logLine("");
+    logLine("Press Ctrl+C to stop");
+  });
 
   if (req.watch) {
-    ThreadPool.QueueUserWorkItem((_state: unknown) => watchLoop(req, result.outputDir));
-  }
-
-  while (true) {
-    const ctx = listener.GetContext();
-    ThreadPool.QueueUserWorkItem((_state: unknown) =>
-      handleRequest(result.outputDir, ctx)
-    );
+    startWatchLoop(req, (rebuiltOutputDir: string) => {
+      outputDir = rebuiltOutputDir;
+    });
   }
 };

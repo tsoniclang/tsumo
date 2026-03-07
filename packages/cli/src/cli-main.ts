@@ -1,5 +1,4 @@
-import { Environment } from "@tsonic/dotnet/System.js";
-import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
+import { process } from "node:process";
 import type { int } from "@tsonic/core/types.js";
 
 import { logErrorLine } from "./log-error-line.ts";
@@ -12,10 +11,7 @@ import { handleServe } from "./commands/handle-serve.ts";
 const VERSION = "0.0.0";
 
 export function main(): void {
-  const argv = Environment.GetCommandLineArgs();
-  const argsList = new List<string>();
-  for (let i = 1; i < argv.length; i++) argsList.Add(argv[i]!);
-  const args = argsList.ToArray();
+  const args = process.argv.slice(2);
 
   const first = args.length > 0 ? args[0]! : "";
   if (first === "-h" || first === "--help" || first === "help") {
@@ -45,7 +41,7 @@ export function main(): void {
   } else {
     logErrorLine(`Unknown command: ${cmd}`);
     printUsage();
-    Environment.ExitCode = 2;
+    process.exitCode = 2;
     return;
   }
 

@@ -1,4 +1,4 @@
-import { Environment } from "@tsonic/dotnet/System.js";
+import { process } from "node:process";
 import type { int } from "@tsonic/core/types.js";
 
 import { BuildRequest, buildSite } from "@tsumo/engine/Tsumo.Engine.js";
@@ -6,7 +6,7 @@ import { BuildRequest, buildSite } from "@tsumo/engine/Tsumo.Engine.js";
 import { logLine } from "../log-line.ts";
 
 export const handleBuild = (args: readonly string[], buildArgStart: int): void => {
-  let buildSourceDir = Environment.CurrentDirectory;
+  let buildSourceDir = process.cwd();
   let buildDestinationDir = "public";
   let buildBaseURL: string | undefined = undefined;
   let buildThemesDir: string | undefined = undefined;

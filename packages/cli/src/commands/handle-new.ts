@@ -1,4 +1,4 @@
-import { Environment } from "@tsonic/dotnet/System.js";
+import { process } from "node:process";
 
 import { initSite, newContent } from "@tsumo/engine/Tsumo.Engine.scaffold.js";
 
@@ -9,7 +9,7 @@ export const handleNew = (args: readonly string[]): void => {
   if (args.length >= 2 && args[1] === "site") {
     if (args.length < 3) {
       logErrorLine("Missing <dir> for `tsumo new site`");
-      Environment.ExitCode = 2;
+      process.exitCode = 2;
       return;
     }
     const dir = args[2]!;
@@ -20,11 +20,11 @@ export const handleNew = (args: readonly string[]): void => {
 
   if (args.length < 2) {
     logErrorLine("Missing <path.md> for `tsumo new`");
-    Environment.ExitCode = 2;
+    process.exitCode = 2;
     return;
   }
 
-  let contentSourceDir = Environment.CurrentDirectory;
+  let contentSourceDir = process.cwd();
   for (let i = 2; i < args.length; i++) {
     const a = args[i]!;
     if ((a === "--source" || a === "-s") && i + 1 < args.length) {

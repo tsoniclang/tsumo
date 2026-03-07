@@ -66,6 +66,8 @@ public-aot/
 libs/*.pdb
 libs/*.deps.json
 libs/*.runtimeconfig.json
+libs/Tsonic.JSRuntime.dll
+libs/nodejs.dll
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

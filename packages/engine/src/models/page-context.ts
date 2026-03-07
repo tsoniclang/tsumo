@@ -1,4 +1,3 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { HtmlString } from "../utils/html.ts";
 import { ParamValue } from "../params.ts";
 import { LanguageContext } from "./language.ts";
@@ -22,7 +21,7 @@ export class PageContext {
   readonly description: string;
   readonly tags: string[];
   readonly categories: string[];
-  readonly Params: Dictionary<string, ParamValue>;
+  readonly Params: Map<string, ParamValue>;
   readonly File: PageFile | undefined;
   readonly Language: LanguageContext;
   readonly Translations: PageContext[];
@@ -50,7 +49,7 @@ export class PageContext {
     description: string,
     tags: string[],
     categories: string[],
-    Params: Dictionary<string, ParamValue>,
+    Params: Map<string, ParamValue>,
     file: PageFile | undefined,
     language: LanguageContext,
     translations: PageContext[],

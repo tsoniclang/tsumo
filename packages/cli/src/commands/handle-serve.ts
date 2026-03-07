@@ -1,4 +1,4 @@
-import { Environment } from "@tsonic/dotnet/System.js";
+import { process } from "node:process";
 import type { int } from "@tsonic/core/types.js";
 
 import { ServeRequest, serveSite } from "@tsumo/engine/Tsumo.Engine.js";
@@ -7,7 +7,7 @@ import { logErrorLine } from "../log-error-line.ts";
 import { parseIntArg } from "../parse-int.ts";
 
 export const handleServe = (args: readonly string[]): void => {
-  let serveSourceDir = Environment.CurrentDirectory;
+  let serveSourceDir = process.cwd();
   let serveDestinationDir = "public";
   let serveBaseURL: string | undefined = undefined;
   let serveThemesDir: string | undefined = undefined;
@@ -39,7 +39,7 @@ export const handleServe = (args: readonly string[]): void => {
       const p = parseIntArg(portText);
       if (p === undefined) {
         logErrorLine(`Invalid port: ${portText}`);
-        Environment.ExitCode = 2;
+        process.exitCode = 2;
         return;
       }
       servePort = p;

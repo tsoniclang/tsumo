@@ -1,4 +1,3 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { ParamValue } from "../params.ts";
 import type { DocsMountContext } from "../docs/models.ts";
 import { LanguageConfig, LanguageContext } from "./language.ts";
@@ -16,9 +15,9 @@ export class SiteContext {
   readonly Languages: LanguageContext[];
   readonly IsMultiLingual: boolean;
   readonly LanguagePrefix: string;
-  readonly Params: Dictionary<string, ParamValue>;
-  readonly Menus: Dictionary<string, MenuEntry[]>;
-  readonly Taxonomies: Dictionary<string, Dictionary<string, PageContext[]>>;
+  readonly Params: Map<string, ParamValue>;
+  readonly Menus: Map<string, MenuEntry[]>;
+  readonly Taxonomies: Map<string, Map<string, PageContext[]>>;
   readonly store: object | undefined;
   pages: PageContext[];
   allPages: PageContext[];
@@ -60,7 +59,7 @@ export class SiteContext {
 
     this.Params = config.Params;
     this.Menus = config.Menus;
-    this.Taxonomies = new Dictionary<string, Dictionary<string, PageContext[]>>();
+    this.Taxonomies = new Map<string, Map<string, PageContext[]>>();
     this.store = undefined;
     this.pages = pages;
     this.allPages = pages;

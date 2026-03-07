@@ -1,12 +1,15 @@
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { JsonDocument, JsonValueKind } from "@tsonic/dotnet/System.Text.Json.js";
 import type { int } from "@tsonic/core/types.js";
 import { LanguageConfig, MenuEntry, SiteConfig } from "../models.ts";
 import { ensureTrailingSlash } from "../utils/text.ts";
+import { toInt32 } from "../utils/int32.ts";
 import { ParamValue } from "../params.ts";
 import { buildMenuHierarchy } from "../menus.ts";
 import { MenuEntryBuilder } from "./builders.ts";
 import { sortLanguages } from "./helpers.ts";
+
+const isObject = (value: unknown): value is Record<string, unknown> => {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+};
 
 export const parseJsonConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
@@ -15,160 +18,142 @@ export const parseJsonConfig = (text: string): SiteConfig => {
   let contentDir = "content";
   let theme: string | undefined = undefined;
   let copyright: string | undefined = undefined;
-  const params = new Dictionary<string, ParamValue>();
-  const languages = new List<LanguageConfig>();
-  const menuBuilders = new Dictionary<string, List<MenuEntryBuilder>>();
+  const params = new Map<string, ParamValue>();
+  const languages: LanguageConfig[] = [];
+  const menuBuilders = new Map<string, MenuEntryBuilder[]>();
   let hasLanguageCode = false;
 
-  const doc = JsonDocument.Parse(text);
-  const root = doc.RootElement;
+  const root = JSON.parse(text);
+  if (isObject(root)) {
+    const props = Object.entries(root);
+    for (let i = 0; i < props.length; i++) {
+      const [keyRaw, value] = props[i]!;
+      const key = keyRaw.toLowerCase();
 
-  if (root.ValueKind === JsonValueKind.Object) {
-    const props = root.EnumerateObject().GetEnumerator();
-    while (props.MoveNext()) {
-      const p = props.Current;
-      const key = p.Name.toLowerCase();
-      const v = p.Value;
-
-      if (key === "title" && v.ValueKind === JsonValueKind.String) {
-        title = v.GetString() ?? title;
+      if (key === "title" && typeof value === "string") {
+        title = value;
         continue;
       }
-      if (key === "baseurl" && v.ValueKind === JsonValueKind.String) {
-        baseURL = v.GetString() ?? baseURL;
+      if (key === "baseurl" && typeof value === "string") {
+        baseURL = value;
         continue;
       }
-      if (key === "languagecode" && v.ValueKind === JsonValueKind.String) {
-        languageCode = v.GetString() ?? languageCode;
+      if (key === "languagecode" && typeof value === "string") {
+        languageCode = value;
         hasLanguageCode = true;
         continue;
       }
-      if (key === "contentdir" && v.ValueKind === JsonValueKind.String) {
-        contentDir = v.GetString() ?? contentDir;
+      if (key === "contentdir" && typeof value === "string") {
+        contentDir = value;
         continue;
       }
-      if (key === "theme" && v.ValueKind === JsonValueKind.String) {
-        theme = v.GetString();
+      if (key === "theme" && typeof value === "string") {
+        theme = value;
         continue;
       }
-      if (key === "copyright" && v.ValueKind === JsonValueKind.String) {
-        copyright = v.GetString();
+      if (key === "copyright" && typeof value === "string") {
+        copyright = value;
         continue;
       }
-      if (key === "params" && v.ValueKind === JsonValueKind.Object) {
-        const pp = v.EnumerateObject().GetEnumerator();
-        while (pp.MoveNext()) {
-          const prop = pp.Current;
-          const val = prop.Value;
-          if (val.ValueKind === JsonValueKind.String) {
-            const s = val.GetString();
-            if (s !== undefined) {
-              params.Remove(prop.Name);
-              params.Add(prop.Name, ParamValue.string(s));
+      if (key === "params" && isObject(value)) {
+        const paramEntries = Object.entries(value);
+        for (let j = 0; j < paramEntries.length; j++) {
+          const [paramName, paramValue] = paramEntries[j]!;
+          if (typeof paramValue === "string") params.set(paramName, ParamValue.string(paramValue));
+          else if (typeof paramValue === "boolean") params.set(paramName, ParamValue.bool(paramValue));
+          else if (typeof paramValue === "number") {
+            const narrowed = toInt32(paramValue);
+            if (narrowed !== undefined) {
+              params.set(paramName, ParamValue.number(narrowed));
             }
-          } else if (val.ValueKind === JsonValueKind.True || val.ValueKind === JsonValueKind.False) {
-            params.Remove(prop.Name);
-            params.Add(prop.Name, ParamValue.bool(val.GetBoolean()));
-          } else if (val.ValueKind === JsonValueKind.Number) {
-            params.Remove(prop.Name);
-            params.Add(prop.Name, ParamValue.number(val.GetInt32()));
           }
         }
+        continue;
       }
 
-      if (key === "languages" && v.ValueKind === JsonValueKind.Object) {
-        const lp = v.EnumerateObject().GetEnumerator();
-        while (lp.MoveNext()) {
-          const langProp = lp.Current;
-          if (langProp.Value.ValueKind !== JsonValueKind.Object) continue;
-          const lang = langProp.Name;
+      if (key === "languages" && isObject(value)) {
+        const languageEntries = Object.entries(value);
+        for (let j = 0; j < languageEntries.length; j++) {
+          const [lang, rawConfig] = languageEntries[j]!;
+          if (!isObject(rawConfig)) continue;
 
           let languageName = lang;
           let languageDirection = "ltr";
           let langContentDir = `content.${lang}`;
           let weight: int = 0;
 
-          const cfgProps = langProp.Value.EnumerateObject().GetEnumerator();
-          while (cfgProps.MoveNext()) {
-            const c = cfgProps.Current;
-            const ck = c.Name.toLowerCase();
-            const cv = c.Value;
-            if (ck === "languagename" && cv.ValueKind === JsonValueKind.String) languageName = cv.GetString() ?? languageName;
-            else if (ck === "languagedirection" && cv.ValueKind === JsonValueKind.String) languageDirection = cv.GetString() ?? languageDirection;
-            else if (ck === "contentdir" && cv.ValueKind === JsonValueKind.String) langContentDir = cv.GetString() ?? langContentDir;
-            else if (ck === "weight" && cv.ValueKind === JsonValueKind.Number) weight = cv.GetInt32();
+          const configEntries = Object.entries(rawConfig);
+          for (let k = 0; k < configEntries.length; k++) {
+            const [configKeyRaw, configValue] = configEntries[k]!;
+            const configKey = configKeyRaw.toLowerCase();
+            if (configKey === "languagename" && typeof configValue === "string") languageName = configValue;
+            else if (configKey === "languagedirection" && typeof configValue === "string") languageDirection = configValue;
+            else if (configKey === "contentdir" && typeof configValue === "string") langContentDir = configValue;
+            else if (configKey === "weight" && typeof configValue === "number") {
+              const narrowed = toInt32(configValue);
+              if (narrowed !== undefined) {
+                weight = narrowed;
+              }
+            }
           }
 
-          languages.Add(new LanguageConfig(lang, languageName, languageDirection, langContentDir, weight));
+          languages.push(new LanguageConfig(lang, languageName, languageDirection, langContentDir, weight));
         }
+        continue;
       }
 
-      // Parse menu entries
-      if (key === "menu" && v.ValueKind === JsonValueKind.Object) {
-        const menuProps = v.EnumerateObject().GetEnumerator();
-        while (menuProps.MoveNext()) {
-          const menuProp = menuProps.Current;
-          const menuName = menuProp.Name;
-          if (menuProp.Value.ValueKind !== JsonValueKind.Array) continue;
+      if (key === "menu" && isObject(value)) {
+        const menuEntries = Object.entries(value);
+        for (let j = 0; j < menuEntries.length; j++) {
+          const [menuName, rawItems] = menuEntries[j]!;
+          if (!Array.isArray(rawItems)) continue;
+          const items = rawItems as unknown[];
 
-          let entries = new List<MenuEntryBuilder>();
-          const hasMenu = menuBuilders.TryGetValue(menuName, entries);
-          if (!hasMenu) {
-            entries = new List<MenuEntryBuilder>();
-            menuBuilders.Remove(menuName);
-            menuBuilders.Add(menuName, entries);
-          }
-
-          const menuItems = menuProp.Value.EnumerateArray().GetEnumerator();
-          while (menuItems.MoveNext()) {
-            const item = menuItems.Current;
-            if (item.ValueKind !== JsonValueKind.Object) continue;
+          const entries = menuBuilders.get(menuName) ?? [];
+          for (let k = 0; k < items.length; k++) {
+            const item = items[k];
+            if (!isObject(item)) continue;
 
             const builder = new MenuEntryBuilder(menuName);
-            const itemProps = item.EnumerateObject().GetEnumerator();
-            while (itemProps.MoveNext()) {
-              const ip = itemProps.Current;
-              const ik = ip.Name.toLowerCase();
-              const iv = ip.Value;
-              if (ik === "name" && iv.ValueKind === JsonValueKind.String) builder.name = iv.GetString() ?? "";
-              else if (ik === "url" && iv.ValueKind === JsonValueKind.String) builder.url = iv.GetString() ?? "";
-              else if (ik === "pageref" && iv.ValueKind === JsonValueKind.String) builder.pageRef = iv.GetString() ?? "";
-              else if (ik === "title" && iv.ValueKind === JsonValueKind.String) builder.title = iv.GetString() ?? "";
-              else if (ik === "parent" && iv.ValueKind === JsonValueKind.String) builder.parent = iv.GetString() ?? "";
-              else if (ik === "identifier" && iv.ValueKind === JsonValueKind.String) builder.identifier = iv.GetString() ?? "";
-              else if (ik === "pre" && iv.ValueKind === JsonValueKind.String) builder.pre = iv.GetString() ?? "";
-              else if (ik === "post" && iv.ValueKind === JsonValueKind.String) builder.post = iv.GetString() ?? "";
-              else if (ik === "weight" && iv.ValueKind === JsonValueKind.Number) builder.weight = iv.GetInt32();
+            const itemEntries = Object.entries(item);
+            for (let m = 0; m < itemEntries.length; m++) {
+              const [itemKeyRaw, itemValue] = itemEntries[m]!;
+              const itemKey = itemKeyRaw.toLowerCase();
+              if (itemKey === "name" && typeof itemValue === "string") builder.name = itemValue;
+              else if (itemKey === "url" && typeof itemValue === "string") builder.url = itemValue;
+              else if (itemKey === "pageref" && typeof itemValue === "string") builder.pageRef = itemValue;
+              else if (itemKey === "title" && typeof itemValue === "string") builder.title = itemValue;
+              else if (itemKey === "parent" && typeof itemValue === "string") builder.parent = itemValue;
+              else if (itemKey === "identifier" && typeof itemValue === "string") builder.identifier = itemValue;
+              else if (itemKey === "pre" && typeof itemValue === "string") builder.pre = itemValue;
+              else if (itemKey === "post" && typeof itemValue === "string") builder.post = itemValue;
+              else if (itemKey === "weight" && typeof itemValue === "number") {
+                const narrowed = toInt32(itemValue);
+                if (narrowed !== undefined) {
+                  builder.weight = narrowed;
+                }
+              }
             }
-            entries.Add(builder);
+            entries.push(builder);
           }
+
+          menuBuilders.set(menuName, entries);
         }
       }
     }
   }
 
-  doc.Dispose();
-
-  // Build menus
-  const menus = new Dictionary<string, MenuEntry[]>();
-  const menuKeysIt = menuBuilders.Keys.GetEnumerator();
-  while (menuKeysIt.MoveNext()) {
-    const menuName = menuKeysIt.Current;
-    let builders = new List<MenuEntryBuilder>();
-    const hasBuilders = menuBuilders.TryGetValue(menuName, builders);
-    if (hasBuilders) {
-      const entries = new List<MenuEntry>();
-      const buildersArr = builders.ToArray();
-      for (let i = 0; i < buildersArr.length; i++) entries.Add(buildersArr[i]!.toEntry());
-      menus.Remove(menuName);
-      menus.Add(menuName, buildMenuHierarchy(entries.ToArray()));
-    }
+  const menus = new Map<string, MenuEntry[]>();
+  for (const [menuName, builders] of menuBuilders) {
+    const entries: MenuEntry[] = [];
+    for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
+    menus.set(menuName, buildMenuHierarchy(entries));
   }
 
   const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
   config.contentDir = contentDir;
-  if (languages.Count > 0) {
-    config.languages = sortLanguages(languages.ToArray());
+  if (languages.length > 0) {
+    config.languages = sortLanguages(languages);
     const selected = config.languages[0]!;
     config.contentDir = selected.contentDir;
     if (!hasLanguageCode) config.languageCode = selected.lang;
