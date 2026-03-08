@@ -1,5 +1,3 @@
-import { Char } from "@tsonic/dotnet/System.js";
-import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { char } from "@tsonic/core/types.js";
 import { replaceText, substringCount, trimEndChar, toChars } from "./strings.ts";
 
@@ -9,54 +7,54 @@ const wordSeparatorUnderscore: char = "_";
 const wordSeparatorDot: char = ".";
 const wordSeparatorSlash: char = "/";
 
-const isWordSeparator = (ch: char): boolean =>
-  ch === wordSeparatorSpace ||
-  ch === wordSeparatorDash ||
-  ch === wordSeparatorUnderscore ||
-  ch === wordSeparatorDot ||
-  ch === wordSeparatorSlash;
+const isWordSeparator = (ch: char): boolean => {
+  return (
+    ch === wordSeparatorSpace ||
+    ch === wordSeparatorDash ||
+    ch === wordSeparatorUnderscore ||
+    ch === wordSeparatorDot ||
+    ch === wordSeparatorSlash
+  );
+};
 
 export const slugify = (input: string): string => {
   const lower = input.trim().toLowerCase();
   const chars = toChars(lower);
-  const sb = new StringBuilder();
+  const output: string[] = [];
   let wroteDash = false;
 
   for (let i = 0; i < chars.length; i++) {
     const ch = chars[i]!;
-    if (Char.IsLetterOrDigit(ch)) {
-      sb.Append(ch);
+    const isAlphaNumeric = /^[a-z0-9]$/i.test(ch);
+    if (isAlphaNumeric) {
+      output.push(ch);
       wroteDash = false;
       continue;
     }
-    if (isWordSeparator(ch)) {
-      if (sb.Length > 0 && !wroteDash) {
-        sb.Append(wordSeparatorDash);
-        wroteDash = true;
-      }
+    if (isWordSeparator(ch) && output.length > 0 && !wroteDash) {
+      output.push(wordSeparatorDash);
+      wroteDash = true;
     }
   }
 
-  let out = sb.ToString();
+  let out = output.join("");
   while (out.startsWith("-")) out = out.substring(1);
-  out = trimEndChar(out, "-");
-  return out;
+  return trimEndChar(out, "-");
 };
 
 export const humanizeSlug = (slug: string): string => {
   const parts = replaceText(replaceText(slug, "_", "-"), ".", "-").split("-");
+  const words: string[] = [];
 
-  const words = new StringBuilder();
   for (let i = 0; i < parts.length; i++) {
     const partRaw = parts[i];
     if (partRaw === undefined) continue;
     const part = partRaw.trim();
     if (part === "") continue;
-    const w = substringCount(part, 0, 1).toUpperCase() + part.substring(1);
-    if (words.Length > 0) words.Append(" ");
-    words.Append(w);
+    words.push(substringCount(part, 0, 1).toUpperCase() + part.substring(1));
   }
-  return words.ToString();
+
+  return words.join(" ");
 };
 
 export const ensureTrailingSlash = (url: string): string => {

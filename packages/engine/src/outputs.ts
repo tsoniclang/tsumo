@@ -1,5 +1,3 @@
-import { DateTime } from "@tsonic/dotnet/System.js";
-import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { PageContext, SiteConfig } from "./models.ts";
 import { escapeHtml } from "./utils/html.ts";
 import { replaceText, substringFrom } from "./utils/strings.ts";
@@ -17,82 +15,60 @@ const escapeXml = (value: string): string => escapeHtml(value);
 
 const wrapCdata = (raw: string): string => "<![CDATA[" + replaceText(raw, "]]>", "]]]]><![CDATA[>") + "]]>";
 
+const parsePageDate = (value: string, fallback: Date): Date => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+};
+
 export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
-  const now = DateTime.UtcNow;
-  const sb = new StringBuilder();
-  sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
-  sb.Append("<rss version=\"2.0\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">\n");
-  sb.Append("<channel>\n");
-  sb.Append("<title>");
-  sb.Append(escapeXml(config.title));
-  sb.Append("</title>\n");
-  sb.Append("<link>");
-  sb.Append(escapeXml(toAbsoluteUrl(config.baseURL, "/")));
-  sb.Append("</link>\n");
-  sb.Append("<description>");
-  sb.Append(escapeXml(config.title));
-  sb.Append("</description>\n");
-  sb.Append("<language>");
-  sb.Append(escapeXml(config.languageCode));
-  sb.Append("</language>\n");
-  sb.Append("<lastBuildDate>");
-  sb.Append(now.ToString("r"));
-  sb.Append("</lastBuildDate>\n");
-  sb.Append("<generator>tsumo</generator>\n");
+  const now = new Date();
+  const out: string[] = [
+    "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
+    "<rss version=\"2.0\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">",
+    "<channel>",
+    `<title>${escapeXml(config.title)}</title>`,
+    `<link>${escapeXml(toAbsoluteUrl(config.baseURL, "/"))}</link>`,
+    `<description>${escapeXml(config.title)}</description>`,
+    `<language>${escapeXml(config.languageCode)}</language>`,
+    `<lastBuildDate>${now.toISOString()}</lastBuildDate>`,
+    "<generator>tsumo</generator>",
+  ];
 
   for (let i = 0; i < pages.length; i++) {
-    const p = pages[i]!;
-    const link = toAbsoluteUrl(config.baseURL, p.relPermalink);
-    let parsed: DateTime = DateTime.MinValue;
-    const ok = DateTime.TryParse(p.date, parsed);
-    const pub = ok ? parsed : now;
+    const page = pages[i]!;
+    const link = toAbsoluteUrl(config.baseURL, page.relPermalink);
+    const pubDate = parsePageDate(page.date, now).toISOString();
 
-    sb.Append("<item>\n");
-    sb.Append("<title>");
-    sb.Append(escapeXml(p.title));
-    sb.Append("</title>\n");
-    sb.Append("<link>");
-    sb.Append(escapeXml(link));
-    sb.Append("</link>\n");
-    sb.Append("<guid isPermaLink=\"true\">");
-    sb.Append(escapeXml(link));
-    sb.Append("</guid>\n");
-    sb.Append("<pubDate>");
-    sb.Append(pub.ToString("r"));
-    sb.Append("</pubDate>\n");
-    sb.Append("<description>");
-    sb.Append(wrapCdata(p.summary.value));
-    sb.Append("</description>\n");
-    sb.Append("<content:encoded>");
-    sb.Append(wrapCdata(p.content.value));
-    sb.Append("</content:encoded>\n");
-    sb.Append("</item>\n");
+    out.push("<item>");
+    out.push(`<title>${escapeXml(page.title)}</title>`);
+    out.push(`<link>${escapeXml(link)}</link>`);
+    out.push(`<guid isPermaLink="true">${escapeXml(link)}</guid>`);
+    out.push(`<pubDate>${pubDate}</pubDate>`);
+    out.push(`<description>${wrapCdata(page.summary.value)}</description>`);
+    out.push(`<content:encoded>${wrapCdata(page.content.value)}</content:encoded>`);
+    out.push("</item>");
   }
 
-  sb.Append("</channel>\n");
-  sb.Append("</rss>\n");
-  return sb.ToString();
+  out.push("</channel>");
+  out.push("</rss>");
+  return out.join("\n") + "\n";
 };
 
 export const renderSitemap = (config: SiteConfig, relPermalinks: string[]): string => {
-  const now = DateTime.UtcNow.ToString("O");
-  const sb = new StringBuilder();
-  sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
-  sb.Append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
+  const now = new Date().toISOString();
+  const out: string[] = [
+    "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
+    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+  ];
+
   for (let i = 0; i < relPermalinks.length; i++) {
     const rel = relPermalinks[i]!;
     const loc = toAbsoluteUrl(config.baseURL, rel);
-    sb.Append("<url>");
-    sb.Append("<loc>");
-    sb.Append(escapeXml(loc));
-    sb.Append("</loc>");
-    sb.Append("<lastmod>");
-    sb.Append(now);
-    sb.Append("</lastmod>");
-    sb.Append("</url>\n");
+    out.push(`<url><loc>${escapeXml(loc)}</loc><lastmod>${now}</lastmod></url>`);
   }
-  sb.Append("</urlset>\n");
-  return sb.ToString();
+
+  out.push("</urlset>");
+  return out.join("\n") + "\n";
 };
 
 export const renderRobotsTxt = (config: SiteConfig): string => {

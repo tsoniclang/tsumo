@@ -1,4 +1,3 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import type { int } from "@tsonic/core/types.js";
 import { LanguageConfig, MenuEntry } from "../models.ts";
 import { ParamValue } from "../params.ts";
@@ -14,7 +13,7 @@ export class MenuEntryBuilder {
   pre: string;
   post: string;
   menu: string;
-  params: Dictionary<string, ParamValue>;
+  params: Map<string, ParamValue>;
 
   constructor(menu: string) {
     this.name = "";
@@ -27,7 +26,7 @@ export class MenuEntryBuilder {
     this.pre = "";
     this.post = "";
     this.menu = menu;
-    this.params = new Dictionary<string, ParamValue>();
+    this.params = new Map<string, ParamValue>();
   }
 
   toEntry(): MenuEntry {

@@ -1,4 +1,3 @@
-import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { LanguageConfig } from "../models.ts";
 import { fileExists } from "../fs.ts";
 import { substringCount } from "../utils/strings.ts";
@@ -20,8 +19,5 @@ export const unquote = (value: string): string => {
 };
 
 export const sortLanguages = (langs: LanguageConfig[]): LanguageConfig[] => {
-  const copy = new List<LanguageConfig>();
-  for (let i = 0; i < langs.length; i++) copy.Add(langs[i]!);
-  copy.Sort((a: LanguageConfig, b: LanguageConfig) => a.weight - b.weight);
-  return copy.ToArray();
+  return [...langs].sort((a: LanguageConfig, b: LanguageConfig) => a.weight - b.weight);
 };

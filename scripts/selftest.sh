@@ -8,6 +8,41 @@ if [[ -z "${TSONIC_BIN:-}" ]]; then
   exit 1
 fi
 
+ensure_interop_dlls() {
+  local jsruntime_release="${ROOT}/../js-runtime/artifacts/bin/Tsonic.JSRuntime/Release/net10.0/Tsonic.JSRuntime.dll"
+  local jsruntime_debug="${ROOT}/../js-runtime/artifacts/bin/Tsonic.JSRuntime/Debug/net10.0/Tsonic.JSRuntime.dll"
+  local nodejs_release="${ROOT}/../nodejs-clr/artifacts/bin/nodejs/Release/net10.0/nodejs.dll"
+  local nodejs_debug="${ROOT}/../nodejs-clr/artifacts/bin/nodejs/Debug/net10.0/nodejs.dll"
+  local jsruntime_src=""
+  local nodejs_src=""
+
+  pick_newest_existing() {
+    local newest=""
+    for candidate in "$@"; do
+      [[ -f "${candidate}" ]] || continue
+      if [[ -z "${newest}" || "${candidate}" -nt "${newest}" ]]; then
+        newest="${candidate}"
+      fi
+    done
+    printf '%s' "${newest}"
+  }
+
+  jsruntime_src="$(pick_newest_existing "${jsruntime_release}" "${jsruntime_debug}")"
+  nodejs_src="$(pick_newest_existing "${nodejs_release}" "${nodejs_debug}")"
+
+  mkdir -p "${ROOT}/libs"
+
+  if [[ -n "${jsruntime_src}" ]]; then
+    cp "${jsruntime_src}" "${ROOT}/libs/Tsonic.JSRuntime.dll"
+  fi
+
+  if [[ -n "${nodejs_src}" ]]; then
+    cp "${nodejs_src}" "${ROOT}/libs/nodejs.dll"
+  fi
+}
+
+ensure_interop_dlls
+
 echo "=== Building tsumo (engine + cli) ==="
 (cd "$ROOT/packages/engine" && "$TSONIC_BIN" restore && "$TSONIC_BIN" build)
 (cd "$ROOT/packages/cli" && "$TSONIC_BIN" build)
@@ -50,4 +85,3 @@ fi
 
 echo ""
 echo "=== ALL SELFTESTS PASSED ==="
-

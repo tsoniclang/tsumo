@@ -1,46 +1,83 @@
-import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, relative } from "node:path";
 
-export const dirExists = (path: string): boolean => Directory.Exists(path);
-
-export const fileExists = (path: string): boolean => File.Exists(path);
-
-export const ensureDir = (path: string): void => {
-  Directory.CreateDirectory(path);
+const matchesPattern = (filePath: string, searchPattern: string): boolean => {
+  if (searchPattern === "*" || searchPattern === "*.*") return true;
+  if (searchPattern.startsWith("*.")) return filePath.toLowerCase().endsWith(searchPattern.substring(1).toLowerCase());
+  return filePath.endsWith(searchPattern);
 };
 
-export const readTextFile = (path: string): string => File.ReadAllText(path);
+export const dirExists = (path: string): boolean => {
+  return existsSync(path) && statSync(path).isDirectory;
+};
+
+export const fileExists = (path: string): boolean => {
+  return existsSync(path) && statSync(path).isFile;
+};
+
+export const ensureDir = (path: string): void => {
+  mkdirSync(path, { recursive: true });
+};
+
+export const readTextFile = (path: string): string => readFileSync(path, "utf-8");
 
 export const writeTextFile = (path: string, content: string): void => {
-  const dir = Path.GetDirectoryName(path);
-  if (dir !== undefined && dir !== "") {
-    Directory.CreateDirectory(dir);
+  const dir = dirname(path);
+  if (dir !== "") {
+    mkdirSync(dir, { recursive: true });
   }
-  File.WriteAllText(path, content);
+  writeFileSync(path, content, "utf-8");
 };
 
 export const deleteDirRecursive = (path: string): void => {
-  if (!Directory.Exists(path)) return;
-  Directory.Delete(path, true);
+  if (!dirExists(path)) return;
+  rmSync(path, true);
 };
 
 export const listFilesRecursive = (rootDir: string, searchPattern: string): string[] => {
-  if (!Directory.Exists(rootDir)) return [];
-  return Directory.GetFiles(rootDir, searchPattern, SearchOption.AllDirectories);
+  if (!dirExists(rootDir)) return [];
+
+  const files: string[] = [];
+
+  const walk = (currentDir: string): void => {
+    const entries = readdirSync(currentDir);
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]!;
+      const fullPath = join(currentDir, entry);
+      const stats = statSync(fullPath);
+      if (stats.isDirectory) {
+        walk(fullPath);
+        continue;
+      }
+      if (matchesPattern(fullPath, searchPattern)) {
+        files.push(fullPath);
+      }
+    }
+  };
+
+  walk(rootDir);
+  return files;
 };
 
 export const copyDirRecursive = (srcDir: string, destDir: string): void => {
-  if (!Directory.Exists(srcDir)) return;
-  Directory.CreateDirectory(destDir);
+  if (!dirExists(srcDir)) return;
+  ensureDir(destDir);
 
-  const files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
+  const files = listFilesRecursive(srcDir, "*");
   for (let i = 0; i < files.length; i++) {
     const srcFile = files[i]!;
-    const rel = Path.GetRelativePath(srcDir, srcFile);
-    const destFile = Path.Combine(destDir, rel);
-    const destFileDir = Path.GetDirectoryName(destFile);
-    if (destFileDir !== undefined && destFileDir !== "") {
-      Directory.CreateDirectory(destFileDir);
-    }
-    File.Copy(srcFile, destFile, true);
+    const relPath = relative(srcDir, srcFile);
+    const destFile = join(destDir, relPath);
+    ensureDir(dirname(destFile));
+    copyFileSync(srcFile, destFile);
   }
 };

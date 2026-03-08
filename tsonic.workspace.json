@@ -3,19 +3,43 @@
   "surface": "@tsonic/js",
   "dotnetVersion": "net10.0",
   "dotnet": {
-    "libraries": ["libs/Markdig.dll"],
+    "typeRoots": [
+      "node_modules/@tsonic/nodejs"
+    ],
+    "libraries": [
+      "libs/Markdig.dll",
+      "libs/Tsonic.JSRuntime.dll",
+      "libs/nodejs.dll"
+    ],
     "packageReferences": [
       {
         "id": "PhotoSauce.MagicScaler",
         "version": "0.14.2"
       }
+    ],
+    "frameworkReferences": [
+      {
+        "id": "Microsoft.AspNetCore.App",
+        "types": "@tsonic/aspnetcore"
+      }
     ]
   },
   "testDotnet": {
     "packageReferences": [
-      { "id": "Microsoft.NET.Test.Sdk", "version": "17.11.1", "types": false },
-      { "id": "xunit", "version": "2.9.2" },
-      { "id": "xunit.runner.visualstudio", "version": "2.5.6", "types": false }
+      {
+        "id": "Microsoft.NET.Test.Sdk",
+        "version": "17.11.1",
+        "types": false
+      },
+      {
+        "id": "xunit",
+        "version": "2.9.2"
+      },
+      {
+        "id": "xunit.runner.visualstudio",
+        "version": "2.5.6",
+        "types": false
+      }
     ]
   }
 }

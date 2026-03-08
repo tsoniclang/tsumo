@@ -1,5 +1,5 @@
-import { Int32 } from "@tsonic/dotnet/System.js";
 import type { int } from "@tsonic/core/types.js";
+import { parseInt32 } from "./utils/int32.ts";
 
 export class ParamKind {
   static readonly String: int = 0;
@@ -39,8 +39,10 @@ export class ParamValue {
     if (lower === "true") return ParamValue.bool(true);
     if (lower === "false") return ParamValue.bool(false);
 
-    let parsed: int = 0;
-    if (Int32.TryParse(trimmed, parsed)) return ParamValue.number(parsed);
+    const parsed = parseInt32(trimmed);
+    if (parsed !== undefined) {
+      return ParamValue.number(parsed);
+    }
 
     return ParamValue.string(trimmed);
   }

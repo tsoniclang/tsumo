@@ -1,4 +1,3 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import type { int } from "@tsonic/core/types.js";
 import { ParamValue } from "../params.ts";
 import type { PageContext } from "./page-context.ts";
@@ -14,7 +13,7 @@ export class MenuEntry {
   readonly pre: string;
   readonly post: string;
   readonly menu: string;
-  readonly Params: Dictionary<string, ParamValue>;
+  readonly Params: Map<string, ParamValue>;
   page: PageContext | undefined;
   children: MenuEntry[];
 
@@ -29,7 +28,7 @@ export class MenuEntry {
     pre: string,
     post: string,
     menu: string,
-    params?: Dictionary<string, ParamValue>,
+    params?: Map<string, ParamValue>,
   ) {
     this.name = name;
     this.url = url;
@@ -41,7 +40,7 @@ export class MenuEntry {
     this.pre = pre;
     this.post = post;
     this.menu = menu;
-    this.Params = params ?? new Dictionary<string, ParamValue>();
+    this.Params = params ?? new Map<string, ParamValue>();
     this.page = undefined;
     const empty: MenuEntry[] = [];
     this.children = empty;

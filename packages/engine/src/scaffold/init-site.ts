@@ -1,16 +1,16 @@
-import { DateTime, Exception } from "@tsonic/dotnet/System.js";
-import { Directory, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
-import { ensureDir, writeTextFile } from "../fs.ts";
+import { readdirSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
+import { ensureDir, dirExists, writeTextFile } from "../fs.ts";
 import { humanizeSlug } from "../utils/text.ts";
 
 const ensureEmptyDir = (path: string): void => {
-  if (!Directory.Exists(path)) {
-    Directory.CreateDirectory(path);
+  if (!dirExists(path)) {
+    ensureDir(path);
     return;
   }
-  const entries = Directory.GetFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly);
-  if (entries.length > 0) {
-    throw new Exception(`Directory not empty: ${path}`);
+
+  if (readdirSync(path).length > 0) {
+    throw new Error(`Directory not empty: ${path}`);
   }
 };
 
@@ -151,7 +151,7 @@ Welcome to your new site.
 
 const helloWorldMd = (): string => `---
 title: "Hello World"
-date: "${DateTime.UtcNow.ToString("O")}"
+date: "${new Date().toISOString()}"
 draft: false
 description: "An end-to-end demo of tsumo with GFM markdown."
 tags: ["hello", "tsumo", "gfm"]
@@ -182,29 +182,28 @@ nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 `;
 
 export const initSite = (targetDir: string): void => {
-  const dir = Path.GetFullPath(targetDir);
+  const dir = resolve(targetDir);
   ensureEmptyDir(dir);
 
-  const title = humanizeSlug(Path.GetFileName(dir) ?? "Tsumo Site");
+  const title = humanizeSlug(basename(dir) || "Tsumo Site");
 
-  ensureDir(Path.Combine(dir, "content"));
-  ensureDir(Path.Combine(dir, "content", "posts"));
-  ensureDir(Path.Combine(dir, "layouts", "_default"));
-  ensureDir(Path.Combine(dir, "layouts", "partials"));
-  ensureDir(Path.Combine(dir, "static"));
-  ensureDir(Path.Combine(dir, "archetypes"));
+  ensureDir(join(dir, "content"));
+  ensureDir(join(dir, "content", "posts"));
+  ensureDir(join(dir, "layouts", "_default"));
+  ensureDir(join(dir, "layouts", "partials"));
+  ensureDir(join(dir, "static"));
+  ensureDir(join(dir, "archetypes"));
 
-  writeTextFile(Path.Combine(dir, "hugo.toml"), defaultConfigToml(title));
-  writeTextFile(Path.Combine(dir, "archetypes", "default.md"), defaultArchetype());
-  writeTextFile(Path.Combine(dir, "layouts", "_default", "baseof.html"), baseofHtml());
-  writeTextFile(Path.Combine(dir, "layouts", "_default", "single.html"), singleHtml());
-  writeTextFile(Path.Combine(dir, "layouts", "_default", "list.html"), listHtml());
-  writeTextFile(Path.Combine(dir, "layouts", "_default", "terms.html"), termsHtml());
-  writeTextFile(Path.Combine(dir, "layouts", "_default", "taxonomy.html"), taxonomyHtml());
-  writeTextFile(Path.Combine(dir, "layouts", "partials", "header.html"), partialHeader());
-  writeTextFile(Path.Combine(dir, "layouts", "partials", "footer.html"), partialFooter());
-  writeTextFile(Path.Combine(dir, "static", "style.css"), styleCss());
-  writeTextFile(Path.Combine(dir, "content", "_index.md"), indexMd());
-  writeTextFile(Path.Combine(dir, "content", "posts", "hello-world.md"), helloWorldMd());
+  writeTextFile(join(dir, "hugo.toml"), defaultConfigToml(title));
+  writeTextFile(join(dir, "archetypes", "default.md"), defaultArchetype());
+  writeTextFile(join(dir, "layouts", "_default", "baseof.html"), baseofHtml());
+  writeTextFile(join(dir, "layouts", "_default", "single.html"), singleHtml());
+  writeTextFile(join(dir, "layouts", "_default", "list.html"), listHtml());
+  writeTextFile(join(dir, "layouts", "_default", "terms.html"), termsHtml());
+  writeTextFile(join(dir, "layouts", "_default", "taxonomy.html"), taxonomyHtml());
+  writeTextFile(join(dir, "layouts", "partials", "header.html"), partialHeader());
+  writeTextFile(join(dir, "layouts", "partials", "footer.html"), partialFooter());
+  writeTextFile(join(dir, "static", "style.css"), styleCss());
+  writeTextFile(join(dir, "content", "_index.md"), indexMd());
+  writeTextFile(join(dir, "content", "posts", "hello-world.md"), helloWorldMd());
 };
-

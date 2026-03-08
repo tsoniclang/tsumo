@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { DateTime } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
@@ -24,14 +25,14 @@ class ContentPageBuild {
   readonly type: string;
   readonly slug: string;
   readonly title: string;
-  readonly dateUtc: DateTime;
+  readonly dateUtc: Date;
   readonly dateString: string;
   readonly lastmodString: string;
   readonly draft: boolean;
   readonly description: string;
   readonly tags: string[];
   readonly categories: string[];
-  readonly Params: Dictionary<string, ParamValue>;
+  readonly Params: Map<string, ParamValue>;
   readonly rawBody: string;
   readonly relPermalink: string;
   readonly outputRelPath: string;
@@ -45,14 +46,14 @@ class ContentPageBuild {
     type: string,
     slug: string,
     title: string,
-    dateUtc: DateTime,
+    dateUtc: Date,
     dateString: string,
     lastmodString: string,
     draft: boolean,
     description: string,
     tags: string[],
     categories: string[],
-    parameters: Dictionary<string, ParamValue>,
+    parameters: Map<string, ParamValue>,
     rawBody: string,
     relPermalink: string,
     outputRelPath: string,
@@ -88,7 +89,7 @@ class ListPageContent {
   readonly description: string;
   readonly type: string | undefined;
   readonly layout: string | undefined;
-  readonly Params: Dictionary<string, ParamValue>;
+  readonly Params: Map<string, ParamValue>;
   readonly sourceDir: string;
   readonly file: PageFile | undefined;
 
@@ -98,7 +99,7 @@ class ListPageContent {
     description: string,
     type: string | undefined,
     layout: string | undefined,
-    parameters: Dictionary<string, ParamValue>,
+    parameters: Map<string, ParamValue>,
     sourceDir: string,
     file?: PageFile,
   ) {
@@ -142,6 +143,14 @@ const joinUrlPath = (parts: string[]): string => {
 const containsSlash = (s: string): boolean => {
   const idx = s.indexOf("/");
   return idx >= 0;
+};
+
+const compareDatesDescending = (left: Date, right: Date): int => {
+  const leftMs = left.getTime();
+  const rightMs = right.getTime();
+  if (rightMs > leftMs) return 1 as int;
+  if (rightMs < leftMs) return -1 as int;
+  return 0 as int;
 };
 
 const combineOutputRelPath = (urlParts: string[]): string => {
@@ -221,18 +230,11 @@ const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void =
 const resolveMenuPageRefs = (site: SiteContext): void => {
   const pages = site.pages;
   const menus = site.Menus;
-  const menuKeys = menus.Keys.GetEnumerator();
-  while (menuKeys.MoveNext()) {
-    const menuName = menuKeys.Current;
-    let entries: MenuEntry[] = [];
-    const hasEntries = menus.TryGetValue(menuName, entries);
-    if (hasEntries) {
-      for (let i = 0; i < entries.length; i++) {
-        resolveMenuEntryPageRef(entries[i]!, pages);
-      }
+  for (const entries of menus.values()) {
+    for (let i = 0; i < entries.length; i++) {
+      resolveMenuEntryPageRef(entries[i]!, pages);
     }
   }
-  menuKeys.Dispose();
 };
 
 // Menu helpers imported from menus.ts
@@ -242,19 +244,18 @@ const integrateFrontmatterMenus = (
   site: SiteContext,
 ): void => {
   // Build a dictionary of pages keyed by lowercase filename for safe lookup
-  const pagesByFilename = new Dictionary<string, PageContext>();
+  const pagesByFilename = new Map<string, PageContext>();
   const allPages = site.pages;
   for (let i = 0; i < allPages.length; i++) {
     const page = allPages[i]!;
     if (page.File !== undefined) {
       const key = page.File.Filename.toLowerCase();
-      pagesByFilename.Remove(key);
-      pagesByFilename.Add(key, page);
+      pagesByFilename.set(key, page);
     }
   }
 
   // Collect all frontmatter menu entries per menu name
-  const frontmatterEntriesPerMenu = new Dictionary<string, List<MenuEntry>>();
+  const frontmatterEntriesPerMenu = new Map<string, MenuEntry[]>();
 
   for (let i = 0; i < pageBuilds.length; i++) {
     const pageBuild = pageBuilds[i]!;
@@ -262,9 +263,8 @@ const integrateFrontmatterMenus = (
 
     // Look up the page context by filename
     const filenameKey = pageBuild.file.Filename.toLowerCase();
-    let pageContext: PageContext = allPages[0]!;
-    const foundPage = pagesByFilename.TryGetValue(filenameKey, pageContext);
-    if (!foundPage) continue;
+    const pageContext = pagesByFilename.get(filenameKey);
+    if (pageContext === undefined) continue;
 
     for (let j = 0; j < pageBuild.menus.length; j++) {
       const fmMenu = pageBuild.menus[j]!;
@@ -286,57 +286,45 @@ const integrateFrontmatterMenus = (
       entry.page = pageContext;
 
       // Add to collection for this menu
-      let entryList: List<MenuEntry> = new List<MenuEntry>();
-      const hasEntries = frontmatterEntriesPerMenu.TryGetValue(menuName, entryList);
-      if (!hasEntries) {
-        entryList = new List<MenuEntry>();
-        frontmatterEntriesPerMenu.Add(menuName, entryList);
-      }
-      entryList.Add(entry);
+      const entryList = frontmatterEntriesPerMenu.get(menuName) ?? [];
+      entryList.push(entry);
+      frontmatterEntriesPerMenu.set(menuName, entryList);
     }
   }
 
   // For each menu with frontmatter entries, merge with existing config entries and rebuild hierarchy
-  const menuNamesList = new List<string>();
-  const keysIt = frontmatterEntriesPerMenu.Keys.GetEnumerator();
-  while (keysIt.MoveNext()) menuNamesList.Add(keysIt.Current);
-  keysIt.Dispose();
-  const menuNames = menuNamesList.ToArray();
+  const menuNames = Array.from(frontmatterEntriesPerMenu.keys());
   for (let i = 0; i < menuNames.length; i++) {
     const menuName = menuNames[i]!;
 
     // Get existing menu entries (may already have hierarchy from config)
-    let existingEntries: MenuEntry[] = [];
-    const hasExisting = site.Menus.TryGetValue(menuName, existingEntries);
+    const existingEntries = site.Menus.get(menuName);
 
     // Flatten existing entries to break apart any hierarchy
     let flatExisting: MenuEntry[] = [];
-    if (hasExisting) {
+    if (existingEntries !== undefined) {
       flatExisting = flattenMenuEntries(existingEntries);
     }
 
     // Get frontmatter entries for this menu
-    let fmEntryList: List<MenuEntry> = new List<MenuEntry>();
-    frontmatterEntriesPerMenu.TryGetValue(menuName, fmEntryList);
-    const fmEntries = fmEntryList.ToArray();
+    const fmEntries = frontmatterEntriesPerMenu.get(menuName) ?? [];
 
     // Combine all entries into a flat list
-    const combined = new List<MenuEntry>();
+    const combined: MenuEntry[] = [];
     for (let j = 0; j < flatExisting.length; j++) {
       const entry = flatExisting[j]!;
-      combined.Add(entry);
+      combined.push(entry);
     }
     for (let j = 0; j < fmEntries.length; j++) {
       const entry = fmEntries[j]!;
-      combined.Add(entry);
+      combined.push(entry);
     }
 
     // Rebuild hierarchy from combined flat list (order-independent)
-    const hierarchical = buildMenuHierarchy(combined.ToArray());
+    const hierarchical = buildMenuHierarchy(combined);
 
     // Update the site's menu
-    site.Menus.Remove(menuName);
-    site.Menus.Add(menuName, hierarchical);
+    site.Menus.set(menuName, hierarchical);
   }
 };
 
@@ -392,9 +380,10 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     const parsed = parseContent(readTextFile(filePath));
     const fm = parsed.frontMatter;
 
-    const dateUtc = fm.date ?? File.GetLastWriteTimeUtc(filePath);
-    const dateString = dateUtc.ToString("O");
-    const lastmodString = File.GetLastWriteTimeUtc(filePath).ToString("O");
+    const lastModifiedAt = new Date(statSync(filePath).mtimeMs);
+    const dateUtc = fm.date ?? lastModifiedAt;
+    const dateString = dateUtc.toISOString();
+    const lastmodString = lastModifiedAt.toISOString();
 
     const pageParams = fm.Params;
     const file = buildPageFile(dirRel, fileName, filePath);
@@ -455,7 +444,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     if (!page.draft || request.buildDrafts) pages.Add(page);
   }
 
-  pages.Sort((a: ContentPageBuild, b: ContentPageBuild) => DateTime.Compare(b.dateUtc, a.dateUtc));
+  pages.Sort((a: ContentPageBuild, b: ContentPageBuild) => compareDatesDescending(a.dateUtc, b.dateUtc));
 
   const emptyPages: PageContext[] = [];
   const emptyTranslations: PageContext[] = [];
@@ -556,7 +545,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
   let homeDescription = "";
   let homeType = "home";
   let homeLayout: string | undefined = undefined;
-  let homeParams = new Dictionary<string, ParamValue>();
+  let homeParams = new Map<string, ParamValue>();
   let homeFile: PageFile | undefined = undefined;
   let homeSourceDir: string | undefined = undefined;
 
@@ -655,7 +644,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let description = "";
     let listType = section;
     let layout: string | undefined = undefined;
-    let listParams = new Dictionary<string, ParamValue>();
+  let listParams = new Map<string, ParamValue>();
     let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
@@ -750,7 +739,7 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     let description = "";
     let listType = section !== "" ? section : "section";
     let layout: string | undefined = undefined;
-    let listParams = new Dictionary<string, ParamValue>();
+    let listParams = new Map<string, ParamValue>();
     let file: PageFile | undefined = undefined;
     let listSourceDir: string | undefined = undefined;
 
@@ -864,11 +853,9 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       if (!ok) continue;
       const pagesForTerm = pagesForTermList.ToArray();
 
-      const termParams = new Dictionary<string, ParamValue>();
-      termParams.Remove("term");
-      termParams.Add("term", ParamValue.string(termSlug));
-      termParams.Remove("taxonomy");
-      termParams.Add("taxonomy", ParamValue.string(taxonomy));
+      const termParams = new Map<string, ParamValue>();
+      termParams.set("term", ParamValue.string(termSlug));
+      termParams.set("taxonomy", ParamValue.string(taxonomy));
 
       const ctx = new PageContext(
         humanizeSlug(termSlug),
@@ -912,9 +899,8 @@ export const buildSite = (request: BuildRequest): BuildResult => {
       sitemapUrlSet.Add(ctx.relPermalink, true);
     }
 
-    const taxParams = new Dictionary<string, ParamValue>();
-    taxParams.Remove("taxonomy");
-    taxParams.Add("taxonomy", ParamValue.string(taxonomy));
+    const taxParams = new Map<string, ParamValue>();
+    taxParams.set("taxonomy", ParamValue.string(taxonomy));
 
     const taxCtx = new PageContext(
       humanizeSlug(taxonomy),

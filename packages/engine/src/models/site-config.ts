@@ -1,4 +1,3 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { ParamValue } from "../params.ts";
 import { LanguageConfig } from "./language.ts";
 import { MenuEntry } from "./menu-entry.ts";
@@ -21,8 +20,8 @@ export class SiteConfig {
   languages: LanguageConfig[];
   theme: string | undefined;
   copyright: string | undefined;
-  Params: Dictionary<string, ParamValue>;
-  Menus: Dictionary<string, MenuEntry[]>;
+  Params: Map<string, ParamValue>;
+  Menus: Map<string, MenuEntry[]>;
   moduleMounts: ModuleMount[];
 
   constructor(title: string, baseURL: string, languageCode: string, theme: string | undefined, copyright?: string) {
@@ -34,8 +33,8 @@ export class SiteConfig {
     this.languages = empty;
     this.theme = theme;
     this.copyright = copyright;
-    this.Params = new Dictionary<string, ParamValue>();
-    this.Menus = new Dictionary<string, MenuEntry[]>();
+    this.Params = new Map<string, ParamValue>();
+    this.Menus = new Map<string, MenuEntry[]>();
     const emptyMounts: ModuleMount[] = [];
     this.moduleMounts = emptyMounts;
   }

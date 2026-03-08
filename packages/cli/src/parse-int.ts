@@ -1,9 +1,15 @@
-import { Int32 } from "@tsonic/dotnet/System.js";
 import type { int } from "@tsonic/core/types.js";
 
 export const parseIntArg = (value: string): int | undefined => {
-  let parsed: int = 0;
-  const ok = Int32.TryParse(value, parsed);
-  return ok ? parsed : undefined;
+  const trimmed = value.trim();
+  if (!/^-?\d+$/.test(trimmed)) return undefined;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (
+    Number.isInteger(parsed) &&
+    parsed >= -2147483648 &&
+    parsed <= 2147483647
+  ) {
+    return parsed as int;
+  }
+  return undefined;
 };
-

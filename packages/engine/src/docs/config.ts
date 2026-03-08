@@ -1,8 +1,4 @@
-import { Exception } from "@tsonic/dotnet/System.js";
-import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { Path } from "@tsonic/dotnet/System.IO.js";
-import { JsonDocument, JsonValueKind } from "@tsonic/dotnet/System.Text.Json.js";
-import type { char } from "@tsonic/core/types.js";
+import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileExists, readTextFile } from "../fs.ts";
 import { DocsMountConfig, DocsSiteConfig } from "./models.ts";
 import { ensureLeadingSlash, ensureTrailingSlash } from "../utils/text.ts";
@@ -18,129 +14,106 @@ export class LoadedDocsConfig {
   }
 }
 
-const readString = (doc: JsonDocument, propName: string): string | undefined => {
-  const root = doc.RootElement;
-  if (root.ValueKind !== JsonValueKind.Object) return undefined;
+const readString = (root: unknown, propName: string): string | undefined => {
+  if (root === null || typeof root !== "object" || Array.isArray(root)) return undefined;
+  const entries = Object.entries(root);
   const propNameLower = propName.toLowerCase();
-  const props = root.EnumerateObject().GetEnumerator();
-  while (props.MoveNext()) {
-    const p = props.Current;
-    if (p.Name.toLowerCase() === propNameLower) {
-      if (p.Value.ValueKind === JsonValueKind.String) return p.Value.GetString();
-      return undefined;
+  for (let i = 0; i < entries.length; i++) {
+    const [key, value] = entries[i]!;
+    if (key.toLowerCase() === propNameLower && typeof value === "string") {
+      return value;
     }
   }
   return undefined;
 };
 
-const readBool = (doc: JsonDocument, propName: string): boolean | undefined => {
-  const root = doc.RootElement;
-  if (root.ValueKind !== JsonValueKind.Object) return undefined;
+const readBool = (root: unknown, propName: string): boolean | undefined => {
+  if (root === null || typeof root !== "object" || Array.isArray(root)) return undefined;
+  const entries = Object.entries(root);
   const propNameLower = propName.toLowerCase();
-  const props = root.EnumerateObject().GetEnumerator();
-  while (props.MoveNext()) {
-    const p = props.Current;
-    if (p.Name.toLowerCase() !== propNameLower) continue;
-    if (p.Value.ValueKind === JsonValueKind.True) return true;
-    if (p.Value.ValueKind === JsonValueKind.False) return false;
-    return undefined;
+  for (let i = 0; i < entries.length; i++) {
+    const [key, value] = entries[i]!;
+    if (key.toLowerCase() === propNameLower && typeof value === "boolean") {
+      return value;
+    }
   }
   return undefined;
 };
 
-const normalizePrefix = (raw: string): string => {
-  const p = ensureLeadingSlash(raw.trim());
-  return ensureTrailingSlash(p);
-};
+const normalizePrefix = (raw: string): string => ensureTrailingSlash(ensureLeadingSlash(raw.trim()));
 
 const resolveSourceDir = (siteDir: string, raw: string): string => {
-  if (raw.trim() === "") throw new Exception("Docs mount `source` cannot be empty");
-  return Path.IsPathRooted(raw) ? Path.GetFullPath(raw) : Path.GetFullPath(Path.Combine(siteDir, raw));
+  if (raw.trim() === "") throw new Error("Docs mount `source` cannot be empty");
+  return isAbsolute(raw) ? resolve(raw) : resolve(join(siteDir, raw));
 };
 
-const parseMounts = (siteDir: string, doc: JsonDocument): DocsMountConfig[] => {
-  const empty: DocsMountConfig[] = [];
-  const root = doc.RootElement;
-  if (root.ValueKind !== JsonValueKind.Object) return empty;
+const parseMounts = (siteDir: string, root: unknown): DocsMountConfig[] => {
+  if (root === null || typeof root !== "object" || Array.isArray(root)) return [];
+  const entries = Object.entries(root);
+  for (let i = 0; i < entries.length; i++) {
+    const [key, value] = entries[i]!;
+    if (key.toLowerCase() !== "mounts" || !Array.isArray(value)) continue;
+    const mountsValue = value as unknown[];
 
-  const props = root.EnumerateObject().GetEnumerator();
-  while (props.MoveNext()) {
-    const p = props.Current;
-    if (p.Name.toLowerCase() !== "mounts") continue;
-    if (p.Value.ValueKind !== JsonValueKind.Array) return empty;
+    const mounts: DocsMountConfig[] = [];
+    for (let j = 0; j < mountsValue.length; j++) {
+      const mount = mountsValue[j];
+      if (mount === null || typeof mount !== "object" || Array.isArray(mount)) continue;
 
-    const mounts = new List<DocsMountConfig>();
-    const it = p.Value.EnumerateArray().GetEnumerator();
-    while (it.MoveNext()) {
-      const el = it.Current;
-      if (el.ValueKind !== JsonValueKind.Object) continue;
-
-      let name: string | undefined = undefined;
-      let source: string | undefined = undefined;
-      let prefix: string | undefined = undefined;
-      let repoUrl: string | undefined = undefined;
+      let name: string | undefined;
+      let source: string | undefined;
+      let prefix: string | undefined;
+      let repoUrl: string | undefined;
       let repoBranch = "main";
-      let repoPath: string | undefined = undefined;
-      let navPath: string | undefined = undefined;
+      let repoPath: string | undefined;
+      let navPath: string | undefined;
 
-      const mp = el.EnumerateObject().GetEnumerator();
-      while (mp.MoveNext()) {
-        const prop = mp.Current;
-        const key = prop.Name.toLowerCase();
-        const v = prop.Value;
-
-        if (key === "name" && v.ValueKind === JsonValueKind.String) name = v.GetString();
-        else if (key === "source" && v.ValueKind === JsonValueKind.String) source = v.GetString();
-        else if (key === "prefix" && v.ValueKind === JsonValueKind.String) prefix = v.GetString();
-        else if ((key === "repo" || key === "repourl") && v.ValueKind === JsonValueKind.String) repoUrl = v.GetString();
-        else if ((key === "branch" || key === "repobranch") && v.ValueKind === JsonValueKind.String) repoBranch = v.GetString() ?? repoBranch;
-        else if ((key === "repopath" || key === "subdir") && v.ValueKind === JsonValueKind.String) repoPath = v.GetString();
-        else if ((key === "nav" || key === "navpath") && v.ValueKind === JsonValueKind.String) navPath = v.GetString();
+      const mountEntries = Object.entries(mount);
+      for (let k = 0; k < mountEntries.length; k++) {
+        const [mountKey, mountValue] = mountEntries[k]!;
+        const lower = mountKey.toLowerCase();
+        if (lower === "name" && typeof mountValue === "string") name = mountValue;
+        else if (lower === "source" && typeof mountValue === "string") source = mountValue;
+        else if (lower === "prefix" && typeof mountValue === "string") prefix = mountValue;
+        else if ((lower === "repo" || lower === "repourl") && typeof mountValue === "string") repoUrl = mountValue;
+        else if ((lower === "branch" || lower === "repobranch") && typeof mountValue === "string") repoBranch = mountValue;
+        else if ((lower === "repopath" || lower === "subdir") && typeof mountValue === "string") repoPath = mountValue;
+        else if ((lower === "nav" || lower === "navpath") && typeof mountValue === "string") navPath = mountValue;
       }
 
       if (source === undefined || prefix === undefined) continue;
       const sourceDir = resolveSourceDir(siteDir, source);
       const urlPrefix = normalizePrefix(prefix);
       const slash = "/";
-      let mountName = name;
-      if (mountName === undefined) {
-        mountName = urlPrefix === "/" ? "Docs" : trimEndChar(trimStartChar(urlPrefix, slash), slash);
-      } else if (mountName.trim() === "") {
-        mountName = urlPrefix === "/" ? "Docs" : trimEndChar(trimStartChar(urlPrefix, slash), slash);
-      }
+      const fallbackName = urlPrefix === "/" ? "Docs" : trimEndChar(trimStartChar(urlPrefix, slash), slash);
+      const mountName = name === undefined || name.trim() === "" ? fallbackName : name;
+      const finalRepoPath = repoPath ?? (repoUrl !== undefined ? basename(sourceDir) : undefined);
 
-      let finalRepoPath = repoPath;
-      if (finalRepoPath === undefined && repoUrl !== undefined) {
-        finalRepoPath = Path.GetFileName(sourceDir);
-      }
-
-      mounts.Add(new DocsMountConfig(mountName, sourceDir, urlPrefix, repoUrl, repoBranch, finalRepoPath, navPath));
+      mounts.push(new DocsMountConfig(mountName, sourceDir, urlPrefix, repoUrl, repoBranch, finalRepoPath, navPath));
     }
 
-    return mounts.ToArray();
+    return mounts;
   }
 
-  return empty;
+  return [];
 };
 
 export const loadDocsConfig = (siteDir: string): LoadedDocsConfig | undefined => {
-  const candidate = Path.Combine(siteDir, "tsumo.docs.json");
+  const candidate = join(siteDir, "tsumo.docs.json");
   if (!fileExists(candidate)) return undefined;
 
-  const text = readTextFile(candidate);
-  const doc = JsonDocument.Parse(text);
+  const root = JSON.parse(readTextFile(candidate));
+  const mounts = parseMounts(siteDir, root);
+  if (mounts.length === 0) throw new Error("tsumo.docs.json has no mounts");
 
-  const mounts = parseMounts(siteDir, doc);
-  const strictLinks = readBool(doc, "strictLinks") ?? false;
-  const generateSearchIndex = readBool(doc, "search") ?? true;
-  const searchIndexFileName = readString(doc, "searchFile") ?? "search.json";
-  const homeMount = readString(doc, "homeMount");
-  const siteName = readString(doc, "siteName") ?? "Docs";
+  const config = new DocsSiteConfig(
+    mounts,
+    readBool(root, "strictLinks") ?? false,
+    readBool(root, "search") ?? true,
+    readString(root, "searchFile") ?? "search.json",
+    readString(root, "homeMount"),
+    readString(root, "siteName") ?? "Docs",
+  );
 
-  doc.Dispose();
-
-  if (mounts.length === 0) throw new Exception("tsumo.docs.json has no mounts");
-
-  const config = new DocsSiteConfig(mounts, strictLinks, generateSearchIndex, searchIndexFileName, homeMount, siteName);
   return new LoadedDocsConfig(candidate, config);
 };

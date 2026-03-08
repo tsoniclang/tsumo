@@ -14,9 +14,10 @@
   "devDependencies": {
     "@tsonic/core": "^10.0.37",
     "@tsonic/dotnet": "^10.0.37",
-    "@tsonic/js": "^10.0.37",
-    "@tsonic/tsbindgen": "^0.7.46",
-    "tsonic": "^0.0.63",
+    "@tsonic/js": "^10.0.40",
+    "@tsonic/nodejs": "file:../nodejs/versions/10",
+    "@tsonic/tsbindgen": "^0.7.47",
+    "tsonic": "^0.0.67",
     "typescript": "5.9.2"
   },
   "engines": {
