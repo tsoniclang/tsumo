@@ -14,11 +14,9 @@ export function main(): void {
   const args = process.argv.slice(2);
 
   let first = "";
-  if (args.length > 0) {
-    const firstArg = args[0];
-    if (firstArg !== undefined) {
-      first = firstArg;
-    }
+  for (const arg of args) {
+    first = arg;
+    break;
   }
   if (first === "-h" || first === "--help" || first === "help") {
     printUsage();
