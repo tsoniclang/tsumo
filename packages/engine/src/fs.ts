@@ -25,7 +25,7 @@ export const fileExists = (path: string): boolean => {
 };
 
 export const ensureDir = (path: string): void => {
-  mkdirSync(path, { recursive: true });
+  mkdirSync(path, true);
 };
 
 export const readTextFile = (path: string): string => readFileSync(path, "utf-8");
@@ -33,7 +33,7 @@ export const readTextFile = (path: string): string => readFileSync(path, "utf-8"
 export const writeTextFile = (path: string, content: string): void => {
   const dir = dirname(path);
   if (dir !== "") {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, true);
   }
   writeFileSync(path, content, "utf-8");
 };

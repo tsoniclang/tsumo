@@ -1,8 +1,7 @@
-import { readFileSync, statSync } from "node:fs";
-import type { Buffer } from "node:buffer";
+import { readFileSync, readFileSyncBytes, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, resolve, sep } from "node:path";
-import type { int } from "@tsonic/core/types.js";
+import type { byte, int } from "@tsonic/core/types.js";
 import { buildSite } from "./build-site.ts";
 import { loadDocsConfig } from "./docs/config.ts";
 import { dirExists, fileExists, listFilesRecursive } from "./fs.ts";
@@ -24,7 +23,7 @@ const sendText = (response: ServerResponse, statusCode: int, contentType: string
   response.end(body);
 };
 
-const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: Buffer): void => {
+const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", contentType);
   response.end(bytes);
@@ -97,7 +96,7 @@ const handleRequest = (outDir: string, request: IncomingMessage, response: Serve
     return;
   }
 
-  sendBytes(response, 200, contentType, readFileSync(filePath));
+  sendBytes(response, 200, contentType, readFileSyncBytes(filePath));
 };
 
 const collectWatchTargets = (req: ServeRequest): string[] => {

@@ -13,7 +13,11 @@ const VERSION = "0.0.0";
 export function main(): void {
   const args = process.argv.slice(2);
 
-  const first = args.length > 0 ? args[0]! : "";
+  let first = "";
+  for (const arg of args) {
+    first = arg;
+    break;
+  }
   if (first === "-h" || first === "--help" || first === "help") {
     printUsage();
     return;
