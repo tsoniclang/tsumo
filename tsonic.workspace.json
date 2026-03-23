@@ -15,6 +15,11 @@
       {
         "id": "PhotoSauce.MagicScaler",
         "version": "0.14.2"
+      },
+      {
+        "id": "Tsonic.JSRuntime",
+        "version": "0.0.4",
+        "types": "@tsonic/js"
       }
     ],
     "frameworkReferences": [
