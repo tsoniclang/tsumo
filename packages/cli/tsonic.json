@@ -13,8 +13,5 @@
   "buildOptions": {
     "stripSymbols": true,
     "invariantGlobalization": true
-  },
-  "references": {
-    "libraries": ["../engine/dist/net10.0/Tsumo.Engine.dll"]
   }
 }

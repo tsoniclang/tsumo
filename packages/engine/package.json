@@ -3,12 +3,22 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
-    "./*.js": {
-      "types": "./dist/tsonic/bindings/*.d.ts",
-      "default": "./dist/tsonic/bindings/*.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./index.js": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
     }
   },
+  "files": [
+    "dist/**/*.d.ts",
+    "src/**/*.ts",
+    "tsonic.package.json"
+  ],
   "scripts": {
     "restore": "tsonic restore",
     "typecheck": "tsonic restore && tsc -p tsconfig.json",

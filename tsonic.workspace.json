@@ -7,19 +7,12 @@
       "node_modules/@tsonic/nodejs"
     ],
     "libraries": [
-      "libs/Markdig.dll",
-      "libs/Tsonic.JSRuntime.dll",
-      "libs/nodejs.dll"
+      "libs/Markdig.dll"
     ],
     "packageReferences": [
       {
         "id": "PhotoSauce.MagicScaler",
         "version": "0.14.2"
-      },
-      {
-        "id": "Tsonic.JSRuntime",
-        "version": "0.0.4",
-        "types": "@tsonic/js"
       }
     ],
     "frameworkReferences": [
