@@ -5,6 +5,7 @@
     "@tsonic/js"
   ],
   "source": {
+    "namespace": "Tsumo.Engine",
     "exports": {
       ".": "./src/index.ts",
       "./index.js": "./src/index.ts"
