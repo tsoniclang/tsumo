@@ -1,7 +1,7 @@
 import { process } from "node:process";
 import type { int } from "@tsonic/core/types.js";
 
-import { ServeRequest, serveSite } from "@tsumo/engine/Tsumo.Engine.js";
+import { ServeRequest, serveSite } from "@tsumo/engine/index.js";
 
 import { logErrorLine } from "../log-error-line.ts";
 import { parseIntArg } from "../parse-int.ts";

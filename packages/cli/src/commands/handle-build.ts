@@ -1,7 +1,7 @@
 import { process } from "node:process";
 import type { int } from "@tsonic/core/types.js";
 
-import { BuildRequest, buildSite } from "@tsumo/engine/Tsumo.Engine.js";
+import { BuildRequest, buildSite } from "@tsumo/engine/index.js";
 
 import { logLine } from "../log-line.ts";
 
