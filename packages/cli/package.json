@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "restore": "tsonic restore",
-    "typecheck": "tsonic restore && tsc -p tsconfig.json",
-    "build": "tsonic build",
-    "build:aot": "tsonic build -c tsonic.aot.json",
-    "dev": "tsonic run -- --help"
+    "restore": "${TSONIC_BIN:-tsonic} restore",
+    "typecheck": "${TSONIC_BIN:-tsonic} restore && tsc -p tsconfig.json",
+    "build": "${TSONIC_BIN:-tsonic} build",
+    "build:aot": "${TSONIC_BIN:-tsonic} build -c tsonic.aot.json",
+    "dev": "${TSONIC_BIN:-tsonic} run -- --help"
   }
 }

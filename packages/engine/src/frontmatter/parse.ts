@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int, JsValue } from "@tsonic/core/types.js";
 import { ParamValue } from "../params.ts";
 import { FrontMatterMenu } from "./menu.ts";
 import { FrontMatter } from "./data.ts";
@@ -6,7 +6,7 @@ import { ParsedContent } from "./parsed-content.ts";
 import { parseInt32, toInt32 } from "../utils/int32.ts";
 import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
 
-const isObject = (value: unknown): value is Record<string, unknown> => {
+const isObject = (value: JsValue): value is Record<string, JsValue> => {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 };
 
@@ -303,9 +303,9 @@ const parseToml = (lines: string[]): FrontMatter => {
   return fm;
 };
 
-const parseJsonStringArray = (value: unknown): string[] | undefined => {
+const parseJsonStringArray = (value: JsValue): string[] | undefined => {
   if (!Array.isArray(value)) return undefined;
-  const values = value as unknown[];
+  const values = value as JsValue[];
   const items: string[] = [];
   for (let i = 0; i < values.length; i++) {
     const current = values[i];
@@ -316,7 +316,7 @@ const parseJsonStringArray = (value: unknown): string[] | undefined => {
 
 const parseJson = (json: string): FrontMatter => {
   const fm = new FrontMatter();
-  const root = JSON.parse(json) as unknown;
+  const root = JSON.parse(json) as JsValue;
   if (!isObject(root)) return fm;
 
   for (const [rawKey, value] of Object.entries(root)) {
@@ -338,7 +338,7 @@ const parseJson = (json: string): FrontMatter => {
       const parsed = parseJsonStringArray(value);
       if (parsed !== undefined) fm.categories = parsed;
     } else if (key === "params" && isObject(value)) {
-      const paramEntries = Object.entries(value as Record<string, unknown>);
+      const paramEntries = Object.entries(value as Record<string, JsValue>);
       for (let i = 0; i < paramEntries.length; i++) {
         const [paramKey, paramValue] = paramEntries[i]!;
         if (typeof paramValue === "string") fm.Params.set(paramKey, ParamValue.string(paramValue));
@@ -352,12 +352,12 @@ const parseJson = (json: string): FrontMatter => {
       }
     } else if (key === "menu" && isObject(value)) {
       const menuItems: FrontMatterMenu[] = [];
-      const menuEntries = Object.entries(value as Record<string, unknown>);
+      const menuEntries = Object.entries(value as Record<string, JsValue>);
       for (let i = 0; i < menuEntries.length; i++) {
         const [menuName, menuValue] = menuEntries[i]!;
         const entry = new FrontMatterMenu(menuName);
         if (isObject(menuValue)) {
-          const entryPairs = Object.entries(menuValue as Record<string, unknown>);
+          const entryPairs = Object.entries(menuValue as Record<string, JsValue>);
           for (let j = 0; j < entryPairs.length; j++) {
             const [entryKeyRaw, entryValue] = entryPairs[j]!;
             const entryKey = entryKeyRaw.toLowerCase();

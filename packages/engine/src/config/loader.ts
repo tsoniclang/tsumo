@@ -1,5 +1,5 @@
-import { join, basename } from "node:path";
-import { readdirSync } from "node:fs";
+import { join, basename } from "@tsonic/nodejs/path.js";
+import { readdirSync } from "@tsonic/nodejs/fs.js";
 import { SiteConfig } from "../models.ts";
 import { readTextFile, dirExists } from "../fs.ts";
 import { LoadedConfig } from "./loaded-config.ts";

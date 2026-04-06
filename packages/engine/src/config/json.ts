@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int, JsValue } from "@tsonic/core/types.js";
 import { LanguageConfig, MenuEntry, SiteConfig } from "../models.ts";
 import { ensureTrailingSlash } from "../utils/text.ts";
 import { toInt32 } from "../utils/int32.ts";
@@ -7,7 +7,7 @@ import { buildMenuHierarchy } from "../menus.ts";
 import { MenuEntryBuilder } from "./builders.ts";
 import { sortLanguages } from "./helpers.ts";
 
-const isObject = (value: unknown): value is Record<string, unknown> => {
+const isObject = (value: JsValue): value is Record<string, JsValue> => {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 };
 
@@ -107,11 +107,11 @@ export const parseJsonConfig = (text: string): SiteConfig => {
         for (let j = 0; j < menuEntries.length; j++) {
           const [menuName, rawItems] = menuEntries[j]!;
           if (!Array.isArray(rawItems)) continue;
-          const items = rawItems as unknown[];
+          const items = rawItems as JsValue[];
 
           const entries = menuBuilders.get(menuName) ?? [];
           for (let k = 0; k < items.length; k++) {
-            const item = items[k];
+            const item = items[k]!;
             if (!isObject(item)) continue;
 
             const builder = new MenuEntryBuilder(menuName);

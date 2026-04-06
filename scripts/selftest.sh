@@ -8,6 +8,9 @@ if [[ -z "${TSONIC_BIN:-}" ]]; then
   exit 1
 fi
 
+source "${ROOT}/scripts/local-first-party.sh"
+overlay_local_first_party_packages "${ROOT}"
+
 echo "=== Building tsumo (engine + cli) ==="
 (cd "$ROOT/packages/engine" && "$TSONIC_BIN" restore && "$TSONIC_BIN" build)
 (cd "$ROOT/packages/cli" && "$TSONIC_BIN" build)

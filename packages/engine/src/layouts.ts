@@ -1,6 +1,6 @@
 import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import type { char } from "@tsonic/core/types.js";
-import { isAbsolute, join, sep } from "node:path";
+import { isAbsolute, join, sep } from "@tsonic/nodejs/path.js";
 import { dirExists, fileExists, readTextFile } from "./fs.ts";
 import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.ts";
 import type { ResourceManager } from "./resources.ts";

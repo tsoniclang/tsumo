@@ -1,4 +1,4 @@
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join } from "@tsonic/nodejs/path.js";
 import { dirExists } from "../fs.ts";
 import { LayoutEnvironment } from "../layouts.ts";
 import { PageContext, SiteConfig } from "../models.ts";

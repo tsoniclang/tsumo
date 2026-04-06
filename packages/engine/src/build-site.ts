@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { statSync } from "@tsonic/nodejs/fs.js";
 import { DateTime } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
@@ -182,7 +182,7 @@ const copyBundleResources = (srcDir: string, destDir: string): void => {
     if (isBundleDir(child)) continue;
     if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).length > 0) continue;
     const childName = Path.GetFileName(child);
-    if (childName === undefined || childName === "") continue;
+    if (childName === null || childName === "") continue;
     copyBundleResources(child, Path.Combine(destDir, childName));
   }
 };
@@ -989,10 +989,11 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     sitemapUrlSet.Remove(ctx.relPermalink);
     sitemapUrlSet.Add(ctx.relPermalink, true);
 
-    if (isLeafBundleIndexFile(Path.GetFileName(p.sourcePath) ?? "") && Path.GetDirectoryName(p.sourcePath) !== undefined) {
+    const sourceDir = Path.GetDirectoryName(p.sourcePath);
+    if (isLeafBundleIndexFile(Path.GetFileName(p.sourcePath) ?? "") && sourceDir !== null && sourceDir !== "") {
       const destDir = Path.GetDirectoryName(Path.Combine(outDir, p.outputRelPath));
-      if (destDir !== undefined && destDir !== "") {
-        copyBundleResources(Path.GetDirectoryName(p.sourcePath)!, destDir);
+      if (destDir !== null && destDir !== "") {
+        copyBundleResources(sourceDir, destDir);
       }
     }
   }

@@ -1,6 +1,6 @@
-import { readFileSync, readFileSyncBytes, statSync } from "node:fs";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { extname, resolve, sep } from "node:path";
+import { readFileSync, readFileSyncBytes, statSync } from "@tsonic/nodejs/fs.js";
+import { createServer, type IncomingMessage, type ServerResponse } from "@tsonic/nodejs/http.js";
+import { extname, resolve, sep } from "@tsonic/nodejs/path.js";
 import type { byte, int } from "@tsonic/core/types.js";
 import { buildSite } from "./build-site.ts";
 import { loadDocsConfig } from "./docs/config.ts";

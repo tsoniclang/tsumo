@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { statSync } from "@tsonic/nodejs/fs.js";
 import { Exception } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
@@ -185,7 +185,7 @@ const scanMount = (outDir: string, mount: DocsMountConfig): DocsMarkdownRoute[] 
       const destRel = prefixOs === "" ? relOs : Path.Combine(prefixOs, relOs);
       const destFile = Path.Combine(outDir, destRel);
       const destDir = Path.GetDirectoryName(destFile);
-      if (destDir !== undefined && destDir !== "") Directory.CreateDirectory(destDir);
+      if (destDir !== null && destDir !== "") Directory.CreateDirectory(destDir);
       File.Copy(srcFile, destFile, true);
       continue;
     }

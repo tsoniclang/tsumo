@@ -1,4 +1,4 @@
-import { process } from "node:process";
+import { process } from "@tsonic/nodejs/process.js";
 import type { int } from "@tsonic/core/types.js";
 
 import { BuildRequest, buildSite } from "@tsumo/engine/index.js";

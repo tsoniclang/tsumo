@@ -91,6 +91,6 @@ export class ScaffoldAndBuildTests {
   }
 }
 
-A.on(ScaffoldAndBuildTests).method((t) => t.scaffold_then_build).add(FactAttribute);
-A.on(ScaffoldAndBuildTests).method((t) => t.drafts_skipped_by_default).add(FactAttribute);
-A.on(ScaffoldAndBuildTests).method((t) => t.new_content_then_build).add(FactAttribute);
+A<ScaffoldAndBuildTests>().method((t) => t.scaffold_then_build).add(FactAttribute);
+A<ScaffoldAndBuildTests>().method((t) => t.drafts_skipped_by_default).add(FactAttribute);
+A<ScaffoldAndBuildTests>().method((t) => t.new_content_then_build).add(FactAttribute);

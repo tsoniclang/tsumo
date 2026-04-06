@@ -1167,7 +1167,7 @@ class TemplateRuntime {
           if (normalized === "") return TemplateRuntime.nil;
 
           const pageDir = Path.GetDirectoryName(page.File.Filename);
-          if (pageDir === undefined || pageDir.trim() === "") return TemplateRuntime.nil;
+          if (pageDir === null || pageDir.trim() === "") return TemplateRuntime.nil;
 
           const pageDirFull = Path.GetFullPath(pageDir);
           const dirSeparator = `${Path.DirectorySeparatorChar}`;
@@ -1199,7 +1199,7 @@ class TemplateRuntime {
           if (pattern === "") return TemplateRuntime.nil;
 
           const pageDir = Path.GetDirectoryName(page.File.Filename);
-          if (pageDir === undefined || pageDir.trim() === "") return TemplateRuntime.nil;
+          if (pageDir === null || pageDir.trim() === "") return TemplateRuntime.nil;
 
           const files = Directory.GetFiles(pageDir, "*", SearchOption.AllDirectories);
           for (let i = 0; i < files.length; i++) {

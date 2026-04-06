@@ -1,4 +1,5 @@
-import { basename, isAbsolute, join, resolve } from "node:path";
+import type { JsValue } from "@tsonic/core/types.js";
+import { basename, isAbsolute, join, resolve } from "@tsonic/nodejs/path.js";
 import { fileExists, readTextFile } from "../fs.ts";
 import { DocsMountConfig, DocsSiteConfig } from "./models.ts";
 import { ensureLeadingSlash, ensureTrailingSlash } from "../utils/text.ts";
@@ -14,7 +15,7 @@ export class LoadedDocsConfig {
   }
 }
 
-const readString = (root: unknown, propName: string): string | undefined => {
+const readString = (root: JsValue, propName: string): string | undefined => {
   if (root === null || typeof root !== "object" || Array.isArray(root)) return undefined;
   const entries = Object.entries(root);
   const propNameLower = propName.toLowerCase();
@@ -27,7 +28,7 @@ const readString = (root: unknown, propName: string): string | undefined => {
   return undefined;
 };
 
-const readBool = (root: unknown, propName: string): boolean | undefined => {
+const readBool = (root: JsValue, propName: string): boolean | undefined => {
   if (root === null || typeof root !== "object" || Array.isArray(root)) return undefined;
   const entries = Object.entries(root);
   const propNameLower = propName.toLowerCase();
@@ -47,13 +48,13 @@ const resolveSourceDir = (siteDir: string, raw: string): string => {
   return isAbsolute(raw) ? resolve(raw) : resolve(join(siteDir, raw));
 };
 
-const parseMounts = (siteDir: string, root: unknown): DocsMountConfig[] => {
+const parseMounts = (siteDir: string, root: JsValue): DocsMountConfig[] => {
   if (root === null || typeof root !== "object" || Array.isArray(root)) return [];
   const entries = Object.entries(root);
   for (let i = 0; i < entries.length; i++) {
     const [key, value] = entries[i]!;
     if (key.toLowerCase() !== "mounts" || !Array.isArray(value)) continue;
-    const mountsValue = value as unknown[];
+    const mountsValue = value as JsValue[];
 
     const mounts: DocsMountConfig[] = [];
     for (let j = 0; j < mountsValue.length; j++) {
