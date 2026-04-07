@@ -20,9 +20,9 @@
     "tsonic.package.json"
   ],
   "scripts": {
-    "restore": "tsonic restore",
-    "typecheck": "tsonic restore && tsc -p tsconfig.json",
-    "build": "tsonic restore && tsonic build",
-    "test": "tsonic test"
+    "restore": "${TSONIC_BIN:-tsonic} restore",
+    "typecheck": "${TSONIC_BIN:-tsonic} restore && tsc -p tsconfig.json",
+    "build": "${TSONIC_BIN:-tsonic} restore && ${TSONIC_BIN:-tsonic} build",
+    "test": "${TSONIC_BIN:-tsonic} test"
   }
 }

@@ -153,8 +153,8 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
       // For images: use the rendered label content as alt text
       const altHtml = renderInlineChildrenToHtml(link);
       const alt = stripHtmlTags(altHtml);
-      const title = link.Title !== undefined ? link.Title : "";
-      const url = link.Url !== undefined ? link.Url : "";
+      const title = link.Title ?? "";
+      const url = link.Url ?? "";
 
       const ctx = new ImageHookContext(url, alt, title, alt, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
@@ -167,8 +167,8 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
       // For links: render inner content to HTML
       const innerHtml = renderInlineChildrenToHtml(link);
       const plainText = stripHtmlTags(innerHtml);
-      const title = link.Title !== undefined ? link.Title : "";
-      const url = link.Url !== undefined ? link.Url : "";
+      const title = link.Title ?? "";
+      const url = link.Url ?? "";
 
       const ctx = new LinkHookContext(url, innerHtml, title, plainText, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
@@ -202,7 +202,7 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
     const leaf = trycast<LeafBlock>(block);
     if (leaf !== null) {
       const inline = leaf.Inline;
-      if (inline !== undefined) rewriteInlinesForHooks(inline, hookCtx);
+      if (inline !== null) rewriteInlinesForHooks(inline, hookCtx);
     }
 
     // Recurse into child container blocks
@@ -225,11 +225,11 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
 
     // Get anchor ID from existing attributes
     const existingAttrs = HtmlAttributesExtensions.TryGetAttributes(heading);
-    const anchor = existingAttrs !== undefined && existingAttrs.Id !== undefined ? existingAttrs.Id : "";
+    const anchor = existingAttrs?.Id ?? "";
 
     // Render inline content to HTML and plain text
     const inline = heading.Inline;
-    const innerHtml = inline !== undefined ? renderInlineChildrenToHtml(inline) : "";
+    const innerHtml = inline !== null ? renderInlineChildrenToHtml(inline) : "";
     const plainText = stripHtmlTags(innerHtml);
 
     const ctx = new HeadingHookContext(heading.Level, innerHtml, plainText, anchor, hookCtx.page);

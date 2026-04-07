@@ -7,8 +7,8 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-} from "node:fs";
-import { dirname, join, relative } from "node:path";
+} from "@tsonic/nodejs/fs.js";
+import { dirname, join, relative } from "@tsonic/nodejs/path.js";
 
 const matchesPattern = (filePath: string, searchPattern: string): boolean => {
   if (searchPattern === "*" || searchPattern === "*.*") return true;

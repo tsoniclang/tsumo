@@ -1,4 +1,4 @@
-import { process } from "node:process";
+import { process } from "@tsonic/nodejs/process.js";
 
 import { initSite, newContent } from "@tsumo/engine/index.js";
 

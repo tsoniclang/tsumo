@@ -574,7 +574,7 @@ export class ResourceManager {
     if (rel === "") return;
     const dest = Path.Combine(this.outputDir, ResourceManager.toOsRelPath(rel));
     const dir = Path.GetDirectoryName(dest);
-    if (dir !== undefined && dir !== "") Directory.CreateDirectory(dir);
+    if (dir !== null && dir !== "") Directory.CreateDirectory(dir);
     File.WriteAllBytes(dest, resource.bytes);
   }
 
@@ -666,7 +666,7 @@ export class ResourceManager {
     if (resource.text === undefined) throw new Exception("css.Sass expects a text resource");
 
     const sassExeRaw = Environment.GetEnvironmentVariable("TSUMO_SASS");
-    const sassExe = sassExeRaw !== undefined && sassExeRaw.trim() !== "" ? sassExeRaw.trim() : "sass";
+    const sassExe = sassExeRaw !== null && sassExeRaw.trim() !== "" ? sassExeRaw.trim() : "sass";
 
     const tmpDir = Path.Combine(this.outputDir, ".tsumo", "sass");
     Directory.CreateDirectory(tmpDir);
@@ -712,7 +712,7 @@ export class ResourceManager {
 
     let process: Process | undefined = undefined;
     try {
-      process = Process.Start(startInfo);
+      process = Process.Start(startInfo) ?? undefined;
     } catch (e) {
       throw new Exception(
         `Failed to start Sass compiler '${sassExe}'. Install Dart Sass (the \`sass\` CLI) or set TSUMO_SASS to the full path of a Sass executable. Details: ${e}`,

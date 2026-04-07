@@ -1,5 +1,5 @@
-import { readdirSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { readdirSync } from "@tsonic/nodejs/fs.js";
+import { basename, join, resolve } from "@tsonic/nodejs/path.js";
 import { ensureDir, dirExists, writeTextFile } from "../fs.ts";
 import { humanizeSlug } from "../utils/text.ts";
 

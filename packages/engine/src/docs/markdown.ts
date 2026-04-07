@@ -92,8 +92,8 @@ const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): stri
   return `${repo}/blob/${branch}/${rel}`;
 };
 
-const maybeRewriteUrl = (urlRaw: string | undefined, ctx: DocsLinkRewriteContext): string | undefined => {
-  if (urlRaw === undefined) return undefined;
+const maybeRewriteUrl = (urlRaw: string | null | undefined, ctx: DocsLinkRewriteContext): string | undefined => {
+  if (urlRaw == null) return undefined;
   const url = urlRaw.trim();
   if (url === "" || url.startsWith("#") || isExternalUrl(url)) return undefined;
 
@@ -173,7 +173,7 @@ const rewriteInBlock = (block: Block, ctx: DocsLinkRewriteContext): void => {
   const leaf = trycast<LeafBlock>(block);
   if (leaf !== null) {
     const inline = leaf.Inline;
-    if (inline !== undefined) rewriteInInlines(inline, ctx);
+    if (inline !== null) rewriteInInlines(inline, ctx);
 
     const def = trycast<LinkReferenceDefinition>(block);
     if (def !== null) {

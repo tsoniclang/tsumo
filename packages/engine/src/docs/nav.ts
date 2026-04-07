@@ -294,9 +294,16 @@ function parseNavJsonItems(
       const p = props.Current;
       const k = p.Name.toLowerCase();
       const v = p.Value;
-      if (k === "title" && v.ValueKind === JsonValueKind.String) title = v.GetString();
-      else if (k === "url" && v.ValueKind === JsonValueKind.String) url = v.GetString();
-      else if (k === "path" && v.ValueKind === JsonValueKind.String) path = v.GetString();
+      if (k === "title" && v.ValueKind === JsonValueKind.String) {
+        const value = v.GetString();
+        if (value !== null) title = value;
+      } else if (k === "url" && v.ValueKind === JsonValueKind.String) {
+        const value = v.GetString();
+        if (value !== null) url = value;
+      } else if (k === "path" && v.ValueKind === JsonValueKind.String) {
+        const value = v.GetString();
+        if (value !== null) path = value;
+      }
       else if (k === "children") {
         hasChildren = true;
         childrenEl = v;

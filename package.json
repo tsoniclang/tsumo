@@ -9,7 +9,8 @@
     "build": "npm run -w @tsumo/engine build && npm run -w tsumo-cli build",
     "typecheck": "npm run -w @tsumo/engine build && npm run -w tsumo-cli typecheck",
     "test": "npm run -w @tsumo/engine test",
-    "selftest": "bash ./scripts/selftest.sh"
+    "selftest": "bash ./scripts/selftest.sh",
+    "verify-all": "bash ./scripts/verify-all.sh"
   },
   "devDependencies": {
     "@tsonic/core": "^10.0.37",

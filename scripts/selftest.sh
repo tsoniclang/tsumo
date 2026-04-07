@@ -2,46 +2,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKSPACE_PARENT="$(cd "${ROOT}/.." && pwd)"
-LOCAL_CORE_PACKAGE="${WORKSPACE_PARENT}/core/versions/10"
-LOCAL_DOTNET_PACKAGE="${WORKSPACE_PARENT}/dotnet/versions/10"
-LOCAL_JS_PACKAGE="${WORKSPACE_PARENT}/js/versions/10"
-LOCAL_NODEJS_PACKAGE="${WORKSPACE_PARENT}/nodejs/versions/10"
 
 if [[ -z "${TSONIC_BIN:-}" ]]; then
   echo "FAIL: TSONIC_BIN is not set. Set it to the tsonic CLI path." >&2
   exit 1
 fi
 
-link_local_package() {
-  local package_name="$1"
-  local package_root="$2"
-  local scope_dir="${ROOT}/node_modules/@tsonic"
-  local destination="${scope_dir}/${package_name}"
-
-  if [[ ! -d "${scope_dir}" ]]; then
-    echo "FAIL: expected scope directory missing: ${scope_dir}" >&2
-    exit 1
-  fi
-
-  if [[ ! -e "${package_root}" ]]; then
-    echo "FAIL: local package root missing: ${package_root}" >&2
-    exit 1
-  fi
-
-  rm -rf "${destination}"
-  ln -s "${package_root}" "${destination}"
-}
-
-overlay_local_first_party_packages() {
-  echo "=== overlay local first-party packages ==="
-  link_local_package core "${LOCAL_CORE_PACKAGE}"
-  link_local_package dotnet "${LOCAL_DOTNET_PACKAGE}"
-  link_local_package js "${LOCAL_JS_PACKAGE}"
-  link_local_package nodejs "${LOCAL_NODEJS_PACKAGE}"
-}
-
-overlay_local_first_party_packages
+source "${ROOT}/scripts/local-first-party.sh"
+overlay_local_first_party_packages "${ROOT}"
 
 echo "=== Building tsumo (engine + cli) ==="
 (cd "$ROOT/packages/engine" && "$TSONIC_BIN" restore && "$TSONIC_BIN" build)

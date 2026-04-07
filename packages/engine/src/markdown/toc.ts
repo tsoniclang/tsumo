@@ -85,7 +85,7 @@ const appendInlinePlainText = (inline: Inline, sb: StringBuilder): void => {
 
 const getHeadingPlainText = (heading: HeadingBlock): string => {
   const inline = heading.Inline;
-  if (inline === undefined) return "";
+  if (inline === null) return "";
 
   const sb = new StringBuilder();
   appendInlinePlainText(inline, sb);
@@ -108,7 +108,7 @@ const collectHeadingsRecursive = (container: ContainerBlock, headings: List<TocH
     if (heading !== null) {
       // Get the ID from Markdig's HtmlAttributes (set by AutoIdentifiers extension)
       const attrs = HtmlAttributesExtensions.TryGetAttributes(heading);
-      const id = attrs !== undefined && attrs.Id !== undefined ? attrs.Id : "";
+      const id = attrs?.Id ?? "";
 
       // Get plain text from heading content
       const text = getHeadingPlainText(heading);

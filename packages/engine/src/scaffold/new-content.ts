@@ -1,4 +1,4 @@
-import { basename, join, resolve } from "node:path";
+import { basename, join, resolve } from "@tsonic/nodejs/path.js";
 
 import { fileExists, readTextFile, writeTextFile } from "../fs.ts";
 import { replaceText, substringCount, trimStartChar } from "../utils/strings.ts";
