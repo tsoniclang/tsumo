@@ -10,7 +10,7 @@
 
 ## Build options
 
-- `-s, --source <dir>`: site directory (default: current directory)
+- `-s, --source <dir>`: site directory (default: working directory)
 - `-d, --destination <dir>`: output directory (default: `public`)
 - `-D, --buildDrafts`: include `draft: true` content
 - `--baseURL <url>`: override `baseURL` from config
@@ -19,7 +19,7 @@
 
 ## Server options
 
-- `-s, --source <dir>`: site directory (default: current directory)
+- `-s, --source <dir>`: site directory (default: working directory)
 - `-p, --port <port>`: port (default: `1313`)
 - `--host <host>`: host/interface (default: `localhost`)
 - `--watch` / `--no-watch`: watch and rebuild (default: `--watch`)
@@ -30,4 +30,3 @@
 ## Environment variables
 
 - `TSUMO_SASS`: full path to a Sass compiler executable (Dart Sass `sass` CLI). Used by `css.Sass` in templates.
-
