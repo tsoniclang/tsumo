@@ -24,11 +24,11 @@ If no config file exists, tsumo uses defaults (`title = "Tsumo Site"`, `baseURL 
 - `params` (object/table; exposed as `.Site.Params` in templates)
 - `menu` (menus; exposed as `.Site.Menus`)
 
-### Languages (limited)
+### Languages
 
 `languages` is parsed in TOML/JSON configs and used to select a default language/content directory.
 
-Current limitation: multi-language builds are not implemented yet (only one language is built).
+Only one language is built per invocation.
 
 ## Examples
 
@@ -79,4 +79,3 @@ menu:
   }
 }
 ```
-

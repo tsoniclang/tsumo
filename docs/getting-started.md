@@ -2,7 +2,8 @@
 
 ## Build tsumo from source
 
-tsumo is not currently published on npm. This repo uses workspace `file:` dependencies that expect sibling checkouts of:
+Source builds use workspace `file:` dependencies that expect sibling checkouts
+of:
 
 - `../tsonic`
 - `../tsbindgen`
@@ -91,3 +92,8 @@ Example:
 TSUMO_SASS=$(which sass) ./packages/cli/out/tsumo build -s ./my-site
 ```
 
+## Selftest package overlays
+
+`npm run selftest` uses local first-party package repos when the sibling
+checkouts exist beside this repo. The generated verification artifacts are
+ignored by git.

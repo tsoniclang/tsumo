@@ -48,11 +48,17 @@ npm install
 npm run build
 ```
 
+Source builds use sibling checkout `file:` dependencies for `../tsonic` and
+`../tsbindgen`.
+
 ## Selftest
 
 ```bash
 npm run selftest
 ```
+
+The selftest uses local first-party package overlays when sibling package repos
+are available and keeps generated verification artifacts out of git.
 
 ## Try the example
 
