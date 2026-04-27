@@ -85,7 +85,7 @@ const appendInlinePlainText = (inline: Inline, sb: StringBuilder): void => {
 
 const getHeadingPlainText = (heading: HeadingBlock): string => {
   const inline = heading.Inline;
-  if (inline === null) return "";
+  if (inline == null) return "";
 
   const sb = new StringBuilder();
   appendInlinePlainText(inline, sb);

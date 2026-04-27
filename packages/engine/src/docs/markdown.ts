@@ -173,7 +173,7 @@ const rewriteInBlock = (block: Block, ctx: DocsLinkRewriteContext): void => {
   const leaf = trycast<LeafBlock>(block);
   if (leaf !== null) {
     const inline = leaf.Inline;
-    if (inline !== null) rewriteInInlines(inline, ctx);
+    if (inline != null) rewriteInInlines(inline, ctx);
 
     const def = trycast<LinkReferenceDefinition>(block);
     if (def !== null) {
