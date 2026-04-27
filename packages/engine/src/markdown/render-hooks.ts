@@ -202,7 +202,7 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
     const leaf = trycast<LeafBlock>(block);
     if (leaf !== null) {
       const inline = leaf.Inline;
-      if (inline !== null) rewriteInlinesForHooks(inline, hookCtx);
+      if (inline != null) rewriteInlinesForHooks(inline, hookCtx);
     }
 
     // Recurse into child container blocks
@@ -229,7 +229,7 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
 
     // Render inline content to HTML and plain text
     const inline = heading.Inline;
-    const innerHtml = inline !== null ? renderInlineChildrenToHtml(inline) : "";
+    const innerHtml = inline != null ? renderInlineChildrenToHtml(inline) : "";
     const plainText = stripHtmlTags(innerHtml);
 
     const ctx = new HeadingHookContext(heading.Level, innerHtml, plainText, anchor, hookCtx.page);
