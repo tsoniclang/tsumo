@@ -13,12 +13,12 @@
     "verify-all": "bash ./scripts/verify-all.sh"
   },
   "devDependencies": {
-    "@tsonic/core": "^10.0.37",
-    "@tsonic/dotnet": "^10.0.37",
-    "@tsonic/js": "^10.0.40",
+    "@tsonic/core": "10.0.41",
+    "@tsonic/dotnet": "10.0.41",
+    "@tsonic/js": "10.0.49",
     "@tsonic/nodejs": "file:../nodejs/versions/10",
-    "@tsonic/tsbindgen": "^0.7.47",
-    "tsonic": "^0.0.67",
+    "@tsonic/tsbindgen": "0.7.52",
+    "tsonic": "0.0.76",
     "typescript": "5.9.2"
   },
   "engines": {
