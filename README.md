@@ -29,6 +29,16 @@ tsumo is implemented in TypeScript and compiled to native code with Tsonic (TS �
 | Docs | Multi-repo mounts + nav + search | ✅ | Enabled by `tsumo.docs.json` (tsumo-specific) |
 | Advanced Hugo | Multilingual builds, pagination | ❌ | Not implemented |
 
+## Data model
+
+tsumo parses configuration, front matter, docs manifests, template contexts, and
+resource metadata into closed engine models. JSON input is accepted for supported
+schemas and then narrowed into typed Tsonic classes before build or template
+execution.
+
+This keeps generated native code deterministic while preserving Hugo-style
+authoring for normal site content.
+
 ## Repo layout
 
 - `packages/engine` — core build + server engine (Tsonic library)

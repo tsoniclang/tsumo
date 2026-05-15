@@ -65,3 +65,7 @@ Each item supports:
 - `url` (explicit URL) or `path` (markdown path resolved like a markdown link)
 - `children` (nested items)
 
+Docs-mode configuration is parsed into typed mount, navigation, search, and repo
+metadata models. Unknown fields are ignored. Supported fields are matched by
+their documented names, and path-like fields are normalized before link
+rewriting and route generation.
