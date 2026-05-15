@@ -22,12 +22,12 @@ import { substringCount } from "../utils/strings.ts";
 
 // Render hook context for passing to Markdig renderer interceptors
 export class RenderHookContext {
-  readonly page: PageContext;
-  readonly site: SiteContext;
-  readonly env: TemplateEnvironment;
-  readonly linkHook: Template | undefined;
-  readonly imageHook: Template | undefined;
-  readonly headingHook: Template | undefined;
+  page: PageContext;
+  site: SiteContext;
+  env: TemplateEnvironment;
+  linkHook: Template | undefined;
+  imageHook: Template | undefined;
+  headingHook: Template | undefined;
 
   constructor(page: PageContext, site: SiteContext, env: TemplateEnvironment) {
     this.page = page;

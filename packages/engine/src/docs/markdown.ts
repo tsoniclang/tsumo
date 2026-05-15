@@ -11,10 +11,10 @@ import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount,
 import { splitUrlSuffix } from "./url.ts";
 
 export class DocsLinkRewriteContext {
-  readonly mount: DocsMountConfig;
-  readonly currentDirKey: string;
-  readonly relPermalinkByRelPathLower: Dictionary<string, string>;
-  readonly strictLinks: boolean;
+  mount: DocsMountConfig;
+  currentDirKey: string;
+  relPermalinkByRelPathLower: Dictionary<string, string>;
+  strictLinks: boolean;
 
   constructor(
     mount: DocsMountConfig,

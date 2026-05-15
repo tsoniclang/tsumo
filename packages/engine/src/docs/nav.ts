@@ -127,8 +127,8 @@ const resolveMarkdownNavLink = (
 };
 
 class InlineLink {
-  readonly title: string;
-  readonly target: string;
+  title: string;
+  target: string;
 
   constructor(title: string, target: string) {
     this.title = title;
@@ -149,9 +149,9 @@ const parseInlineMarkdownLink = (line: string): InlineLink | undefined => {
 };
 
 class NavGroupBuild {
-  readonly title: string;
-  readonly order: int;
-  readonly children: List<NavItem>;
+  title: string;
+  order: int;
+  children: List<NavItem>;
 
   constructor(title: string, order: int) {
     this.title = title;

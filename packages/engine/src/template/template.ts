@@ -7,8 +7,8 @@ import type { TemplateEnvironment } from "./environment.ts";
 import { TemplateNode } from "./nodes.ts";
 
 export class Template {
-  readonly nodes: TemplateNode[];
-  readonly defines: Dictionary<string, TemplateNode[]>;
+  nodes: TemplateNode[];
+  defines: Dictionary<string, TemplateNode[]>;
 
   constructor(nodes: TemplateNode[], defines: Dictionary<string, TemplateNode[]>) {
     this.nodes = nodes;

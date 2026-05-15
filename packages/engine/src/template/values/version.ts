@@ -9,7 +9,7 @@ import { compareText, substringCount, substringFrom } from "../../utils/strings.
  * Used for hugo.Version to support comparisons like `lt hugo.Version "0.146.0"`.
  */
 export class VersionStringValue extends TemplateValue {
-  readonly value: string;
+  value: string;
 
   constructor(value: string) {
     super();
@@ -37,7 +37,7 @@ export class VersionStringValue extends TemplateValue {
     return 0;
   }
 
-  private static parseVersion(v: string): int[] {
+  static parseVersion(v: string): int[] {
     // Remove common prefixes like "v" or "V"
     let cleaned = v;
     if (cleaned.startsWith("v") || cleaned.startsWith("V")) {
@@ -55,7 +55,7 @@ export class VersionStringValue extends TemplateValue {
     return result.ToArray();
   }
 
-  private static extractLeadingNumber(s: string): int {
+  static extractLeadingNumber(s: string): int {
     let numStr = "";
     for (let i = 0; i < s.length; i++) {
       const ch = substringCount(s, i, 1);

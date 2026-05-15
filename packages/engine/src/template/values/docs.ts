@@ -2,7 +2,7 @@ import type { DocsMountContext, NavItem } from "../../docs/models.ts";
 import { TemplateValue } from "./base.ts";
 
 export class DocsMountValue extends TemplateValue {
-  readonly value: DocsMountContext;
+  value: DocsMountContext;
 
   constructor(value: DocsMountContext) {
     super();
@@ -11,7 +11,7 @@ export class DocsMountValue extends TemplateValue {
 }
 
 export class DocsMountArrayValue extends TemplateValue {
-  readonly value: DocsMountContext[];
+  value: DocsMountContext[];
 
   constructor(value: DocsMountContext[]) {
     super();
@@ -20,7 +20,7 @@ export class DocsMountArrayValue extends TemplateValue {
 }
 
 export class NavItemValue extends TemplateValue {
-  readonly value: NavItem;
+  value: NavItem;
 
   constructor(value: NavItem) {
     super();
@@ -29,7 +29,7 @@ export class NavItemValue extends TemplateValue {
 }
 
 export class NavArrayValue extends TemplateValue {
-  readonly value: NavItem[];
+  value: NavItem[];
 
   constructor(value: NavItem[]) {
     super();

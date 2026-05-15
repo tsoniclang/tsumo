@@ -1,5 +1,5 @@
 export class MediaType {
-  readonly Type: string;
+  Type: string;
 
   constructor(type: string) {
     this.Type = type;

@@ -8,7 +8,7 @@ import { substringCount, substringFrom } from "../utils/strings.ts";
 
 // Shortcode execution ordinal tracker
 export class ShortcodeOrdinalTracker {
-  private readonly counts: Dictionary<string, int>;
+  counts: Dictionary<string, int>;
 
   constructor() {
     this.counts = new Dictionary<string, int>();

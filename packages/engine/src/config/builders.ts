@@ -47,7 +47,7 @@ export class MenuEntryBuilder {
 }
 
 export class LanguageConfigBuilder {
-  readonly lang: string;
+  lang: string;
   languageName: string;
   languageDirection: string;
   contentDir: string;

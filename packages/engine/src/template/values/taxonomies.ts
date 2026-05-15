@@ -2,7 +2,7 @@ import { PageContext, SiteContext } from "../../models.ts";
 import { TemplateValue } from "./base.ts";
 
 export class TaxonomiesValue extends TemplateValue {
-  readonly site: SiteContext;
+  site: SiteContext;
 
   constructor(site: SiteContext) {
     super();
@@ -11,8 +11,8 @@ export class TaxonomiesValue extends TemplateValue {
 }
 
 export class TaxonomyTermsValue extends TemplateValue {
-  readonly terms: Map<string, PageContext[]>;
-  readonly site: SiteContext;
+  terms: Map<string, PageContext[]>;
+  site: SiteContext;
 
   constructor(terms: Map<string, PageContext[]>, site: SiteContext) {
     super();

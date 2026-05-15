@@ -22,10 +22,10 @@ import { compareText, replaceText, substringCount, substringFrom, trimEndChar, t
 import { ParamValue } from "../params.ts";
 
 class SearchDoc {
-  readonly title: string;
-  readonly url: string;
-  readonly mount: string;
-  readonly text: string;
+  title: string;
+  url: string;
+  mount: string;
+  text: string;
 
   constructor(title: string, url: string, mount: string, text: string) {
     this.title = title;
@@ -67,16 +67,16 @@ const renderSearchIndexJson = (docs: SearchDoc[]): string => {
 };
 
 class DocsMarkdownRoute {
-  readonly mount: DocsMountConfig;
-  readonly sourcePath: string;
-  readonly relPath: string;
-  readonly dirKey: string;
-  readonly fileName: string;
-  readonly isIndex: boolean;
-  readonly urlSegments: string[];
-  readonly outputSegments: string[];
-  readonly relPermalink: string;
-  readonly outputRelPath: string;
+  mount: DocsMountConfig;
+  sourcePath: string;
+  relPath: string;
+  dirKey: string;
+  fileName: string;
+  isIndex: boolean;
+  urlSegments: string[];
+  outputSegments: string[];
+  relPermalink: string;
+  outputRelPath: string;
 
   constructor(
     mount: DocsMountConfig,

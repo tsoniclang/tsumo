@@ -9,13 +9,13 @@ import { ModuleMount } from "./models.ts";
 import { replaceText, trimStartChar } from "./utils/strings.ts";
 
 export class LayoutEnvironment extends TemplateEnvironment {
-  private readonly siteLayoutsDir: string;
-  private readonly themeLayoutsDir: string | undefined;
-  private readonly mountedLayoutDirs: string[];
-  private readonly cache: Map<string, Template>;
-  private readonly shortcodeCache: Map<string, Template>;
-  private readonly renderHookCache: Map<string, Template>;
-  private readonly i18nStore: I18nStore;
+  siteLayoutsDir: string;
+  themeLayoutsDir: string | undefined;
+  mountedLayoutDirs: string[];
+  cache: Map<string, Template>;
+  shortcodeCache: Map<string, Template>;
+  renderHookCache: Map<string, Template>;
+  i18nStore: I18nStore;
 
   constructor(siteDir: string, themeDir: string | undefined, mounts?: ModuleMount[]) {
     super();

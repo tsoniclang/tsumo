@@ -7,6 +7,7 @@ import { Encoding, StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { Regex } from "@tsonic/dotnet/System.Text.RegularExpressions.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
 import { HtmlString, escapeHtml } from "../utils/html.ts";
+import { parseInt32 } from "../utils/int32.ts";
 import { compareText, indexOfTextFrom, replaceText, substringCount, substringFrom, trimStartChar } from "../utils/strings.ts";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "../utils/text.ts";
 import { LanguageContext, MediaType, MenuEntry, OutputFormat, PageContext, PageFile, SiteContext } from "../models.ts";
@@ -36,8 +37,8 @@ import { Template } from "./template.ts";
 
 // Segment class for parsing
 export class Segment {
-  readonly isAction: boolean;
-  readonly text: string;
+  isAction: boolean;
+  text: string;
 
   constructor(isAction: boolean, text: string) {
     this.isAction = isAction;
@@ -46,7 +47,7 @@ export class Segment {
 }
 
 export class Pipeline {
-  readonly stages: Command[];
+  stages: Command[];
 
   constructor(stages: Command[]) {
     this.stages = stages;
@@ -64,9 +65,9 @@ export class Pipeline {
 }
 
 class TemplateRuntime {
-  static readonly nil: TemplateValue = new NilValue();
-  static readonly pageStores: Dictionary<PageContext, ScratchStore> = new Dictionary<PageContext, ScratchStore>();
-  static readonly siteStores: Dictionary<SiteContext, ScratchStore> = new Dictionary<SiteContext, ScratchStore>();
+  static nil: TemplateValue = new NilValue();
+  static pageStores: Dictionary<PageContext, ScratchStore> = new Dictionary<PageContext, ScratchStore>();
+  static siteStores: Dictionary<SiteContext, ScratchStore> = new Dictionary<SiteContext, ScratchStore>();
 
   static getResourceManager(env: TemplateEnvironment): ResourceManager | undefined {
     return env.getResourceManager();
@@ -135,9 +136,7 @@ class TemplateRuntime {
       return value.value;
     }
     if (value instanceof StringValue) {
-      let parsed: int = 0;
-      if (Int32.TryParse(value.value, parsed)) return parsed;
-      return 0;
+      return parseInt32(value.value) ?? 0;
     }
     if (value instanceof BoolValue) {
       return value.value ? 1 : 0;
@@ -176,8 +175,15 @@ class TemplateRuntime {
 
   static isNumberLiteral(token: string): boolean {
     if (token === "") return false;
-    let parsed: int = 0;
-    return Int32.TryParse(token, parsed);
+    return parseInt32(token) !== undefined;
+  }
+
+  static parseDateTime(value: string): DateTime | undefined {
+    try {
+      return DateTime.Parse(value);
+    } catch (_err) {
+      return undefined;
+    }
   }
 
   static resolvePath(value: TemplateValue, segments: string[], scope: RenderScope): TemplateValue {
@@ -739,7 +745,7 @@ class TemplateRuntime {
     return out;
   }
 
-  private static segmentMatch(pattern: string, segment: string): boolean {
+  static segmentMatch(pattern: string, segment: string): boolean {
     if (pattern === "*") return true;
     const star = pattern.indexOf("*");
     if (star < 0) return pattern === segment;
@@ -758,7 +764,7 @@ class TemplateRuntime {
     return true;
   }
 
-  private static splitGlobSegments(raw: string): string[] {
+  static splitGlobSegments(raw: string): string[] {
     const slash = "/";
     const normalized = trimStartChar(replaceText(raw.trim(), "\\", "/"), slash);
     if (normalized === "") {
@@ -768,7 +774,7 @@ class TemplateRuntime {
     return normalized.split("/");
   }
 
-  private static globMatchAt(patSegs: string[], pathSegs: string[], pi: int, si: int): boolean {
+  static globMatchAt(patSegs: string[], pathSegs: string[], pi: int, si: int): boolean {
     if (pi >= patSegs.length) return si >= pathSegs.length;
     const p = patSegs[pi]!;
     if (p === "**") {
@@ -1638,9 +1644,8 @@ class TemplateRuntime {
     if (name === "time.format" && args.length >= 2) {
       const layout = TemplateRuntime.toPlainString(args[0]!);
       const input = TemplateRuntime.toPlainString(args[1]!);
-      let parsed: DateTime = DateTime.MinValue;
-      const ok = DateTime.TryParse(input, parsed);
-      if (!ok) return new StringValue("");
+      const parsed = TemplateRuntime.parseDateTime(input);
+      if (parsed === undefined) return new StringValue("");
       const fmt = TemplateRuntime.convertGoDateLayoutToDotNet(layout);
       return new StringValue(parsed.ToString(fmt));
     }
@@ -2037,9 +2042,8 @@ class TemplateRuntime {
       let sum: int = 0;
       for (let i = 0; i < args.length; i++) {
         const v = args[i]!;
-        let parsed: int = 0;
         const s = TemplateRuntime.toPlainString(v);
-        if (Int32.TryParse(s, parsed)) sum += parsed;
+        sum += parseInt32(s) ?? 0;
       }
       return new NumberValue(sum);
     }
@@ -2284,9 +2288,8 @@ class TemplateRuntime {
     if (name === "dateformat" && args.length >= 2) {
       const layout = TemplateRuntime.toPlainString(args[0]!);
       const s = TemplateRuntime.toPlainString(args[1]!);
-      let parsed: DateTime = DateTime.MinValue;
-      const ok = DateTime.TryParse(s, parsed);
-      if (!ok) return new StringValue("");
+      const parsed = TemplateRuntime.parseDateTime(s);
+      if (parsed === undefined) return new StringValue("");
       const fmt = TemplateRuntime.convertGoDateLayoutToDotNet(layout);
       return new StringValue(parsed.ToString(fmt));
     }
@@ -2561,7 +2564,7 @@ class TemplateRuntime {
     return result;
   }
 
-  private static getPathExtension(path: string): string {
+  static getPathExtension(path: string): string {
     const lastDot = path.lastIndexOf(".");
     if (lastDot < 0) return "";
     return substringFrom(path, lastDot);
@@ -2819,7 +2822,7 @@ class TemplateRuntime {
 }
 
 class ReturnException extends Exception {
-  readonly value: TemplateValue;
+  value: TemplateValue;
 
   constructor(value: TemplateValue) {
     super("template return");
@@ -2840,7 +2843,7 @@ export class Expr {
 }
 
 class TokenExpr extends Expr {
-  readonly token: string;
+  token: string;
 
   constructor(token: string) {
     super();
@@ -2865,7 +2868,7 @@ class TokenExpr extends Expr {
 }
 
 class PipelineExpr extends Expr {
-  readonly pipeline: Pipeline;
+  pipeline: Pipeline;
 
   constructor(pipeline: Pipeline) {
     super();
@@ -2878,8 +2881,8 @@ class PipelineExpr extends Expr {
 }
 
 class AccessExpr extends Expr {
-  readonly base: Expr;
-  readonly segments: string[];
+  base: Expr;
+  segments: string[];
 
   constructor(base: Expr, segments: string[]) {
     super();
@@ -2894,7 +2897,7 @@ class AccessExpr extends Expr {
 }
 
 class PipelineParser {
-  readonly tokens: string[];
+  tokens: string[];
   idx: int;
 
   constructor(tokens: string[]) {
@@ -2917,7 +2920,7 @@ class PipelineParser {
     return new Pipeline(stages.ToArray());
   }
 
-  private parseCommand(): Command {
+  parseCommand(): Command {
     const head = this.parseExpr();
     const args = new List<Expr>();
 
@@ -2930,7 +2933,7 @@ class PipelineParser {
     return new Command(head, args.ToArray());
   }
 
-  private parseExpr(): Expr {
+  parseExpr(): Expr {
     if (this.idx >= this.tokens.length) return new TokenExpr("");
     const t = this.tokens[this.idx]!;
 
@@ -2958,8 +2961,8 @@ class PipelineParser {
 }
 
 export class Command {
-  readonly head: Expr;
-  readonly args: Expr[];
+  head: Expr;
+  args: Expr[];
 
   constructor(head: Expr, args: Expr[]) {
     this.head = head;
@@ -3014,8 +3017,8 @@ export class Command {
 }
 
 class ParseNodesResult {
-  readonly nodes: TemplateNode[];
-  readonly endedWithElse: boolean;
+  nodes: TemplateNode[];
+  endedWithElse: boolean;
 
   constructor(nodes: TemplateNode[], endedWithElse: boolean) {
     this.nodes = nodes;
@@ -3024,10 +3027,10 @@ class ParseNodesResult {
 }
 
 class Parser {
-  readonly segs: Segment[];
+  segs: Segment[];
   idx: int;
-  readonly defines: Dictionary<string, TemplateNode[]>;
-  private lastElseTokens: string[] | undefined;
+  defines: Dictionary<string, TemplateNode[]>;
+  lastElseTokens: string[] | undefined;
 
   constructor(segs: Segment[]) {
     this.segs = segs;
@@ -3036,14 +3039,14 @@ class Parser {
     this.lastElseTokens = undefined;
   }
 
-  private takeElseTokens(): string[] {
+  takeElseTokens(): string[] {
     const empty: string[] = [];
     const t = this.lastElseTokens ?? empty;
     this.lastElseTokens = undefined;
     return t;
   }
 
-  private parseIfFrom(cond: Pipeline): IfNode {
+  parseIfFrom(cond: Pipeline): IfNode {
     const thenBody = this.parseNodes(true);
     let elseNodes: TemplateNode[] = [];
     if (thenBody.endedWithElse) {

@@ -2,7 +2,7 @@ import { OutputFormat, SiteContext } from "../../models.ts";
 import { TemplateValue } from "./base.ts";
 
 export class OutputFormatsValue extends TemplateValue {
-  readonly site: SiteContext;
+  site: SiteContext;
 
   constructor(site: SiteContext) {
     super();
@@ -11,7 +11,7 @@ export class OutputFormatsValue extends TemplateValue {
 }
 
 export class OutputFormatValue extends TemplateValue {
-  readonly value: OutputFormat;
+  value: OutputFormat;
 
   constructor(value: OutputFormat) {
     super();
@@ -20,7 +20,7 @@ export class OutputFormatValue extends TemplateValue {
 }
 
 export class OutputFormatsGetValue extends TemplateValue {
-  readonly site: SiteContext;
+  site: SiteContext;
 
   constructor(site: SiteContext) {
     super();

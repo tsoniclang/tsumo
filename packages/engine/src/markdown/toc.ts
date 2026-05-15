@@ -17,9 +17,9 @@ import { trycast } from "@tsonic/core/lang.js";
 import { markdownPipeline } from "./pipeline.ts";
 
 class TocHeading {
-  readonly level: int;
-  readonly text: string;
-  readonly id: string;
+  level: int;
+  text: string;
+  id: string;
 
   constructor(level: int, text: string, id: string) {
     this.level = level;
@@ -29,7 +29,7 @@ class TocHeading {
 }
 
 class TocListFrame {
-  readonly level: int;
+  level: int;
   liOpen: boolean;
 
   constructor(level: int) {

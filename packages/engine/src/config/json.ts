@@ -1,4 +1,4 @@
-import type { int, JsValue } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/core/types.js";
 import { LanguageConfig, MenuEntry, SiteConfig } from "../models.ts";
 import { ensureTrailingSlash } from "../utils/text.ts";
 import { toInt32 } from "../utils/int32.ts";
@@ -6,10 +6,7 @@ import { ParamValue } from "../params.ts";
 import { buildMenuHierarchy } from "../menus.ts";
 import { MenuEntryBuilder } from "./builders.ts";
 import { sortLanguages } from "./helpers.ts";
-
-const isObject = (value: JsValue): value is Record<string, JsValue> => {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-};
+import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson } from "../utils/json.ts";
 
 export const parseJsonConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
@@ -23,74 +20,79 @@ export const parseJsonConfig = (text: string): SiteConfig => {
   const menuBuilders = new Map<string, MenuEntryBuilder[]>();
   let hasLanguageCode = false;
 
-  const root = JSON.parse(text);
-  if (isObject(root)) {
-    const props = Object.entries(root);
+  const rootValue = parseJson(text);
+  if (rootValue instanceof JsonObject) {
+    const props = rootValue.properties;
     for (let i = 0; i < props.length; i++) {
-      const [keyRaw, value] = props[i]!;
-      const key = keyRaw.toLowerCase();
+      const property = props[i]!;
+      const value = property.value;
+      const key = property.key.toLowerCase();
 
-      if (key === "title" && typeof value === "string") {
-        title = value;
+      if (key === "title" && value instanceof JsonString) {
+        title = value.value;
         continue;
       }
-      if (key === "baseurl" && typeof value === "string") {
-        baseURL = value;
+      if (key === "baseurl" && value instanceof JsonString) {
+        baseURL = value.value;
         continue;
       }
-      if (key === "languagecode" && typeof value === "string") {
-        languageCode = value;
+      if (key === "languagecode" && value instanceof JsonString) {
+        languageCode = value.value;
         hasLanguageCode = true;
         continue;
       }
-      if (key === "contentdir" && typeof value === "string") {
-        contentDir = value;
+      if (key === "contentdir" && value instanceof JsonString) {
+        contentDir = value.value;
         continue;
       }
-      if (key === "theme" && typeof value === "string") {
-        theme = value;
+      if (key === "theme" && value instanceof JsonString) {
+        theme = value.value;
         continue;
       }
-      if (key === "copyright" && typeof value === "string") {
-        copyright = value;
+      if (key === "copyright" && value instanceof JsonString) {
+        copyright = value.value;
         continue;
       }
-      if (key === "params" && isObject(value)) {
-        const paramEntries = Object.entries(value);
+      if (key === "params" && value instanceof JsonObject) {
+        const paramEntries = value.properties;
         for (let j = 0; j < paramEntries.length; j++) {
-          const [paramName, paramValue] = paramEntries[j]!;
-          if (typeof paramValue === "string") params.set(paramName, ParamValue.string(paramValue));
-          else if (typeof paramValue === "boolean") params.set(paramName, ParamValue.bool(paramValue));
-          else if (typeof paramValue === "number") {
-            const narrowed = toInt32(paramValue);
+          const paramProperty = paramEntries[j]!;
+          const paramValue = paramProperty.value;
+          if (paramValue instanceof JsonString) params.set(paramProperty.key, ParamValue.string(paramValue.value));
+          else if (paramValue instanceof JsonBool) params.set(paramProperty.key, ParamValue.bool(paramValue.value));
+          else if (paramValue instanceof JsonNumber) {
+            const narrowed = toInt32(paramValue.value);
             if (narrowed !== undefined) {
-              params.set(paramName, ParamValue.number(narrowed));
+              params.set(paramProperty.key, ParamValue.number(narrowed));
             }
           }
         }
         continue;
       }
 
-      if (key === "languages" && isObject(value)) {
-        const languageEntries = Object.entries(value);
+      if (key === "languages" && value instanceof JsonObject) {
+        const languageEntries = value.properties;
         for (let j = 0; j < languageEntries.length; j++) {
-          const [lang, rawConfig] = languageEntries[j]!;
-          if (!isObject(rawConfig)) continue;
+          const languageProperty = languageEntries[j]!;
+          const lang = languageProperty.key;
+          const rawConfig = languageProperty.value;
+          if (!(rawConfig instanceof JsonObject)) continue;
 
           let languageName = lang;
           let languageDirection = "ltr";
           let langContentDir = `content.${lang}`;
           let weight: int = 0;
 
-          const configEntries = Object.entries(rawConfig);
+          const configEntries = rawConfig.properties;
           for (let k = 0; k < configEntries.length; k++) {
-            const [configKeyRaw, configValue] = configEntries[k]!;
-            const configKey = configKeyRaw.toLowerCase();
-            if (configKey === "languagename" && typeof configValue === "string") languageName = configValue;
-            else if (configKey === "languagedirection" && typeof configValue === "string") languageDirection = configValue;
-            else if (configKey === "contentdir" && typeof configValue === "string") langContentDir = configValue;
-            else if (configKey === "weight" && typeof configValue === "number") {
-              const narrowed = toInt32(configValue);
+            const configProperty = configEntries[k]!;
+            const configValue = configProperty.value;
+            const configKey = configProperty.key.toLowerCase();
+            if (configKey === "languagename" && configValue instanceof JsonString) languageName = configValue.value;
+            else if (configKey === "languagedirection" && configValue instanceof JsonString) languageDirection = configValue.value;
+            else if (configKey === "contentdir" && configValue instanceof JsonString) langContentDir = configValue.value;
+            else if (configKey === "weight" && configValue instanceof JsonNumber) {
+              const narrowed = toInt32(configValue.value);
               if (narrowed !== undefined) {
                 weight = narrowed;
               }
@@ -102,33 +104,36 @@ export const parseJsonConfig = (text: string): SiteConfig => {
         continue;
       }
 
-      if (key === "menu" && isObject(value)) {
-        const menuEntries = Object.entries(value);
+      if (key === "menu" && value instanceof JsonObject) {
+        const menuEntries = value.properties;
         for (let j = 0; j < menuEntries.length; j++) {
-          const [menuName, rawItems] = menuEntries[j]!;
-          if (!Array.isArray(rawItems)) continue;
-          const items = rawItems as JsValue[];
+          const menuProperty = menuEntries[j]!;
+          const menuName = menuProperty.key;
+          const rawItems = menuProperty.value;
+          if (!(rawItems instanceof JsonArray)) continue;
+          const items = rawItems.items;
 
           const entries = menuBuilders.get(menuName) ?? [];
           for (let k = 0; k < items.length; k++) {
             const item = items[k]!;
-            if (!isObject(item)) continue;
+            if (!(item instanceof JsonObject)) continue;
 
             const builder = new MenuEntryBuilder(menuName);
-            const itemEntries = Object.entries(item);
+            const itemEntries = item.properties;
             for (let m = 0; m < itemEntries.length; m++) {
-              const [itemKeyRaw, itemValue] = itemEntries[m]!;
-              const itemKey = itemKeyRaw.toLowerCase();
-              if (itemKey === "name" && typeof itemValue === "string") builder.name = itemValue;
-              else if (itemKey === "url" && typeof itemValue === "string") builder.url = itemValue;
-              else if (itemKey === "pageref" && typeof itemValue === "string") builder.pageRef = itemValue;
-              else if (itemKey === "title" && typeof itemValue === "string") builder.title = itemValue;
-              else if (itemKey === "parent" && typeof itemValue === "string") builder.parent = itemValue;
-              else if (itemKey === "identifier" && typeof itemValue === "string") builder.identifier = itemValue;
-              else if (itemKey === "pre" && typeof itemValue === "string") builder.pre = itemValue;
-              else if (itemKey === "post" && typeof itemValue === "string") builder.post = itemValue;
-              else if (itemKey === "weight" && typeof itemValue === "number") {
-                const narrowed = toInt32(itemValue);
+              const itemProperty = itemEntries[m]!;
+              const itemValue = itemProperty.value;
+              const itemKey = itemProperty.key.toLowerCase();
+              if (itemKey === "name" && itemValue instanceof JsonString) builder.name = itemValue.value;
+              else if (itemKey === "url" && itemValue instanceof JsonString) builder.url = itemValue.value;
+              else if (itemKey === "pageref" && itemValue instanceof JsonString) builder.pageRef = itemValue.value;
+              else if (itemKey === "title" && itemValue instanceof JsonString) builder.title = itemValue.value;
+              else if (itemKey === "parent" && itemValue instanceof JsonString) builder.parent = itemValue.value;
+              else if (itemKey === "identifier" && itemValue instanceof JsonString) builder.identifier = itemValue.value;
+              else if (itemKey === "pre" && itemValue instanceof JsonString) builder.pre = itemValue.value;
+              else if (itemKey === "post" && itemValue instanceof JsonString) builder.post = itemValue.value;
+              else if (itemKey === "weight" && itemValue instanceof JsonNumber) {
+                const narrowed = toInt32(itemValue.value);
                 if (narrowed !== undefined) {
                   builder.weight = narrowed;
                 }

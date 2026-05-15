@@ -1,13 +1,13 @@
 import type { int } from "@tsonic/core/types.js";
 
 export class DocsMountConfig {
-  readonly name: string;
-  readonly sourceDir: string;
-  readonly urlPrefix: string;
-  readonly repoUrl: string | undefined;
-  readonly repoBranch: string;
-  readonly repoPath: string | undefined;
-  readonly navPath: string | undefined;
+  name: string;
+  sourceDir: string;
+  urlPrefix: string;
+  repoUrl: string | undefined;
+  repoBranch: string;
+  repoPath: string | undefined;
+  navPath: string | undefined;
 
   constructor(
     name: string,
@@ -29,12 +29,12 @@ export class DocsMountConfig {
 }
 
 export class DocsSiteConfig {
-  readonly mounts: DocsMountConfig[];
-  readonly strictLinks: boolean;
-  readonly generateSearchIndex: boolean;
-  readonly searchIndexFileName: string;
-  readonly homeMount: string | undefined;
-  readonly siteName: string;
+  mounts: DocsMountConfig[];
+  strictLinks: boolean;
+  generateSearchIndex: boolean;
+  searchIndexFileName: string;
+  homeMount: string | undefined;
+  siteName: string;
 
   constructor(
     mounts: DocsMountConfig[],
@@ -54,12 +54,12 @@ export class DocsSiteConfig {
 }
 
 export class NavItem {
-  readonly title: string;
-  readonly url: string;
-  readonly children: NavItem[];
-  readonly isSection: boolean;
-  readonly isCurrent: boolean;
-  readonly order: int;
+  title: string;
+  url: string;
+  children: NavItem[];
+  isSection: boolean;
+  isCurrent: boolean;
+  order: int;
 
   constructor(
     title: string,
@@ -79,9 +79,9 @@ export class NavItem {
 }
 
 export class DocsMountContext {
-  readonly name: string;
-  readonly urlPrefix: string;
-  readonly nav: NavItem[];
+  name: string;
+  urlPrefix: string;
+  nav: NavItem[];
 
   constructor(name: string, urlPrefix: string, nav: NavItem[]) {
     this.name = name;

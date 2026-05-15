@@ -1,19 +1,16 @@
-import type { int, JsValue } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/core/types.js";
 import { ParamValue } from "../params.ts";
 import { FrontMatterMenu } from "./menu.ts";
 import { FrontMatter } from "./data.ts";
 import { ParsedContent } from "./parsed-content.ts";
 import { parseInt32, toInt32 } from "../utils/int32.ts";
 import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
-
-const isObject = (value: JsValue): value is Record<string, JsValue> => {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-};
+import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson as parseJsonValue, type JsonValue } from "../utils/json.ts";
 
 const tryParseInt = (value: string): int | undefined => parseInt32(value);
 
 const tryParseDate = (value: string): Date | undefined => {
-  const parsed = new Date(value);
+  const parsed = new Date(Date.parse(value));
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
@@ -303,33 +300,34 @@ const parseToml = (lines: string[]): FrontMatter => {
   return fm;
 };
 
-const parseJsonStringArray = (value: JsValue): string[] | undefined => {
-  if (!Array.isArray(value)) return undefined;
-  const values = value as JsValue[];
+const parseJsonStringArray = (value: JsonValue): string[] | undefined => {
+  if (!(value instanceof JsonArray)) return undefined;
+  const values = value.items;
   const items: string[] = [];
   for (let i = 0; i < values.length; i++) {
     const current = values[i];
-    if (typeof current === "string") items.push(current);
+    if (current instanceof JsonString) items.push(current.value);
   }
   return items;
 };
 
 const parseJson = (json: string): FrontMatter => {
   const fm = new FrontMatter();
-  const root = JSON.parse(json) as JsValue;
-  if (!isObject(root)) return fm;
+  const root = parseJsonValue(json);
+  if (!(root instanceof JsonObject)) return fm;
 
-  for (const [rawKey, value] of Object.entries(root)) {
-    const key = rawKey.toLowerCase();
+  for (const property of root.properties) {
+    const value = property.value;
+    const key = property.key.toLowerCase();
 
-    if (key === "title" && typeof value === "string") fm.title = value;
-    else if (key === "description" && typeof value === "string") fm.description = value;
-    else if (key === "slug" && typeof value === "string") fm.slug = value;
-    else if (key === "layout" && typeof value === "string") fm.layout = value;
-    else if (key === "type" && typeof value === "string") fm.type = value;
-    else if (key === "draft" && typeof value === "boolean") fm.draft = value;
-    else if (key === "date" && typeof value === "string") {
-      const parsed = tryParseDate(value);
+    if (key === "title" && value instanceof JsonString) fm.title = value.value;
+    else if (key === "description" && value instanceof JsonString) fm.description = value.value;
+    else if (key === "slug" && value instanceof JsonString) fm.slug = value.value;
+    else if (key === "layout" && value instanceof JsonString) fm.layout = value.value;
+    else if (key === "type" && value instanceof JsonString) fm.type = value.value;
+    else if (key === "draft" && value instanceof JsonBool) fm.draft = value.value;
+    else if (key === "date" && value instanceof JsonString) {
+      const parsed = tryParseDate(value.value);
       if (parsed !== undefined) fm.date = parsed;
     } else if (key === "tags") {
       const parsed = parseJsonStringArray(value);
@@ -337,42 +335,46 @@ const parseJson = (json: string): FrontMatter => {
     } else if (key === "categories") {
       const parsed = parseJsonStringArray(value);
       if (parsed !== undefined) fm.categories = parsed;
-    } else if (key === "params" && isObject(value)) {
-      const paramEntries = Object.entries(value as Record<string, JsValue>);
+    } else if (key === "params" && value instanceof JsonObject) {
+      const paramEntries = value.properties;
       for (let i = 0; i < paramEntries.length; i++) {
-        const [paramKey, paramValue] = paramEntries[i]!;
-        if (typeof paramValue === "string") fm.Params.set(paramKey, ParamValue.string(paramValue));
-        else if (typeof paramValue === "boolean") fm.Params.set(paramKey, ParamValue.bool(paramValue));
-        else if (typeof paramValue === "number") {
-          const narrowed = toInt32(paramValue);
+        const paramProperty = paramEntries[i]!;
+        const paramValue = paramProperty.value;
+        if (paramValue instanceof JsonString) fm.Params.set(paramProperty.key, ParamValue.string(paramValue.value));
+        else if (paramValue instanceof JsonBool) fm.Params.set(paramProperty.key, ParamValue.bool(paramValue.value));
+        else if (paramValue instanceof JsonNumber) {
+          const narrowed = toInt32(paramValue.value);
           if (narrowed !== undefined) {
-            fm.Params.set(paramKey, ParamValue.number(narrowed));
+            fm.Params.set(paramProperty.key, ParamValue.number(narrowed));
           }
         }
       }
-    } else if (key === "menu" && isObject(value)) {
+    } else if (key === "menu" && value instanceof JsonObject) {
       const menuItems: FrontMatterMenu[] = [];
-      const menuEntries = Object.entries(value as Record<string, JsValue>);
+      const menuEntries = value.properties;
       for (let i = 0; i < menuEntries.length; i++) {
-        const [menuName, menuValue] = menuEntries[i]!;
+        const menuProperty = menuEntries[i]!;
+        const menuName = menuProperty.key;
+        const menuValue = menuProperty.value;
         const entry = new FrontMatterMenu(menuName);
-        if (isObject(menuValue)) {
-          const entryPairs = Object.entries(menuValue as Record<string, JsValue>);
+        if (menuValue instanceof JsonObject) {
+          const entryPairs = menuValue.properties;
           for (let j = 0; j < entryPairs.length; j++) {
-            const [entryKeyRaw, entryValue] = entryPairs[j]!;
-            const entryKey = entryKeyRaw.toLowerCase();
-            if (entryKey === "weight" && typeof entryValue === "number") {
-              const narrowed = toInt32(entryValue);
+            const entryProperty = entryPairs[j]!;
+            const entryValue = entryProperty.value;
+            const entryKey = entryProperty.key.toLowerCase();
+            if (entryKey === "weight" && entryValue instanceof JsonNumber) {
+              const narrowed = toInt32(entryValue.value);
               if (narrowed !== undefined) {
                 entry.weight = narrowed;
               }
             }
-            else if (entryKey === "name" && typeof entryValue === "string") entry.name = entryValue;
-            else if (entryKey === "parent" && typeof entryValue === "string") entry.parent = entryValue;
-            else if (entryKey === "identifier" && typeof entryValue === "string") entry.identifier = entryValue;
-            else if (entryKey === "pre" && typeof entryValue === "string") entry.pre = entryValue;
-            else if (entryKey === "post" && typeof entryValue === "string") entry.post = entryValue;
-            else if (entryKey === "title" && typeof entryValue === "string") entry.title = entryValue;
+            else if (entryKey === "name" && entryValue instanceof JsonString) entry.name = entryValue.value;
+            else if (entryKey === "parent" && entryValue instanceof JsonString) entry.parent = entryValue.value;
+            else if (entryKey === "identifier" && entryValue instanceof JsonString) entry.identifier = entryValue.value;
+            else if (entryKey === "pre" && entryValue instanceof JsonString) entry.pre = entryValue.value;
+            else if (entryKey === "post" && entryValue instanceof JsonString) entry.post = entryValue.value;
+            else if (entryKey === "title" && entryValue instanceof JsonString) entry.title = entryValue.value;
           }
         }
         menuItems.push(entry);

@@ -2,7 +2,7 @@ import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { TemplateValue } from "./base.ts";
 
 export class StringArrayValue extends TemplateValue {
-  readonly value: string[];
+  value: string[];
 
   constructor(value: string[]) {
     super();
@@ -11,7 +11,7 @@ export class StringArrayValue extends TemplateValue {
 }
 
 export class AnyArrayValue extends TemplateValue {
-  readonly value: List<TemplateValue>;
+  value: List<TemplateValue>;
 
   constructor(value: List<TemplateValue>) {
     super();
