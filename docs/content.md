@@ -47,6 +47,11 @@ Supported fields:
 
 Any other scalar keys are stored in `.Params` and are available in templates.
 
+Front matter is parsed into typed page and parameter models. Supported scalar
+values are strings, booleans, and integer-like numbers. Arrays are supported for
+fields such as `tags` and `categories`. Open-ended nested objects should live
+under documented `params` shapes that templates read explicitly.
+
 ### YAML front matter example
 
 ```yaml
@@ -69,4 +74,3 @@ params:
 ## Drafts
 
 `draft: true` pages are excluded unless you pass `-D/--buildDrafts`.
-

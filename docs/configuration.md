@@ -24,6 +24,11 @@ If no config file exists, tsumo uses defaults (`title = "Tsumo Site"`, `baseURL 
 - `params` (object/table; exposed as `.Site.Params` in templates)
 - `menu` (menus; exposed as `.Site.Menus`)
 
+tsumo narrows config data into typed engine models. String, boolean, and
+integer-like numeric values are accepted where the schema supports them.
+Unsupported or shape-mismatched values are ignored rather than treated as
+open-ended dynamic objects.
+
 ### Languages
 
 `languages` is parsed in TOML/JSON configs and used to select a default language/content directory.
@@ -79,3 +84,7 @@ menu:
   }
 }
 ```
+
+JSON config files support the documented schema: top-level site keys,
+`params`, `languages`, and `menu`. Object keys are matched case-insensitively
+for the supported fields.
