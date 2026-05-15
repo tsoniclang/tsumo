@@ -2,18 +2,18 @@ import type { int } from "@tsonic/core/types.js";
 import { parseInt32 } from "./utils/int32.ts";
 
 export class ParamKind {
-  static readonly String: int = 0;
-  static readonly Bool: int = 1;
-  static readonly Number: int = 2;
+  static String: int = 0;
+  static Bool: int = 1;
+  static Number: int = 2;
 }
 
 export class ParamValue {
-  readonly kind: int;
-  readonly stringValue: string;
-  readonly boolValue: boolean;
-  readonly numberValue: int;
+  kind: int;
+  stringValue: string;
+  boolValue: boolean;
+  numberValue: int;
 
-  private constructor(kind: int, stringValue: string, boolValue: boolean, numberValue: int) {
+  constructor(kind: int, stringValue: string, boolValue: boolean, numberValue: int) {
     this.kind = kind;
     this.stringValue = stringValue;
     this.boolValue = boolValue;

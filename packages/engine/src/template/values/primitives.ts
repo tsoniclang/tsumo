@@ -3,7 +3,7 @@ import { HtmlString } from "../../utils/html.ts";
 import { TemplateValue } from "./base.ts";
 
 export class StringValue extends TemplateValue {
-  readonly value: string;
+  value: string;
 
   constructor(value: string) {
     super();
@@ -12,7 +12,7 @@ export class StringValue extends TemplateValue {
 }
 
 export class BoolValue extends TemplateValue {
-  readonly value: boolean;
+  value: boolean;
 
   constructor(value: boolean) {
     super();
@@ -21,7 +21,7 @@ export class BoolValue extends TemplateValue {
 }
 
 export class NumberValue extends TemplateValue {
-  readonly value: int;
+  value: int;
 
   constructor(value: int) {
     super();
@@ -30,7 +30,7 @@ export class NumberValue extends TemplateValue {
 }
 
 export class HtmlValue extends TemplateValue {
-  readonly value: HtmlString;
+  value: HtmlString;
 
   constructor(value: HtmlString) {
     super();

@@ -2,7 +2,7 @@ import { MediaType } from "../../models.ts";
 import { TemplateValue } from "./base.ts";
 
 export class MediaTypeValue extends TemplateValue {
-  readonly value: MediaType;
+  value: MediaType;
 
   constructor(value: MediaType) {
     super();

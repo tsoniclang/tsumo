@@ -32,8 +32,8 @@ export class ServeRequest extends BuildRequest {
 }
 
 export class BuildResult {
-  readonly outputDir: string;
-  readonly pagesBuilt: int;
+  outputDir: string;
+  pagesBuilt: int;
 
   constructor(outputDir: string, pagesBuilt: int) {
     this.outputDir = outputDir;

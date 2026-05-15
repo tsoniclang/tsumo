@@ -1,11 +1,11 @@
 import type { int } from "@tsonic/core/types.js";
 
 export class LanguageConfig {
-  readonly lang: string;
-  readonly languageName: string;
-  readonly languageDirection: string;
-  readonly contentDir: string;
-  readonly weight: int;
+  lang: string;
+  languageName: string;
+  languageDirection: string;
+  contentDir: string;
+  weight: int;
 
   constructor(lang: string, languageName: string, languageDirection: string, contentDir: string, weight: int) {
     this.lang = lang;
@@ -17,9 +17,9 @@ export class LanguageConfig {
 }
 
 export class LanguageContext {
-  readonly Lang: string;
-  readonly LanguageName: string;
-  readonly LanguageDirection: string;
+  Lang: string;
+  LanguageName: string;
+  LanguageDirection: string;
 
   constructor(lang: string, languageName: string, languageDirection: string) {
     this.Lang = lang;

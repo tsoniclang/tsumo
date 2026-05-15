@@ -23,7 +23,7 @@ const deleteIfExists = (path: string): void => {
 };
 
 export class ScaffoldAndBuildTests {
-  public scaffold_then_build(): void {
+  scaffold_then_build(): void {
     const siteDir = createTempDir("site");
     const outDir = createTempDir("out");
 
@@ -46,7 +46,7 @@ export class ScaffoldAndBuildTests {
     }
   }
 
-  public drafts_skipped_by_default(): void {
+  drafts_skipped_by_default(): void {
     const siteDir = createTempDir("site");
     const outDir = createTempDir("out");
 
@@ -68,7 +68,7 @@ export class ScaffoldAndBuildTests {
     }
   }
 
-  public new_content_then_build(): void {
+  new_content_then_build(): void {
     const siteDir = createTempDir("site");
     const outDir = createTempDir("out");
 

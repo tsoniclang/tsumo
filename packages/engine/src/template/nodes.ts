@@ -28,7 +28,7 @@ export class TemplateNode {
 }
 
 export class TextNode extends TemplateNode {
-  readonly text: string;
+  text: string;
 
   constructor(text: string) {
     super();
@@ -47,8 +47,8 @@ export class TextNode extends TemplateNode {
 }
 
 export class OutputNode extends TemplateNode {
-  readonly pipeline: Pipeline;
-  readonly escape: boolean;
+  pipeline: Pipeline;
+  escape: boolean;
 
   constructor(pipeline: Pipeline, escape: boolean) {
     super();
@@ -69,9 +69,9 @@ export class OutputNode extends TemplateNode {
 }
 
 export class AssignmentNode extends TemplateNode {
-  readonly name: string;
-  readonly pipeline: Pipeline;
-  readonly declare: boolean;
+  name: string;
+  pipeline: Pipeline;
+  declare: boolean;
 
   constructor(name: string, pipeline: Pipeline, declare: boolean) {
     super();
@@ -94,8 +94,8 @@ export class AssignmentNode extends TemplateNode {
 }
 
 export class TemplateInvokeNode extends TemplateNode {
-  readonly name: string;
-  readonly context: Pipeline;
+  name: string;
+  context: Pipeline;
 
   constructor(name: string, context: Pipeline) {
     super();
@@ -125,9 +125,9 @@ export class TemplateInvokeNode extends TemplateNode {
 }
 
 export class IfNode extends TemplateNode {
-  readonly condition: Pipeline;
-  readonly thenNodes: TemplateNode[];
-  readonly elseNodes: TemplateNode[];
+  condition: Pipeline;
+  thenNodes: TemplateNode[];
+  elseNodes: TemplateNode[];
 
   constructor(condition: Pipeline, thenNodes: TemplateNode[], elseNodes: TemplateNode[]) {
     super();
@@ -153,11 +153,11 @@ export class IfNode extends TemplateNode {
 }
 
 export class RangeNode extends TemplateNode {
-  readonly expr: Pipeline;
-  readonly keyVar: string | undefined;
-  readonly valueVar: string | undefined;
-  readonly body: TemplateNode[];
-  readonly elseBody: TemplateNode[];
+  expr: Pipeline;
+  keyVar: string | undefined;
+  valueVar: string | undefined;
+  body: TemplateNode[];
+  elseBody: TemplateNode[];
 
   constructor(expr: Pipeline, keyVar: string | undefined, valueVar: string | undefined, body: TemplateNode[], elseBody: TemplateNode[]) {
     super();
@@ -168,7 +168,7 @@ export class RangeNode extends TemplateNode {
     this.elseBody = elseBody;
   }
 
-  private renderBody(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): void {
+  renderBody(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): void {
     for (let j = 0; j < this.body.length; j++) this.body[j]!.render(sb, scope, env, overrides, defines);
   }
 
@@ -319,9 +319,9 @@ export class RangeNode extends TemplateNode {
 }
 
 export class WithNode extends TemplateNode {
-  readonly expr: Pipeline;
-  readonly body: TemplateNode[];
-  readonly elseBody: TemplateNode[];
+  expr: Pipeline;
+  body: TemplateNode[];
+  elseBody: TemplateNode[];
 
   constructor(expr: Pipeline, body: TemplateNode[], elseBody: TemplateNode[]) {
     super();
@@ -348,9 +348,9 @@ export class WithNode extends TemplateNode {
 }
 
 export class BlockNode extends TemplateNode {
-  readonly name: string;
-  readonly context: Pipeline;
-  readonly fallback: TemplateNode[];
+  name: string;
+  context: Pipeline;
+  fallback: TemplateNode[];
 
   constructor(name: string, context: Pipeline, fallback: TemplateNode[]) {
     super();

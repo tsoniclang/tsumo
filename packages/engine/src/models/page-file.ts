@@ -1,7 +1,7 @@
 export class PageFile {
-  readonly Filename: string;
-  readonly Dir: string;
-  readonly BaseFileName: string;
+  Filename: string;
+  Dir: string;
+  BaseFileName: string;
 
   constructor(filename: string, dir: string, baseFileName: string) {
     this.Filename = filename;

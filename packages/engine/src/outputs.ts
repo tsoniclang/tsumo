@@ -16,7 +16,7 @@ const escapeXml = (value: string): string => escapeHtml(value);
 const wrapCdata = (raw: string): string => "<![CDATA[" + replaceText(raw, "]]>", "]]]]><![CDATA[>") + "]]>";
 
 const parsePageDate = (value: string, fallback: Date): Date => {
-  const parsed = new Date(value);
+  const parsed = new Date(Date.parse(value));
   return Number.isNaN(parsed.getTime()) ? fallback : parsed;
 };
 

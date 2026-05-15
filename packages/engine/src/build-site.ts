@@ -20,25 +20,25 @@ import { buildMenuHierarchy, flattenMenuEntries } from "./menus.ts";
 import { replaceText, substringCount, trimEndChar, trimStartChar } from "./utils/strings.ts";
 
 class ContentPageBuild {
-  readonly sourcePath: string;
-  readonly section: string;
-  readonly type: string;
-  readonly slug: string;
-  readonly title: string;
-  readonly dateUtc: Date;
-  readonly dateString: string;
-  readonly lastmodString: string;
-  readonly draft: boolean;
-  readonly description: string;
-  readonly tags: string[];
-  readonly categories: string[];
-  readonly Params: Map<string, ParamValue>;
-  readonly rawBody: string;
-  readonly relPermalink: string;
-  readonly outputRelPath: string;
-  readonly layout: string | undefined;
-  readonly file: PageFile;
-  readonly menus: FrontMatterMenu[];
+  sourcePath: string;
+  section: string;
+  type: string;
+  slug: string;
+  title: string;
+  dateUtc: Date;
+  dateString: string;
+  lastmodString: string;
+  draft: boolean;
+  description: string;
+  tags: string[];
+  categories: string[];
+  Params: Map<string, ParamValue>;
+  rawBody: string;
+  relPermalink: string;
+  outputRelPath: string;
+  layout: string | undefined;
+  file: PageFile;
+  menus: FrontMatterMenu[];
 
   constructor(
     sourcePath: string,
@@ -84,14 +84,14 @@ class ContentPageBuild {
 }
 
 class ListPageContent {
-  readonly title: string | undefined;
-  readonly rawBody: string;
-  readonly description: string;
-  readonly type: string | undefined;
-  readonly layout: string | undefined;
-  readonly Params: Map<string, ParamValue>;
-  readonly sourceDir: string;
-  readonly file: PageFile | undefined;
+  title: string | undefined;
+  rawBody: string;
+  description: string;
+  type: string | undefined;
+  layout: string | undefined;
+  Params: Map<string, ParamValue>;
+  sourceDir: string;
+  file: PageFile | undefined;
 
   constructor(
     title: string | undefined,

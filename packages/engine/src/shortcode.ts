@@ -3,15 +3,15 @@ import { indexOfText, indexOfTextFrom, lastIndexOfText, substringCount, substrin
 import { ParamValue } from "./params.ts";
 
 export class ShortcodeCall {
-  readonly name: string;
-  readonly params: Map<string, ParamValue>;
-  readonly positionalParams: string[];
-  readonly isNamedParams: boolean;
-  readonly inner: string;
-  readonly isMarkdown: boolean;
-  readonly isSelfClosing: boolean;
-  readonly startIndex: int;
-  readonly endIndex: int;
+  name: string;
+  params: Map<string, ParamValue>;
+  positionalParams: string[];
+  isNamedParams: boolean;
+  inner: string;
+  isMarkdown: boolean;
+  isSelfClosing: boolean;
+  startIndex: int;
+  endIndex: int;
 
   constructor(
     name: string,

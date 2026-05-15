@@ -2,9 +2,9 @@ import { Uri } from "@tsonic/dotnet/System.js";
 import { TemplateValue } from "./base.ts";
 
 export class UrlParts {
-  readonly path: string;
-  readonly rawQuery: string;
-  readonly fragment: string;
+  path: string;
+  rawQuery: string;
+  fragment: string;
 
   constructor(path: string, rawQuery: string, fragment: string) {
     this.path = path;
@@ -14,7 +14,7 @@ export class UrlParts {
 }
 
 export class UrlValue extends TemplateValue {
-  readonly value: Uri;
+  value: Uri;
 
   constructor(value: Uri) {
     super();

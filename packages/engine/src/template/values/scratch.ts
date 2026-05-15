@@ -4,7 +4,7 @@ import { DictValue } from "./dict.ts";
 import { AnyArrayValue } from "./arrays.ts";
 
 export class ScratchStore {
-  private readonly values: Dictionary<string, TemplateValue>;
+  values: Dictionary<string, TemplateValue>;
 
   constructor() {
     this.values = new Dictionary<string, TemplateValue>();
@@ -87,7 +87,7 @@ export class ScratchStore {
 }
 
 export class ScratchValue extends TemplateValue {
-  readonly value: ScratchStore;
+  value: ScratchStore;
 
   constructor(value: ScratchStore) {
     super();

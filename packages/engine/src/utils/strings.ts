@@ -1,4 +1,6 @@
+import { asinterface } from "@tsonic/core/lang.js";
 import type { char, int } from "@tsonic/core/types.js";
+import { String as DotnetString } from "@tsonic/dotnet/System.js";
 
 const substringError = (): never => {
   throw new Error("substring bounds are out of range");
@@ -72,10 +74,5 @@ export const replaceLineEndings = (source: string, replacement: string): string 
 
 export const splitLines = (source: string): string[] => replaceLineEndings(source, "\n").split("\n");
 
-export const toChars = (source: string): char[] => {
-  const chars = new Array<char>(source.length);
-  for (let i = 0; i < source.length; i++) {
-    chars[i] = source[i]!;
-  }
-  return chars;
-};
+export const toChars = (source: string): char[] =>
+  asinterface<DotnetString>(source).ToCharArray();

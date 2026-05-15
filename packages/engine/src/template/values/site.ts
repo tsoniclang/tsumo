@@ -2,7 +2,7 @@ import { LanguageContext, SiteContext } from "../../models.ts";
 import { TemplateValue } from "./base.ts";
 
 export class SiteValue extends TemplateValue {
-  readonly value: SiteContext;
+  value: SiteContext;
 
   constructor(value: SiteContext) {
     super();
@@ -11,7 +11,7 @@ export class SiteValue extends TemplateValue {
 }
 
 export class LanguageValue extends TemplateValue {
-  readonly value: LanguageContext;
+  value: LanguageContext;
 
   constructor(value: LanguageContext) {
     super();
@@ -20,7 +20,7 @@ export class LanguageValue extends TemplateValue {
 }
 
 export class SitesValue extends TemplateValue {
-  readonly value: SiteContext;
+  value: SiteContext;
 
   constructor(value: SiteContext) {
     super();
@@ -29,7 +29,7 @@ export class SitesValue extends TemplateValue {
 }
 
 export class SitesArrayValue extends TemplateValue {
-  readonly value: SiteContext[];
+  value: SiteContext[];
 
   constructor(value: SiteContext[]) {
     super();

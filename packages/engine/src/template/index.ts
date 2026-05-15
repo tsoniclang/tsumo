@@ -1,4 +1,4 @@
-// Re-export all public APIs from template modules
+// Re-export all APIs from template modules
 
 // Value types
 export {

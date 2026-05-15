@@ -4,7 +4,7 @@ import { fileExists, readTextFile } from "./fs.ts";
 import { indexOfText, replaceLineEndings, substringCount, substringFrom } from "./utils/strings.ts";
 
 export class I18nStore {
-  private readonly translations: Dictionary<string, Dictionary<string, string>>;
+  translations: Dictionary<string, Dictionary<string, string>>;
 
   constructor() {
     this.translations = new Dictionary<string, Dictionary<string, string>>();
@@ -43,7 +43,7 @@ export class I18nStore {
     }
   }
 
-  private parseYamlI18n(content: string, dict: Dictionary<string, string>): void {
+  parseYamlI18n(content: string, dict: Dictionary<string, string>): void {
     const lines = replaceLineEndings(content, "\n").split("\n");
     let currentId = "";
 
@@ -68,7 +68,7 @@ export class I18nStore {
     }
   }
 
-  private unquoteYaml(value: string): string {
+  unquoteYaml(value: string): string {
     const trimmed = value.trim();
     if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
       return substringCount(trimmed, 1, trimmed.length - 2);
@@ -79,7 +79,7 @@ export class I18nStore {
     return trimmed;
   }
 
-  private parseTomlI18n(content: string, dict: Dictionary<string, string>): void {
+  parseTomlI18n(content: string, dict: Dictionary<string, string>): void {
     const lines = replaceLineEndings(content, "\n").split("\n");
     let currentId = "";
 
@@ -106,7 +106,7 @@ export class I18nStore {
     }
   }
 
-  private unquoteToml(value: string): string {
+  unquoteToml(value: string): string {
     const trimmed = value.trim();
     if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
       return substringCount(trimmed, 1, trimmed.length - 2);
@@ -117,7 +117,7 @@ export class I18nStore {
     return trimmed;
   }
 
-  private parseJsonI18n(content: string, _dict: Dictionary<string, string>): void {
+  parseJsonI18n(content: string, _dict: Dictionary<string, string>): void {
     // Simplified JSON parsing - not fully implemented
     // Hugo i18n JSON is typically same format as YAML array
   }

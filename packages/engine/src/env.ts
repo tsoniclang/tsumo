@@ -3,10 +3,10 @@ import { ResourceManager } from "./resources.ts";
 import { ModuleMount } from "./models.ts";
 
 export class BuildEnvironment extends LayoutEnvironment {
-  readonly siteDir: string;
-  readonly themeDir: string | undefined;
-  readonly outputDir: string;
-  readonly resources: ResourceManager;
+  siteDir: string;
+  themeDir: string | undefined;
+  outputDir: string;
+  resources: ResourceManager;
 
   constructor(siteDir: string, themeDir: string | undefined, outputDir: string, mounts?: ModuleMount[]) {
     super(siteDir, themeDir, mounts);

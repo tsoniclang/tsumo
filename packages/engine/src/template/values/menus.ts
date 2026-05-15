@@ -2,8 +2,8 @@ import { MenuEntry, SiteContext } from "../../models.ts";
 import { TemplateValue } from "./base.ts";
 
 export class MenuEntryValue extends TemplateValue {
-  readonly value: MenuEntry;
-  readonly site: SiteContext;
+  value: MenuEntry;
+  site: SiteContext;
 
   constructor(value: MenuEntry, site: SiteContext) {
     super();
@@ -13,8 +13,8 @@ export class MenuEntryValue extends TemplateValue {
 }
 
 export class MenuArrayValue extends TemplateValue {
-  readonly value: MenuEntry[];
-  readonly site: SiteContext;
+  value: MenuEntry[];
+  site: SiteContext;
 
   constructor(value: MenuEntry[], site: SiteContext) {
     super();
@@ -24,7 +24,7 @@ export class MenuArrayValue extends TemplateValue {
 }
 
 export class MenusValue extends TemplateValue {
-  readonly site: SiteContext;
+  site: SiteContext;
 
   constructor(site: SiteContext) {
     super();

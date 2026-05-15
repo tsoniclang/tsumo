@@ -3,7 +3,7 @@ import type { ResourceManager } from "../../resources.ts";
 import { TemplateValue } from "./base.ts";
 
 export class ResourceDataValue extends TemplateValue {
-  readonly value: ResourceData;
+  value: ResourceData;
 
   constructor(value: ResourceData) {
     super();
@@ -12,8 +12,8 @@ export class ResourceDataValue extends TemplateValue {
 }
 
 export class ResourceValue extends TemplateValue {
-  readonly value: Resource;
-  readonly manager: ResourceManager;
+  value: Resource;
+  manager: ResourceManager;
 
   constructor(manager: ResourceManager, value: Resource) {
     super();

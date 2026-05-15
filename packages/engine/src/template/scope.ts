@@ -4,12 +4,12 @@ import { TemplateValue, NilValue } from "./values.ts";
 import type { TemplateEnvironment } from "./environment.ts";
 
 export class RenderScope {
-  readonly root: TemplateValue;
-  readonly dot: TemplateValue;
-  readonly site: SiteContext;
-  readonly env: TemplateEnvironment;
-  readonly parent: RenderScope | undefined;
-  readonly vars: Dictionary<string, TemplateValue>;
+  root: TemplateValue;
+  dot: TemplateValue;
+  site: SiteContext;
+  env: TemplateEnvironment;
+  parent: RenderScope | undefined;
+  vars: Dictionary<string, TemplateValue>;
 
   constructor(root: TemplateValue, dot: TemplateValue, site: SiteContext, env: TemplateEnvironment, parent: RenderScope | undefined) {
     this.root = root;

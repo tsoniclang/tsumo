@@ -1,4 +1,4 @@
-import { Convert, Environment, Exception, Int32 } from "@tsonic/dotnet/System.js";
+import { Convert, Environment, Exception } from "@tsonic/dotnet/System.js";
 import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { Directory, File, MemoryStream, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import { Process, ProcessStartInfo } from "@tsonic/dotnet/System.Diagnostics.js";
@@ -6,11 +6,12 @@ import { SHA256 } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import { Encoding } from "@tsonic/dotnet/System.Text.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { byte, char, int } from "@tsonic/core/types.js";
+import { parseInt32 } from "./utils/int32.ts";
 import { replaceLineEndings, replaceText, substringCount, substringFrom, trimStartChar } from "./utils/strings.ts";
 import { MagicImageProcessor, ProcessImageSettings } from "photo-sauce-magic-scaler-types/PhotoSauce.MagicScaler.js";
 
 export class ResourceData {
-  readonly Integrity: string;
+  Integrity: string;
 
   constructor(integrity: string) {
     this.Integrity = integrity;
@@ -18,8 +19,8 @@ export class ResourceData {
 }
 
 export class ImageDimensions {
-  readonly width: int;
-  readonly height: int;
+  width: int;
+  height: int;
 
   constructor(width: int, height: int) {
     this.width = width;
@@ -28,16 +29,16 @@ export class ImageDimensions {
 }
 
 export class Resource {
-  readonly id: string;
-  readonly sourcePath: string | undefined;
-  readonly publishable: boolean;
-  readonly outputRelPath: string | undefined;
-  readonly bytes: byte[];
-  readonly text: string | undefined;
-  readonly Data: ResourceData;
-  readonly mediaType: string;
-  readonly width: int;
-  readonly height: int;
+  id: string;
+  sourcePath: string | undefined;
+  publishable: boolean;
+  outputRelPath: string | undefined;
+  bytes: byte[];
+  text: string | undefined;
+  Data: ResourceData;
+  mediaType: string;
+  width: int;
+  height: int;
 
   constructor(
     id: string,
@@ -192,8 +193,8 @@ export class Resource {
 }
 
 class DirFileSplit {
-  readonly dir: string;
-  readonly file: string;
+  dir: string;
+  file: string;
 
   constructor(dir: string, file: string) {
     this.dir = dir;
@@ -202,8 +203,8 @@ class DirFileSplit {
 }
 
 class FileBaseExtSplit {
-  readonly base: string;
-  readonly ext: string;
+  base: string;
+  ext: string;
 
   constructor(base: string, ext: string) {
     this.base = base;
@@ -212,18 +213,18 @@ class FileBaseExtSplit {
 }
 
 export class ResourceManager {
-  private readonly siteDir: string;
-  private readonly themeDir: string | undefined;
-  private readonly outputDir: string;
+  siteDir: string;
+  themeDir: string | undefined;
+  outputDir: string;
 
-  private readonly siteAssetsDir: string;
-  private readonly themeAssetsDir: string | undefined;
+  siteAssetsDir: string;
+  themeAssetsDir: string | undefined;
 
-  private readonly cache: Dictionary<string, Resource>;
-  private readonly siteAssetFiles: string[];
-  private readonly themeAssetFiles: string[];
+  cache: Dictionary<string, Resource>;
+  siteAssetFiles: string[];
+  themeAssetFiles: string[];
 
-  private static normalizeSlashes(path: string): string {
+  static normalizeSlashes(path: string): string {
     return path.replaceAll("\\", "/");
   }
 
@@ -233,12 +234,12 @@ export class ResourceManager {
     return trimStartChar(normalized, slash);
   }
 
-  private static toOsRelPath(relPath: string): string {
+  static toOsRelPath(relPath: string): string {
     const slash = "/";
     return replaceText(relPath, slash, `${Path.DirectorySeparatorChar}`);
   }
 
-  private static bytesToHex(hash: byte[]): string {
+  static bytesToHex(hash: byte[]): string {
     const chars = "0123456789abcdef";
     let out = "";
     for (let i = 0; i < hash.length; i++) {
@@ -290,7 +291,7 @@ export class ResourceManager {
     return e === ".png" || e === ".jpg" || e === ".jpeg" || e === ".gif" || e === ".webp" || e === ".bmp";
   }
 
-  private static splitDirAndFile(relPath: string): DirFileSplit {
+  static splitDirAndFile(relPath: string): DirFileSplit {
     const slash = "/";
     const normalized = ResourceManager.normalizeRel(relPath);
     const idx = normalized.lastIndexOf(slash);
@@ -298,13 +299,13 @@ export class ResourceManager {
     return new DirFileSplit(substringCount(normalized, 0, idx + 1), substringFrom(normalized, idx + 1));
   }
 
-  private static splitFileBaseAndExt(fileName: string): FileBaseExtSplit {
+  static splitFileBaseAndExt(fileName: string): FileBaseExtSplit {
     const idx = fileName.lastIndexOf(".");
     if (idx < 0) return new FileBaseExtSplit(fileName, "");
     return new FileBaseExtSplit(substringCount(fileName, 0, idx), substringFrom(fileName, idx));
   }
 
-  private static segmentMatch(pattern: string, segment: string): boolean {
+  static segmentMatch(pattern: string, segment: string): boolean {
     if (pattern === "*") return true;
     const star = pattern.indexOf("*");
     if (star < 0) return pattern === segment;
@@ -323,7 +324,7 @@ export class ResourceManager {
     return true;
   }
 
-  private static splitGlobSegments(raw: string): string[] {
+  static splitGlobSegments(raw: string): string[] {
     const normalized = ResourceManager.normalizeRel(raw);
     if (normalized === "") {
       const empty: string[] = [];
@@ -332,7 +333,7 @@ export class ResourceManager {
     return normalized.split("/");
   }
 
-  private static globMatchAt(patSegs: string[], pathSegs: string[], pi: int, si: int): boolean {
+  static globMatchAt(patSegs: string[], pathSegs: string[], pi: int, si: int): boolean {
     if (pi >= patSegs.length) return si >= pathSegs.length;
     const p = patSegs[pi]!;
     if (p === "**") {
@@ -346,7 +347,7 @@ export class ResourceManager {
     return ResourceManager.globMatchAt(patSegs, pathSegs, pi + 1, si + 1);
   }
 
-  private static globMatch(patternRaw: string, pathRaw: string): boolean {
+  static globMatch(patternRaw: string, pathRaw: string): boolean {
     const patSegs = ResourceManager.splitGlobSegments(patternRaw);
     const pathSegs = ResourceManager.splitGlobSegments(pathRaw);
     return ResourceManager.globMatchAt(patSegs, pathSegs, 0, 0);
@@ -368,7 +369,7 @@ export class ResourceManager {
       : emptyFiles;
   }
 
-  private resolveAssetFullPath(relPathRaw: string): string | undefined {
+  resolveAssetFullPath(relPathRaw: string): string | undefined {
     const rel = ResourceManager.normalizeRel(relPathRaw);
     if (rel === "") return undefined;
     const osRel = ResourceManager.toOsRelPath(rel);
@@ -744,14 +745,12 @@ export class ResourceManager {
    * Parse Hugo-style resize spec (e.g., "300x200", "300x", "x200").
    * Returns dimensions where 0 means "auto".
    */
-  private static tryParseInt(s: string): int {
+  static tryParseInt(s: string): int {
     if (s === "") return 0;
-    let result: int = 0;
-    if (Int32.TryParse(s, result)) return result;
-    return 0;
+    return parseInt32(s) ?? 0;
   }
 
-  private static parseResizeWidth(spec: string): int {
+  static parseResizeWidth(spec: string): int {
     const s = spec.trim().toLowerCase();
     const xIdx = s.indexOf("x");
     if (xIdx < 0) {
@@ -762,7 +761,7 @@ export class ResourceManager {
     return ResourceManager.tryParseInt(wPart);
   }
 
-  private static parseResizeHeight(spec: string): int {
+  static parseResizeHeight(spec: string): int {
     const s = spec.trim().toLowerCase();
     const xIdx = s.indexOf("x");
     if (xIdx < 0) {
@@ -778,7 +777,7 @@ export class ResourceManager {
    * Get output format from resize spec (e.g., "300x200 webp" -> "webp").
    * Returns undefined if no format specified.
    */
-  private static parseResizeFormat(spec: string): string | undefined {
+  static parseResizeFormat(spec: string): string | undefined {
     const s = spec.trim().toLowerCase();
     const parts = s.split(" ");
     for (let i = 1; i < parts.length; i++) {

@@ -11,7 +11,7 @@ export const escapeHtml = (input: string): string => {
 };
 
 export class HtmlString {
-  readonly value: string;
+  value: string;
 
   constructor(value: string) {
     this.value = value;

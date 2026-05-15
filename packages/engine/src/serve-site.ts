@@ -1,4 +1,5 @@
 import { readFileSync, readFileSyncBytes, statSync } from "@tsonic/nodejs/fs.js";
+import { Buffer } from "@tsonic/nodejs/buffer.js";
 import { createServer, type IncomingMessage, type ServerResponse } from "@tsonic/nodejs/http.js";
 import { extname, resolve, sep } from "@tsonic/nodejs/path.js";
 import type { byte, int } from "@tsonic/core/types.js";
@@ -26,7 +27,7 @@ const sendText = (response: ServerResponse, statusCode: int, contentType: string
 const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", contentType);
-  response.end(bytes);
+  response.end(Buffer.fromBytes(bytes));
 };
 
 const isTextLikeContentType = (contentType: string): boolean => {

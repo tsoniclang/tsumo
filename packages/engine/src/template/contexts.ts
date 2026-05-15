@@ -6,16 +6,16 @@ import { parseInt32 } from "../utils/int32.ts";
 import { TemplateValue } from "./values.ts";
 
 export class ShortcodeContext {
-  readonly name: string;
-  readonly Page: PageContext;
-  readonly Site: SiteContext;
-  readonly Params: Map<string, ParamValue>;
-  readonly positionalParams: string[];
-  readonly IsNamedParams: boolean;
-  readonly Inner: string;
-  readonly InnerDeindent: string;
-  readonly Ordinal: int;
-  readonly Parent: ShortcodeContext | undefined;
+  name: string;
+  Page: PageContext;
+  Site: SiteContext;
+  Params: Map<string, ParamValue>;
+  positionalParams: string[];
+  IsNamedParams: boolean;
+  Inner: string;
+  InnerDeindent: string;
+  Ordinal: int;
+  Parent: ShortcodeContext | undefined;
 
   constructor(
     name: string,
@@ -53,7 +53,7 @@ export class ShortcodeContext {
 }
 
 export class ShortcodeValue extends TemplateValue {
-  readonly value: ShortcodeContext;
+  value: ShortcodeContext;
 
   constructor(value: ShortcodeContext) {
     super();
@@ -62,11 +62,11 @@ export class ShortcodeValue extends TemplateValue {
 }
 
 export class LinkHookContext {
-  readonly Destination: string;
-  readonly Text: string;
-  readonly Title: string;
-  readonly PlainText: string;
-  readonly Page: PageContext;
+  Destination: string;
+  Text: string;
+  Title: string;
+  PlainText: string;
+  Page: PageContext;
 
   constructor(destination: string, text: string, title: string, plainText: string, page: PageContext) {
     this.Destination = destination;
@@ -78,7 +78,7 @@ export class LinkHookContext {
 }
 
 export class LinkHookValue extends TemplateValue {
-  readonly value: LinkHookContext;
+  value: LinkHookContext;
 
   constructor(value: LinkHookContext) {
     super();
@@ -87,11 +87,11 @@ export class LinkHookValue extends TemplateValue {
 }
 
 export class ImageHookContext {
-  readonly Destination: string;
-  readonly Text: string;
-  readonly Title: string;
-  readonly PlainText: string;
-  readonly Page: PageContext;
+  Destination: string;
+  Text: string;
+  Title: string;
+  PlainText: string;
+  Page: PageContext;
 
   constructor(destination: string, text: string, title: string, plainText: string, page: PageContext) {
     this.Destination = destination;
@@ -103,7 +103,7 @@ export class ImageHookContext {
 }
 
 export class ImageHookValue extends TemplateValue {
-  readonly value: ImageHookContext;
+  value: ImageHookContext;
 
   constructor(value: ImageHookContext) {
     super();
@@ -112,11 +112,11 @@ export class ImageHookValue extends TemplateValue {
 }
 
 export class HeadingHookContext {
-  readonly Level: int;
-  readonly Text: string;
-  readonly PlainText: string;
-  readonly Anchor: string;
-  readonly Page: PageContext;
+  Level: int;
+  Text: string;
+  PlainText: string;
+  Anchor: string;
+  Page: PageContext;
 
   constructor(level: int, text: string, plainText: string, anchor: string, page: PageContext) {
     this.Level = level;
@@ -128,7 +128,7 @@ export class HeadingHookContext {
 }
 
 export class HeadingHookValue extends TemplateValue {
-  readonly value: HeadingHookContext;
+  value: HeadingHookContext;
 
   constructor(value: HeadingHookContext) {
     super();

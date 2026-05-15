@@ -1,7 +1,7 @@
 import type { int } from "@tsonic/core/types.js";
 
 export class FrontMatterMenu {
-  readonly menu: string;
+  menu: string;
   name: string;
   weight: int;
   parent: string;

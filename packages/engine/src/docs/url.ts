@@ -2,8 +2,8 @@ import type { int } from "@tsonic/core/types.js";
 import { substringCount, substringFrom } from "../utils/strings.ts";
 
 export class UrlSuffixSplit {
-  readonly path: string;
-  readonly suffix: string;
+  path: string;
+  suffix: string;
 
   constructor(path: string, suffix: string) {
     this.path = path;
