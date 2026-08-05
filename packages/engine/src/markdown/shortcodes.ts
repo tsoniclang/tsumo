@@ -1,12 +1,9 @@
 import type { int } from "@tsonic/csharp/types.js";
 import { Exception } from "@tsonic/dotnet/System.js";
-import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
 import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
-import { RenderScope } from "../template/scope.js";
-import { TemplateEnvironment } from "../template/environment.js";
-import { TemplateNode } from "../template/nodes.js";
-import { PageValue } from "../template/values.js";
+import type { TemplateEnvironment } from "../template/environment.js";
+import type { TemplateNode } from "../template/nodes.js";
 import { PageContext, SiteContext } from "../models.js";
 import { substringCount, substringFrom } from "../utils/strings.js";
 
@@ -69,17 +66,13 @@ export const renderShortcode = (
     parent,
   );
 
-  const sb = new StringBuilder();
-  const pageValue = new PageValue(page);
   const shortcodeValue = new ShortcodeValue(ctx);
-  const scope = new RenderScope(shortcodeValue, shortcodeValue, site, env, undefined);
   const emptyOverrides = new Map<string, TemplateNode[]>();
-
-  template.renderInto(sb, scope, env, emptyOverrides);
+  const result = env.renderTemplate(template, shortcodeValue, site, emptyOverrides);
 
   recursionGuard.set(guardKey, false);
 
-  return sb.ToString();
+  return result;
 };
 
 export const processShortcodes = (

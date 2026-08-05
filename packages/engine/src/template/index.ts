@@ -39,5 +39,6 @@ export { Template } from "./template.js";
 // Runtime helpers (used by markdown.ts)
 export { nil, isTruthy, stringify, toPlainString } from "./runtime-helpers.js";
 
-// Runtime and parsing
-export { Pipeline, Expr, Command, parseTemplate } from "./runtime.js";
+// Syntax and parsing
+export { Pipeline, Expr, Command } from "./syntax/expressions.js";
+export { parseTemplate } from "./parser/parse-template.js";

@@ -1,0 +1,143 @@
+import { createTsumoError } from "../../diagnostics.js";
+import type { TemplateEnvironment } from "../environment.js";
+import type { TemplateNode } from "../nodes.js";
+import type { RenderScope } from "../scope.js";
+import { AccessExpr, Command, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
+import type { TemplateValue } from "../values.js";
+import { TemplateRuntime } from "../runtime.js";
+
+export class TemplateEvaluationContext {
+  scope: RenderScope;
+  environment: TemplateEnvironment;
+  overrides: Map<string, TemplateNode[]>;
+  defines: Map<string, TemplateNode[]>;
+
+  constructor(
+    scope: RenderScope,
+    environment: TemplateEnvironment,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
+  ) {
+    this.scope = scope;
+    this.environment = environment;
+    this.overrides = overrides;
+    this.defines = defines;
+  }
+}
+
+export function evaluatePipeline(
+  pipeline: Pipeline,
+  scope: RenderScope,
+  environment: TemplateEnvironment,
+  overrides: Map<string, TemplateNode[]>,
+  defines: Map<string, TemplateNode[]>,
+): TemplateValue {
+  const context = new TemplateEvaluationContext(scope, environment, overrides, defines);
+  if (pipeline.stages.length === 0) return TemplateRuntime.nil;
+
+  let value = evaluateCommand(pipeline.stages[0]!, context, undefined);
+  for (let index = 1; index < pipeline.stages.length; index++) {
+    value = evaluateCommand(pipeline.stages[index]!, context, value);
+  }
+  return value;
+}
+
+function evaluateCommand(
+  command: Command,
+  context: TemplateEvaluationContext,
+  piped: TemplateValue | undefined,
+): TemplateValue {
+  if (command.args.length === 0 && piped === undefined) {
+    return evaluateExpression(command.head, context);
+  }
+
+  const head = command.head;
+  if (head instanceof TokenExpr) {
+    const args: TemplateValue[] = [];
+    for (let index = 0; index < command.args.length; index++) {
+      args.push(evaluateExpression(command.args[index]!, context));
+    }
+    if (piped !== undefined) args.push(piped);
+    return TemplateRuntime.callFunction(
+      head.token,
+      args,
+      context.scope,
+      context.environment,
+      context.overrides,
+      context.defines,
+    );
+  }
+
+  if (head instanceof AccessExpr && head.segments.length > 0) {
+    let receiver = evaluateExpression(head.base, context);
+    if (head.segments.length > 1) {
+      const receiverSegments: string[] = [];
+      for (let index = 0; index < head.segments.length - 1; index++) {
+        receiverSegments.push(head.segments[index]!);
+      }
+      receiver = TemplateRuntime.resolvePath(receiver, receiverSegments, context.scope);
+    }
+
+    const args: TemplateValue[] = [];
+    for (let index = 0; index < command.args.length; index++) {
+      args.push(evaluateExpression(command.args[index]!, context));
+    }
+    if (piped !== undefined) args.push(piped);
+    return TemplateRuntime.callMethod(
+      receiver,
+      head.segments[head.segments.length - 1]!,
+      args,
+      context.scope,
+      context.environment,
+      context.overrides,
+      context.defines,
+    );
+  }
+
+  if (piped !== undefined) return piped;
+  return evaluateExpression(head, context);
+}
+
+function evaluateExpression(expression: Expr, context: TemplateEvaluationContext): TemplateValue {
+  if (expression instanceof TokenExpr) {
+    const token = expression.token.trim();
+    if (
+      token === "." ||
+      token === "$" ||
+      token.startsWith(".") ||
+      token.startsWith("$") ||
+      token.startsWith("site") ||
+      TemplateRuntime.parseStringLiteral(token) !== undefined ||
+      token === "true" ||
+      token === "false" ||
+      TemplateRuntime.isNumberLiteral(token)
+    ) {
+      return TemplateRuntime.evalToken(token, context.scope);
+    }
+    return TemplateRuntime.callFunction(
+      token,
+      [],
+      context.scope,
+      context.environment,
+      context.overrides,
+      context.defines,
+    );
+  }
+
+  if (expression instanceof PipelineExpr) {
+    return evaluatePipeline(
+      expression.pipeline,
+      context.scope,
+      context.environment,
+      context.overrides,
+      context.defines,
+    );
+  }
+
+  if (expression instanceof AccessExpr) {
+    const value = evaluateExpression(expression.base, context);
+    return TemplateRuntime.resolvePath(value, expression.segments, context.scope);
+  }
+
+  throw createTsumoError("TSUMO_TEMPLATE_EXPRESSION_INVALID", "The parsed template expression has no supported evaluation form");
+}

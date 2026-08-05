@@ -1,11 +1,15 @@
 import type { char } from "@tsonic/csharp/types.js";
+import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { isAbsolute, join, sep } from "node:path";
 import { dirExists, fileExists, readTextFile } from "./fs.js";
 import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.js";
 import type { ResourceManager } from "./resources.js";
 import { I18nStore } from "./i18n.js";
 import { ModuleMount } from "./models.js";
+import type { SiteContext } from "./models.js";
 import { replaceText, trimStartChar } from "./utils/strings.js";
+import { RenderScope } from "./template/scope.js";
+import type { TemplateValue } from "./template/values.js";
 
 export class LayoutEnvironment extends TemplateEnvironment {
   siteLayoutsDir: string;
@@ -52,6 +56,27 @@ export class LayoutEnvironment extends TemplateEnvironment {
 
   getResourceManager(): ResourceManager | undefined {
     return undefined;
+  }
+
+  renderTemplateSource(
+    source: string,
+    context: TemplateValue,
+    site: SiteContext,
+    overrides: Map<string, TemplateNode[]>,
+  ): string {
+    return this.renderTemplate(parseTemplate(source), context, site, overrides);
+  }
+
+  renderTemplate(
+    template: Template,
+    context: TemplateValue,
+    site: SiteContext,
+    overrides: Map<string, TemplateNode[]>,
+  ): string {
+    const output = new StringBuilder();
+    const scope = new RenderScope(context, context, site, this, undefined);
+    template.renderInto(output, scope, this, overrides);
+    return output.ToString();
   }
 
   getTemplate(relPathRaw: string): Template | undefined {

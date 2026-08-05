@@ -4,6 +4,7 @@ import { PageValue } from "./values.js";
 import { RenderScope } from "./scope.js";
 import type { TemplateEnvironment } from "./environment.js";
 import { TemplateNode } from "./nodes.js";
+import { renderTemplateNodes } from "./evaluation/render.js";
 
 export class Template {
   nodes: TemplateNode[];
@@ -24,8 +25,6 @@ export class Template {
   }
 
   renderInto(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Map<string, TemplateNode[]>): void {
-    for (let i = 0; i < this.nodes.length; i++) {
-      this.nodes[i]!.render(sb, scope, env, overrides, this.defines);
-    }
+    renderTemplateNodes(this.nodes, sb, scope, env, overrides, this.defines);
   }
 }

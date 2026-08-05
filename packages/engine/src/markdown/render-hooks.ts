@@ -9,10 +9,9 @@ import { StringLineGroup } from "@tsonic/dotnet/Markdig.Helpers.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { StringWriter } from "@tsonic/dotnet/System.IO.js";
 import type { int } from "@tsonic/csharp/types.js";
-import { RenderScope } from "../template/scope.js";
-import { TemplateEnvironment } from "../template/environment.js";
-import { TemplateNode } from "../template/nodes.js";
-import { Template } from "../template/template.js";
+import type { TemplateEnvironment } from "../template/environment.js";
+import type { TemplateNode } from "../template/nodes.js";
+import type { Template } from "../template/template.js";
 import {
   LinkHookContext, LinkHookValue, ImageHookContext, ImageHookValue, HeadingHookContext, HeadingHookValue,
 } from "../template/contexts.js";
@@ -87,11 +86,8 @@ const renderLinkHookTemplate = (
   site: SiteContext,
   env: TemplateEnvironment,
 ): string => {
-  const sb = new StringBuilder();
-  const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
   const emptyOverrides = new Map<string, TemplateNode[]>();
-  template.renderInto(sb, scope, env, emptyOverrides);
-  return sb.ToString();
+  return env.renderTemplate(template, hookValue, site, emptyOverrides);
 };
 
 const renderImageHookTemplate = (
@@ -100,11 +96,8 @@ const renderImageHookTemplate = (
   site: SiteContext,
   env: TemplateEnvironment,
 ): string => {
-  const sb = new StringBuilder();
-  const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
   const emptyOverrides = new Map<string, TemplateNode[]>();
-  template.renderInto(sb, scope, env, emptyOverrides);
-  return sb.ToString();
+  return env.renderTemplate(template, hookValue, site, emptyOverrides);
 };
 
 const renderHeadingHookTemplate = (
@@ -113,11 +106,8 @@ const renderHeadingHookTemplate = (
   site: SiteContext,
   env: TemplateEnvironment,
 ): string => {
-  const sb = new StringBuilder();
-  const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
   const emptyOverrides = new Map<string, TemplateNode[]>();
-  template.renderInto(sb, scope, env, emptyOverrides);
-  return sb.ToString();
+  return env.renderTemplate(template, hookValue, site, emptyOverrides);
 };
 
 // AST rewriting: Replace hookable elements with HtmlInline/HtmlBlock containing hook output
