@@ -1,4 +1,5 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/csharp/types.js";
+import { Exception } from "@tsonic/dotnet/System.js";
 
 export class JsonValue {
   kind: string;
@@ -103,7 +104,7 @@ class JsonParser {
     const value = this.parseValue();
     this.skipWhitespace();
     if (this.index !== this.text.length) {
-      throw new Error("Unexpected trailing JSON content");
+      throw new Exception("Unexpected trailing JSON content");
     }
     return value;
   }
@@ -127,7 +128,7 @@ class JsonParser {
       return new JsonNull();
     }
     if (ch === "-" || this.isDigit(ch)) return this.parseNumber();
-    throw new Error("Invalid JSON value");
+    throw new Exception("Invalid JSON value");
   }
 
   parseObject(): JsonObject {
@@ -152,7 +153,7 @@ class JsonParser {
         this.index++;
         break;
       }
-      if (separator !== ",") throw new Error("Expected JSON object separator");
+      if (separator !== ",") throw new Exception("Expected JSON object separator");
       this.index++;
     }
 
@@ -176,7 +177,7 @@ class JsonParser {
         this.index++;
         break;
       }
-      if (separator !== ",") throw new Error("Expected JSON array separator");
+      if (separator !== ",") throw new Exception("Expected JSON array separator");
       this.index++;
     }
 
@@ -202,17 +203,17 @@ class JsonParser {
       else if (escaped === "r") result += "\r";
       else if (escaped === "t") result += "\t";
       else if (escaped === "u") result += this.parseUnicodeEscape();
-      else throw new Error("Invalid JSON string escape");
+      else throw new Exception("Invalid JSON string escape");
     }
-    throw new Error("Unterminated JSON string");
+    throw new Exception("Unterminated JSON string");
   }
 
   parseUnicodeEscape(): string {
     if (this.index + 4 > this.text.length) {
-      throw new Error("Invalid JSON unicode escape");
+      throw new Exception("Invalid JSON unicode escape");
     }
     this.index += 4;
-    throw new Error("JSON unicode escapes are not supported");
+    throw new Exception("JSON unicode escapes are not supported");
   }
 
   parseNumber(): JsonNumber {
@@ -232,29 +233,29 @@ class JsonParser {
     }
     const raw = this.text.substring(start, this.index);
     const value = parseFloat(raw);
-    if (Number.isNaN(value)) throw new Error("Invalid JSON number");
+    if (Number.isNaN(value)) throw new Exception("Invalid JSON number");
     return new JsonNumber(value);
   }
 
   consumeDigits(): void {
     const start = this.index;
     while (this.isDigit(this.peek())) this.index++;
-    if (this.index === start) throw new Error("Expected JSON digit");
+    if (this.index === start) throw new Exception("Expected JSON digit");
   }
 
   expectKeyword(keyword: string): void {
     if (this.text.substring(this.index, this.index + keyword.length) !== keyword) {
-      throw new Error("Invalid JSON keyword");
+      throw new Exception("Invalid JSON keyword");
     }
     this.index += keyword.length;
   }
 
   expect(expected: string): void {
-    if (this.next() !== expected) throw new Error("Invalid JSON token");
+    if (this.next() !== expected) throw new Exception("Invalid JSON token");
   }
 
   next(): string {
-    if (this.index >= this.text.length) throw new Error("Unexpected end of JSON");
+    if (this.index >= this.text.length) throw new Exception("Unexpected end of JSON");
     const ch = this.text[this.index]!;
     this.index++;
     return ch;

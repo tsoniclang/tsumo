@@ -1,12 +1,12 @@
-import type { int } from "@tsonic/core/types.js";
-import { MenuEntry, SiteConfig } from "../models.ts";
-import { parseInt32 } from "../utils/int32.ts";
-import { ensureTrailingSlash } from "../utils/text.ts";
-import { ParamValue } from "../params.ts";
-import { buildMenuHierarchy } from "../menus.ts";
-import { MenuEntryBuilder } from "./builders.ts";
-import { unquote } from "./helpers.ts";
-import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { MenuEntry, SiteConfig } from "../models.js";
+import { parseInt32 } from "../utils/int32.js";
+import { ensureTrailingSlash } from "../utils/text.js";
+import { ParamValue } from "../params.js";
+import { buildMenuHierarchy } from "../menus.js";
+import { MenuEntryBuilder } from "./builders.js";
+import { unquote } from "./helpers.js";
+import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
 
 const tryParseInt = (value: string): int | undefined => parseInt32(value);
 
@@ -131,7 +131,9 @@ export const parseYamlConfig = (text: string): SiteConfig => {
   config.contentDir = contentDir;
   config.Params = params;
 
-  for (const [menuName, builders] of menuBuilders) {
+  for (const menuName of menuBuilders.keys()) {
+    const builders = menuBuilders.get(menuName);
+    if (builders === undefined) continue;
     const entries: MenuEntry[] = [];
     for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
     config.Menus.set(menuName, buildMenuHierarchy(entries));
@@ -152,8 +154,14 @@ export const mergeYamlIntoConfig = (config: SiteConfig, text: string, fileName: 
     if (parsed.copyright !== undefined) config.copyright = parsed.copyright;
     if (parsed.contentDir !== "content") config.contentDir = parsed.contentDir;
 
-    for (const [key, value] of parsed.Params) config.Params.set(key, value);
-    for (const [key, value] of parsed.Menus) config.Menus.set(key, value);
+    for (const key of parsed.Params.keys()) {
+      const value = parsed.Params.get(key);
+      if (value !== undefined) config.Params.set(key, value);
+    }
+    for (const key of parsed.Menus.keys()) {
+      const value = parsed.Menus.get(key);
+      if (value !== undefined) config.Menus.set(key, value);
+    }
     return config;
   }
 

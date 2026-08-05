@@ -1,5 +1,4 @@
-import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { TemplateValue } from "./base.ts";
+import { TemplateValue } from "./base.js";
 
 export class StringArrayValue extends TemplateValue {
   value: string[];
@@ -11,9 +10,9 @@ export class StringArrayValue extends TemplateValue {
 }
 
 export class AnyArrayValue extends TemplateValue {
-  value: List<TemplateValue>;
+  value: TemplateValue[];
 
-  constructor(value: List<TemplateValue>) {
+  constructor(value: TemplateValue[]) {
     super();
     this.value = value;
   }

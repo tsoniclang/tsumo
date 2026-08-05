@@ -1,11 +1,11 @@
-import type { int } from "@tsonic/core/types.js";
-import { ParamValue } from "../params.ts";
-import { FrontMatterMenu } from "./menu.ts";
-import { FrontMatter } from "./data.ts";
-import { ParsedContent } from "./parsed-content.ts";
-import { parseInt32, toInt32 } from "../utils/int32.ts";
-import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
-import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson as parseJsonValue, type JsonValue } from "../utils/json.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { ParamValue } from "../params.js";
+import { FrontMatterMenu } from "./menu.js";
+import { FrontMatter } from "./data.js";
+import { ParsedContent } from "./parsed-content.js";
+import { parseInt32, toInt32 } from "../utils/int32.js";
+import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
+import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson as parseJsonValue, type JsonValue } from "../utils/json.js";
 
 const tryParseInt = (value: string): int | undefined => parseInt32(value);
 

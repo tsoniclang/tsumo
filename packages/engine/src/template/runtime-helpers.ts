@@ -1,9 +1,9 @@
-import { escapeHtml } from "../utils/html.ts";
+import { escapeHtml } from "../utils/html.js";
 import {
   TemplateValue, NilValue, BoolValue, NumberValue, StringValue, HtmlValue,
   PageValue, DictValue, PageArrayValue, StringArrayValue, SitesArrayValue,
   DocsMountArrayValue, NavArrayValue, AnyArrayValue,
-} from "./values.ts";
+} from "./values.js";
 
 export const nil: TemplateValue = new NilValue();
 
@@ -26,13 +26,13 @@ export const isTruthy = (value: TemplateValue): boolean => {
     return value.value.value !== "";
   }
 
-  if (value instanceof DictValue) return value.value.Count > 0;
+  if (value instanceof DictValue) return value.value.size > 0;
   if (value instanceof PageArrayValue) return value.value.length > 0;
   if (value instanceof StringArrayValue) return value.value.length > 0;
   if (value instanceof SitesArrayValue) return value.value.length > 0;
   if (value instanceof DocsMountArrayValue) return value.value.length > 0;
   if (value instanceof NavArrayValue) return value.value.length > 0;
-  if (value instanceof AnyArrayValue) return value.value.Count > 0;
+  if (value instanceof AnyArrayValue) return value.value.length > 0;
 
   return true;
 };

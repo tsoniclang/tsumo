@@ -4,4 +4,4 @@ export {
   FrontMatter,
   ParsedContent,
   parseContent,
-} from "./frontmatter/index.ts";
+} from "./frontmatter/index.js";

@@ -1,12 +1,12 @@
-import { process } from "@tsonic/nodejs/process.js";
-import type { int } from "@tsonic/core/types.js";
+import process from "node:process";
+import type { int } from "@tsonic/csharp/types.js";
 
-import { logErrorLine } from "./log-error-line.ts";
-import { logLine } from "./log-line.ts";
-import { printUsage } from "./print-usage.ts";
-import { handleBuild } from "./commands/handle-build.ts";
-import { handleNew } from "./commands/handle-new.ts";
-import { handleServe } from "./commands/handle-serve.ts";
+import { logErrorLine } from "./log-error-line.js";
+import { logLine } from "./log-line.js";
+import { printUsage } from "./print-usage.js";
+import { handleBuild } from "./commands/handle-build.js";
+import { handleNew } from "./commands/handle-new.js";
+import { handleServe } from "./commands/handle-serve.js";
 
 const VERSION = "0.0.0";
 

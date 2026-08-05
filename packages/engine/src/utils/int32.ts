@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/csharp/types.js";
 
 export const toInt32 = (value: number): int | undefined => {
   if (

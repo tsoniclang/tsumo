@@ -1,25 +1,25 @@
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/core/types.js";
-import { parseShortcodes, ShortcodeCall } from "../shortcode.ts";
-import { ShortcodeContext, ShortcodeValue, RenderScope, TemplateEnvironment, TemplateNode, PageValue } from "../template/index.ts";
-import { PageContext, SiteContext } from "../models.ts";
-import { substringCount, substringFrom } from "../utils/strings.ts";
+import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
+import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
+import { RenderScope } from "../template/scope.js";
+import { TemplateEnvironment } from "../template/environment.js";
+import { TemplateNode } from "../template/nodes.js";
+import { PageValue } from "../template/values.js";
+import { PageContext, SiteContext } from "../models.js";
+import { substringCount, substringFrom } from "../utils/strings.js";
 
 // Shortcode execution ordinal tracker
 export class ShortcodeOrdinalTracker {
-  counts: Dictionary<string, int>;
+  counts: Map<string, number>;
 
   constructor() {
-    this.counts = new Dictionary<string, int>();
+    this.counts = new Map<string, number>();
   }
 
-  next(name: string): int {
-    let count: int = 0;
-    const has = this.counts.TryGetValue(name, count);
-    const nextVal = has ? count + 1 : 0;
-    this.counts.Remove(name);
-    this.counts.Add(name, nextVal);
+  next(name: string): number {
+    const count = this.counts.get(name);
+    const nextVal = count !== undefined ? count + 1 : 0;
+    this.counts.set(name, nextVal);
     return nextVal;
   }
 }
@@ -31,7 +31,7 @@ const executeShortcode = (
   env: TemplateEnvironment,
   ordinalTracker: ShortcodeOrdinalTracker,
   parent: ShortcodeContext | undefined,
-  recursionGuard: Dictionary<string, boolean>,
+  recursionGuard: Map<string, boolean>,
 ): string => {
   const template = env.getShortcodeTemplate(call.name);
   if (template === undefined) {
@@ -41,14 +41,12 @@ const executeShortcode = (
 
   // Check recursion guard
   const guardKey = call.name;
-  let isRecursing: boolean = false;
-  const hasGuard = recursionGuard.TryGetValue(guardKey, isRecursing);
-  if (hasGuard && isRecursing) {
+  const isRecursing = recursionGuard.get(guardKey);
+  if (isRecursing !== undefined && isRecursing) {
     return `<!-- shortcode recursion detected: ${call.name} -->`;
   }
 
-  recursionGuard.Remove(guardKey);
-  recursionGuard.Add(guardKey, true);
+  recursionGuard.set(guardKey, true);
 
   const ordinal = ordinalTracker.next(call.name);
 
@@ -74,12 +72,11 @@ const executeShortcode = (
   const pageValue = new PageValue(page);
   const shortcodeValue = new ShortcodeValue(ctx);
   const scope = new RenderScope(shortcodeValue, shortcodeValue, site, env, undefined);
-  const emptyOverrides = new Dictionary<string, TemplateNode[]>();
+  const emptyOverrides = new Map<string, TemplateNode[]>();
 
   template.renderInto(sb, scope, env, emptyOverrides);
 
-  recursionGuard.Remove(guardKey);
-  recursionGuard.Add(guardKey, false);
+  recursionGuard.set(guardKey, false);
 
   return sb.ToString();
 };
@@ -91,17 +88,14 @@ export const processShortcodes = (
   env: TemplateEnvironment,
   ordinalTracker: ShortcodeOrdinalTracker,
   parent: ShortcodeContext | undefined,
-  recursionGuard: Dictionary<string, boolean>,
+  recursionGuard: Map<string, boolean>,
 ): string => {
   const calls = parseShortcodes(text);
   if (calls.length === 0) return text;
 
   // Sort by startIndex descending to process from end to beginning
-  const sorted = new List<ShortcodeCall>();
-  for (let i = 0; i < calls.length; i++) sorted.Add(calls[i]!);
-
-  // Simple bubble sort by startIndex descending
-  const arr = sorted.ToArray();
+  const arr: ShortcodeCall[] = [];
+  for (let i = 0; i < calls.length; i++) arr.push(calls[i]!);
   for (let i = 0; i < arr.length; i++) {
     for (let j = i + 1; j < arr.length; j++) {
       if (arr[j]!.startIndex > arr[i]!.startIndex) {

@@ -1,14 +1,41 @@
-import { Convert, Environment, Exception } from "@tsonic/dotnet/System.js";
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { Directory, File, MemoryStream, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { Environment, Exception } from "@tsonic/dotnet/System.js";
+import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 import { Process, ProcessStartInfo } from "@tsonic/dotnet/System.Diagnostics.js";
-import { SHA256 } from "@tsonic/dotnet/System.Security.Cryptography.js";
-import { Encoding } from "@tsonic/dotnet/System.Text.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { byte, char, int } from "@tsonic/core/types.js";
-import { parseInt32 } from "./utils/int32.ts";
-import { replaceLineEndings, replaceText, substringCount, substringFrom, trimStartChar } from "./utils/strings.ts";
-import { MagicImageProcessor, ProcessImageSettings } from "photo-sauce-magic-scaler-types/PhotoSauce.MagicScaler.js";
+import type { int } from "@tsonic/csharp/types.js";
+import { parseInt32 } from "./utils/int32.js";
+import { replaceLineEndings, replaceText, substringCount, substringFrom, trimStartChar } from "./utils/strings.js";
+import { CodecManager, MagicImageProcessor, ProcessImageSettings } from "@tsonic/dotnet/PhotoSauce.MagicScaler.js";
+import type { CodecCollection } from "@tsonic/dotnet/PhotoSauce.MagicScaler.js";
+import { CodecCollectionExtensions as GiflibCodecs } from "@tsonic/dotnet/PhotoSauce.NativeCodecs.Giflib.js";
+import { CodecCollectionExtensions as LibjpegCodecs } from "@tsonic/dotnet/PhotoSauce.NativeCodecs.Libjpeg.js";
+import { CodecCollectionExtensions as LibpngCodecs } from "@tsonic/dotnet/PhotoSauce.NativeCodecs.Libpng.js";
+import { WebpCodec } from "@tsonic/dotnet/PhotoSauce.NativeCodecs.Libwebp.js";
+
+// MagicScaler ships no codecs on Linux; register the pinned native codecs
+// once before the first image operation.
+let imageCodecsRegistered = false;
+
+const ensureImageCodecsRegistered = (): void => {
+  if (imageCodecsRegistered) return;
+  imageCodecsRegistered = true;
+  CodecManager.Configure((codecs: CodecCollection) => {
+    LibpngCodecs.UseLibpng(codecs, true);
+    LibjpegCodecs.UseLibjpeg(codecs, true);
+    GiflibCodecs.UseGiflib(codecs, true);
+    WebpCodec.UseLibwebp(codecs, true);
+  });
+};
+
+const shift2: int = 2;
+const shift6: int = 6;
+const shift8: int = 8;
+const shift10: int = 10;
+const shift16: int = 16;
+const shift24: int = 24;
 
 export class ResourceData {
   Integrity: string;
@@ -33,7 +60,7 @@ export class Resource {
   sourcePath: string | undefined;
   publishable: boolean;
   outputRelPath: string | undefined;
-  bytes: byte[];
+  bytes: Buffer;
   text: string | undefined;
   Data: ResourceData;
   mediaType: string;
@@ -45,7 +72,7 @@ export class Resource {
     sourcePath: string | undefined,
     publishable: boolean,
     outputRelPath: string | undefined,
-    bytes: byte[],
+    bytes: Buffer,
     text: string | undefined,
     data: ResourceData,
     mediaType: string = "",
@@ -68,14 +95,22 @@ export class Resource {
    * Parse PNG dimensions from file bytes.
    * PNG format: 8-byte signature, then IHDR chunk containing width/height at bytes 16-23.
    */
-  static parsePngDimensions(bytes: byte[]): ImageDimensions | undefined {
+  static parsePngDimensions(bytes: Buffer): ImageDimensions | undefined {
     // PNG signature: 137 80 78 71 13 10 26 10
     if (bytes.length < 24) return undefined;
-    if (bytes[0] !== 137 || bytes[1] !== 80 || bytes[2] !== 78 || bytes[3] !== 71) return undefined;
+    if (bytes.readUInt8(0) !== 137 || bytes.readUInt8(1) !== 80 || bytes.readUInt8(2) !== 78 || bytes.readUInt8(3) !== 71) return undefined;
 
     // Width at bytes 16-19, Height at bytes 20-23 (big-endian)
-    const width: int = (bytes[16]! << 24) | (bytes[17]! << 8 * 2) | (bytes[18]! << 8) | bytes[19]!;
-    const height: int = (bytes[20]! << 24) | (bytes[21]! << 8 * 2) | (bytes[22]! << 8) | bytes[23]!;
+    const w0: int = bytes.readUInt8(16);
+    const w1: int = bytes.readUInt8(17);
+    const w2: int = bytes.readUInt8(18);
+    const w3: int = bytes.readUInt8(19);
+    const h0: int = bytes.readUInt8(20);
+    const h1: int = bytes.readUInt8(21);
+    const h2: int = bytes.readUInt8(22);
+    const h3: int = bytes.readUInt8(23);
+    const width: int = (w0 << shift24) | (w1 << shift16) | (w2 << shift8) | w3;
+    const height: int = (h0 << shift24) | (h1 << shift16) | (h2 << shift8) | h3;
     return new ImageDimensions(width, height);
   }
 
@@ -83,25 +118,29 @@ export class Resource {
    * Parse JPEG dimensions from file bytes.
    * JPEG dimensions are in SOF0/SOF2 markers (0xFF 0xC0 or 0xFF 0xC2).
    */
-  static parseJpegDimensions(bytes: byte[]): ImageDimensions | undefined {
+  static parseJpegDimensions(bytes: Buffer): ImageDimensions | undefined {
     if (bytes.length < 2) return undefined;
     // JPEG signature: 0xFF 0xD8
-    if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return undefined;
+    if (bytes.readUInt8(0) !== 0xff || bytes.readUInt8(1) !== 0xd8) return undefined;
 
     let i = 2;
     while (i < bytes.length - 1) {
-      if (bytes[i] !== 0xff) {
+      if (bytes.readUInt8(i) !== 0xff) {
         i++;
         continue;
       }
 
-      const marker = bytes[i + 1]!;
+      const marker = bytes.readUInt8(i + 1);
       // SOF0 (0xC0) or SOF2 (0xC2) contain dimensions
       if (marker === 0xc0 || marker === 0xc2) {
         if (i + 9 >= bytes.length) return undefined;
         // Height at bytes i+5..i+6, Width at bytes i+7..i+8 (big-endian)
-        const height: int = (bytes[i + 5]! << 8) | bytes[i + 6]!;
-        const width: int = (bytes[i + 7]! << 8) | bytes[i + 8]!;
+        const h0: int = bytes.readUInt8(i + 5);
+        const h1: int = bytes.readUInt8(i + 6);
+        const w0: int = bytes.readUInt8(i + 7);
+        const w1: int = bytes.readUInt8(i + 8);
+        const height: int = (h0 << shift8) | h1;
+        const width: int = (w0 << shift8) | w1;
         return new ImageDimensions(width, height);
       }
 
@@ -117,7 +156,9 @@ export class Resource {
 
       // Other markers have length field
       if (i + 4 >= bytes.length) return undefined;
-      const len: int = (bytes[i + 2]! << 8) | bytes[i + 3]!;
+      const l0: int = bytes.readUInt8(i + 2);
+      const l1: int = bytes.readUInt8(i + 3);
+      const len: int = (l0 << shift8) | l1;
       i += 2 + len;
     }
     return undefined;
@@ -127,45 +168,53 @@ export class Resource {
    * Parse GIF dimensions from file bytes.
    * GIF dimensions are at bytes 6-9 (little-endian).
    */
-  static parseGifDimensions(bytes: byte[]): ImageDimensions | undefined {
+  static parseGifDimensions(bytes: Buffer): ImageDimensions | undefined {
     if (bytes.length < 10) return undefined;
     // GIF signature: "GIF87a" or "GIF89a"
-    if (bytes[0] !== 71 || bytes[1] !== 73 || bytes[2] !== 70) return undefined;
+    if (bytes.readUInt8(0) !== 71 || bytes.readUInt8(1) !== 73 || bytes.readUInt8(2) !== 70) return undefined;
 
     // Width at bytes 6-7, Height at bytes 8-9 (little-endian)
-    const width: int = bytes[6]! | (bytes[7]! << 8);
-    const height: int = bytes[8]! | (bytes[9]! << 8);
+    const w0: int = bytes.readUInt8(6);
+    const w1: int = bytes.readUInt8(7);
+    const h0: int = bytes.readUInt8(8);
+    const h1: int = bytes.readUInt8(9);
+    const width: int = w0 | (w1 << shift8);
+    const height: int = h0 | (h1 << shift8);
     return new ImageDimensions(width, height);
   }
 
   /**
    * Parse WebP dimensions from file bytes.
    */
-  static parseWebpDimensions(bytes: byte[]): ImageDimensions | undefined {
+  static parseWebpDimensions(bytes: Buffer): ImageDimensions | undefined {
     if (bytes.length < 30) return undefined;
     // RIFF....WEBP signature
-    if (bytes[0] !== 82 || bytes[1] !== 73 || bytes[2] !== 70 || bytes[3] !== 70) return undefined;
-    if (bytes[8] !== 87 || bytes[9] !== 69 || bytes[10] !== 66 || bytes[11] !== 80) return undefined;
+    if (bytes.readUInt8(0) !== 82 || bytes.readUInt8(1) !== 73 || bytes.readUInt8(2) !== 70 || bytes.readUInt8(3) !== 70) return undefined;
+    if (bytes.readUInt8(8) !== 87 || bytes.readUInt8(9) !== 69 || bytes.readUInt8(10) !== 66 || bytes.readUInt8(11) !== 80) return undefined;
 
     // VP8 lossy format
-    if (bytes[12] === 86 && bytes[13] === 80 && bytes[14] === 56 && bytes[15] === 32) {
+    if (bytes.readUInt8(12) === 86 && bytes.readUInt8(13) === 80 && bytes.readUInt8(14) === 56 && bytes.readUInt8(15) === 32) {
       if (bytes.length < 30) return undefined;
       // Dimensions at bytes 26-29 (little-endian, 14-bit each)
-      const width: int = (bytes[26]! | (bytes[27]! << 8)) & 0x3fff;
-      const height: int = (bytes[28]! | (bytes[29]! << 8)) & 0x3fff;
+      const w0: int = bytes.readUInt8(26);
+      const w1: int = bytes.readUInt8(27);
+      const h0: int = bytes.readUInt8(28);
+      const h1: int = bytes.readUInt8(29);
+      const width: int = (w0 | (w1 << shift8)) & 0x3fff;
+      const height: int = (h0 | (h1 << shift8)) & 0x3fff;
       return new ImageDimensions(width, height);
     }
 
     // VP8L lossless format
-    if (bytes[12] === 86 && bytes[13] === 80 && bytes[14] === 56 && bytes[15] === 76) {
+    if (bytes.readUInt8(12) === 86 && bytes.readUInt8(13) === 80 && bytes.readUInt8(14) === 56 && bytes.readUInt8(15) === 76) {
       if (bytes.length < 25) return undefined;
       // Signature byte at 20, then 4 bytes with packed width/height
-      const b0: int = bytes[21]!;
-      const b1: int = bytes[22]!;
-      const b2: int = bytes[23]!;
-      const b3: int = bytes[24]!;
-      const width: int = ((b0 | (b1 << 8)) & 0x3fff) + 1;
-      const height: int = (((b1 >> 6) | (b2 << 2) | (b3 << 10)) & 0x3fff) + 1;
+      const b0: int = bytes.readUInt8(21);
+      const b1: int = bytes.readUInt8(22);
+      const b2: int = bytes.readUInt8(23);
+      const b3: int = bytes.readUInt8(24);
+      const width: int = ((b0 | (b1 << shift8)) & 0x3fff) + 1;
+      const height: int = (((b1 >> shift6) | (b2 << shift2) | (b3 << shift10)) & 0x3fff) + 1;
       return new ImageDimensions(width, height);
     }
 
@@ -175,7 +224,7 @@ export class Resource {
   /**
    * Try to parse image dimensions from bytes based on file signature.
    */
-  static parseImageDimensions(bytes: byte[]): ImageDimensions | undefined {
+  static parseImageDimensions(bytes: Buffer): ImageDimensions | undefined {
     let dims = Resource.parsePngDimensions(bytes);
     if (dims !== undefined) return dims;
 
@@ -220,7 +269,7 @@ export class ResourceManager {
   siteAssetsDir: string;
   themeAssetsDir: string | undefined;
 
-  cache: Dictionary<string, Resource>;
+  cache: Map<string, Resource>;
   siteAssetFiles: string[];
   themeAssetFiles: string[];
 
@@ -237,20 +286,6 @@ export class ResourceManager {
   static toOsRelPath(relPath: string): string {
     const slash = "/";
     return replaceText(relPath, slash, `${Path.DirectorySeparatorChar}`);
-  }
-
-  static bytesToHex(hash: byte[]): string {
-    const chars = "0123456789abcdef";
-    let out = "";
-    for (let i = 0; i < hash.length; i++) {
-      const b = hash[i]!;
-      const value: int = b;
-      const hi = (value >> 4) & 0xf;
-      const lo = value & 0xf;
-      out += substringCount(chars, hi, 1);
-      out += substringCount(chars, lo, 1);
-    }
-    return out;
   }
 
   /**
@@ -353,19 +388,21 @@ export class ResourceManager {
     return ResourceManager.globMatchAt(patSegs, pathSegs, 0, 0);
   }
 
-  constructor(siteDir: string, themeDir: string | undefined, outputDir: string) {
+  constructor(siteDir: string, themeDirRaw: string | undefined, outputDir: string) {
+    const themeDir = themeDirRaw;
     this.siteDir = siteDir;
     this.themeDir = themeDir;
     this.outputDir = outputDir;
     this.siteAssetsDir = Path.Combine(siteDir, "assets");
     this.themeAssetsDir = themeDir !== undefined ? Path.Combine(themeDir, "assets") : undefined;
-    this.cache = new Dictionary<string, Resource>();
+    this.cache = new Map<string, Resource>();
     const emptyFiles: string[] = [];
     this.siteAssetFiles = Directory.Exists(this.siteAssetsDir)
-      ? Directory.GetFiles(this.siteAssetsDir, "*", SearchOption.AllDirectories)
+      ? Array.from(Directory.GetFiles(this.siteAssetsDir, "*", SearchOption.AllDirectories))
       : emptyFiles;
-    this.themeAssetFiles = this.themeAssetsDir !== undefined && Directory.Exists(this.themeAssetsDir)
-      ? Directory.GetFiles(this.themeAssetsDir, "*", SearchOption.AllDirectories)
+    const themeAssetsDir = this.themeAssetsDir;
+    this.themeAssetFiles = themeAssetsDir !== undefined && Directory.Exists(themeAssetsDir)
+      ? Array.from(Directory.GetFiles(themeAssetsDir, "*", SearchOption.AllDirectories))
       : emptyFiles;
   }
 
@@ -375,8 +412,9 @@ export class ResourceManager {
     const osRel = ResourceManager.toOsRelPath(rel);
     const sitePath = Path.Combine(this.siteAssetsDir, osRel);
     if (File.Exists(sitePath)) return sitePath;
-    if (this.themeAssetsDir !== undefined) {
-      const themePath = Path.Combine(this.themeAssetsDir, osRel);
+    const themeAssetsDir = this.themeAssetsDir;
+    if (themeAssetsDir !== undefined) {
+      const themePath = Path.Combine(themeAssetsDir, osRel);
       if (File.Exists(themePath)) return themePath;
     }
     return undefined;
@@ -386,17 +424,16 @@ export class ResourceManager {
     const rel = ResourceManager.normalizeRel(relPathRaw);
     if (rel === "") return undefined;
     const key = `get:${rel}`;
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
     const full = this.resolveAssetFullPath(rel);
     if (full === undefined) return undefined;
 
-    const bytes = File.ReadAllBytes(full);
+    const bytes = readFileSync(full);
     const ext = (Path.GetExtension(full) ?? "").toLowerCase();
     const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".scss" || ext === ".sass" || ext === ".svg" || ext === ".html" || ext === ".txt";
-    const text = isText ? Encoding.UTF8.GetString(bytes) : undefined;
+    const text = isText ? bytes.toString("utf8") : undefined;
     const mediaType = ResourceManager.getMediaType(ext);
 
     // Parse image dimensions if applicable
@@ -411,7 +448,7 @@ export class ResourceManager {
     }
 
     const res = new Resource(key, full, true, rel, bytes, text, new ResourceData(""), mediaType, width, height);
-    this.cache.Add(key, res);
+    this.cache.set(key, res);
     return res;
   }
 
@@ -427,10 +464,11 @@ export class ResourceManager {
       return this.get(rel);
     }
 
-    if (this.themeAssetsDir !== undefined) {
+    const themeAssetsDir = this.themeAssetsDir;
+    if (themeAssetsDir !== undefined) {
       for (let i = 0; i < this.themeAssetFiles.length; i++) {
         const full = this.themeAssetFiles[i]!;
-        const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(this.themeAssetsDir, full));
+        const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(themeAssetsDir, full));
         if (!ResourceManager.globMatch(pat, rel)) continue;
         return this.get(rel);
       }
@@ -444,11 +482,11 @@ export class ResourceManager {
    */
   match(pattern: string): Resource[] {
     const pat = pattern.trim();
-    const result = new List<Resource>();
-    if (pat === "") return result.ToArray();
+    const result: Resource[] = [];
+    if (pat === "") return result;
 
     // Track paths already added (site assets take priority over theme)
-    const added = new Dictionary<string, boolean>();
+    const added = new Map<string, boolean>();
 
     // Search site assets first
     for (let i = 0; i < this.siteAssetFiles.length; i++) {
@@ -457,26 +495,26 @@ export class ResourceManager {
       if (!ResourceManager.globMatch(pat, rel)) continue;
       const res = this.get(rel);
       if (res !== undefined) {
-        result.Add(res);
-        added.Add(rel, true);
+        result.push(res);
+        added.set(rel, true);
       }
     }
 
     // Search theme assets
-    if (this.themeAssetsDir !== undefined) {
+    const themeAssetsDir = this.themeAssetsDir;
+    if (themeAssetsDir !== undefined) {
       for (let i = 0; i < this.themeAssetFiles.length; i++) {
         const full = this.themeAssetFiles[i]!;
-        const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(this.themeAssetsDir, full));
+        const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(themeAssetsDir, full));
         if (!ResourceManager.globMatch(pat, rel)) continue;
         // Skip if site already has this path
-        let exists = false;
-        if (added.TryGetValue(rel, exists)) continue;
+        if (added.has(rel)) continue;
         const res = this.get(rel);
-        if (res !== undefined) result.Add(res);
+        if (res !== undefined) result.push(res);
       }
     }
 
-    return result.ToArray();
+    return result;
   }
 
   /**
@@ -484,8 +522,8 @@ export class ResourceManager {
    */
   byType(mediaType: string): Resource[] {
     const targetType = mediaType.trim().toLowerCase();
-    const result = new List<Resource>();
-    const added = new Dictionary<string, boolean>();
+    const result: Resource[] = [];
+    const added = new Map<string, boolean>();
 
     const matchesType = (path: string): boolean => {
       const ext = (Path.GetExtension(path) ?? "").toLowerCase();
@@ -508,25 +546,25 @@ export class ResourceManager {
       const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(this.siteAssetsDir, full));
       const res = this.get(rel);
       if (res !== undefined) {
-        result.Add(res);
-        added.Add(rel, true);
+        result.push(res);
+        added.set(rel, true);
       }
     }
 
     // Search theme assets
-    if (this.themeAssetsDir !== undefined) {
+    const themeAssetsDir = this.themeAssetsDir;
+    if (themeAssetsDir !== undefined) {
       for (let i = 0; i < this.themeAssetFiles.length; i++) {
         const full = this.themeAssetFiles[i]!;
         if (!matchesType(full)) continue;
-        const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(this.themeAssetsDir, full));
-        let exists = false;
-        if (added.TryGetValue(rel, exists)) continue;
+        const rel = ResourceManager.normalizeSlashes(Path.GetRelativePath(themeAssetsDir, full));
+        if (added.has(rel)) continue;
         const res = this.get(rel);
-        if (res !== undefined) result.Add(res);
+        if (res !== undefined) result.push(res);
       }
     }
 
-    return result.ToArray();
+    return result;
   }
 
   /**
@@ -540,58 +578,59 @@ export class ResourceManager {
     for (let i = 0; i < resources.length; i++) keySb.Append("|" + resources[i]!.id);
     const key = keySb.ToString();
 
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
     const sb = new StringBuilder();
     for (let i = 0; i < resources.length; i++) {
       const res = resources[i]!;
-      if (res.text !== undefined) {
+      const resText = res.text;
+      if (resText !== undefined) {
         if (sb.Length > 0) sb.Append("\n");
-        sb.Append(res.text);
+        sb.Append(resText);
       }
     }
     const text = sb.ToString();
-    const bytes = Encoding.UTF8.GetBytes(text);
+    const bytes = Buffer.from(text, "utf8");
 
     const result = new Resource(key, undefined, true, target, bytes, text, new ResourceData(""));
-    this.cache.Add(key, result);
+    this.cache.set(key, result);
     return result;
   }
 
   fromString(nameRaw: string, content: string): Resource {
     const name = nameRaw.trim();
     const key = `fromString:${name}`;
-    const bytes = Encoding.UTF8.GetBytes(content);
+    const bytes = Buffer.from(content, "utf8");
     return new Resource(key, undefined, false, undefined, bytes, content, new ResourceData(""));
   }
 
   ensurePublished(resource: Resource): void {
     if (!resource.publishable) return;
-    if (resource.outputRelPath === undefined) return;
+    const outputRelPath = resource.outputRelPath;
+    if (outputRelPath === undefined) return;
 
-    const rel = ResourceManager.normalizeRel(resource.outputRelPath);
+    const rel = ResourceManager.normalizeRel(outputRelPath);
     if (rel === "") return;
     const dest = Path.Combine(this.outputDir, ResourceManager.toOsRelPath(rel));
     const dir = Path.GetDirectoryName(dest);
-    if (dir !== null && dir !== "") Directory.CreateDirectory(dir);
-    File.WriteAllBytes(dest, resource.bytes);
+    if (dir !== undefined && dir !== "") Directory.CreateDirectory(dir);
+    writeFileSync(dest, resource.bytes);
   }
 
   minify(resource: Resource): Resource {
     const key = `${resource.id}|minify`;
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
-    if (resource.text === undefined) {
+    const resourceText = resource.text;
+    if (resourceText === undefined) {
       const copy = new Resource(key, resource.sourcePath, resource.publishable, resource.outputRelPath, resource.bytes, undefined, resource.Data);
-      this.cache.Add(key, copy);
+      this.cache.set(key, copy);
       return copy;
     }
 
-    const lines = replaceLineEndings(resource.text, "\n").split("\n");
+    const lines = replaceLineEndings(resourceText, "\n").split("\n");
     const sb = new StringBuilder();
     for (let i = 0; i < lines.length; i++) {
       const trimmed = lines[i]!.trim();
@@ -600,23 +639,22 @@ export class ResourceManager {
       sb.Append(trimmed);
     }
     const minified = sb.ToString();
-    const bytes = Encoding.UTF8.GetBytes(minified);
+    const bytes = Buffer.from(minified, "utf8");
 
     const outPath = resource.outputRelPath;
     const updated = new Resource(key, resource.sourcePath, resource.publishable, outPath, bytes, minified, resource.Data);
-    this.cache.Add(key, updated);
+    this.cache.set(key, updated);
     return updated;
   }
 
   fingerprint(resource: Resource): Resource {
     const key = `${resource.id}|fingerprint`;
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
-    const hash = SHA256.HashData(resource.bytes);
-    const integrity = `sha256-${Convert.ToBase64String(hash)}`;
-    const shortHex = substringCount(ResourceManager.bytesToHex(hash), 0, 16);
+    const integrity = `sha256-${createHash("sha256").update(resource.bytes).digest("base64")}`;
+    const fullHex = createHash("sha256").update(resource.bytes).digest("hex");
+    const shortHex = substringCount(fullHex, 0, 16);
 
     const outRel = resource.outputRelPath;
     const outPath = outRel !== undefined ? ResourceManager.normalizeRel(outRel) : "";
@@ -626,7 +664,7 @@ export class ResourceManager {
     const hashedPath = split.dir + hashedFile;
 
     const updated = new Resource(key, resource.sourcePath, resource.publishable, hashedPath, resource.bytes, resource.text, new ResourceData(integrity));
-    this.cache.Add(key, updated);
+    this.cache.set(key, updated);
     return updated;
   }
 
@@ -637,12 +675,11 @@ export class ResourceManager {
   copy(targetPath: string, resource: Resource): Resource {
     const normalizedTarget = ResourceManager.normalizeRel(targetPath);
     const key = `${resource.id}|copy:${normalizedTarget}`;
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
     const updated = new Resource(key, resource.sourcePath, resource.publishable, normalizedTarget, resource.bytes, resource.text, resource.Data, resource.mediaType, resource.width, resource.height);
-    this.cache.Add(key, updated);
+    this.cache.set(key, updated);
     return updated;
   }
 
@@ -660,41 +697,42 @@ export class ResourceManager {
 
   sassCompile(resource: Resource): Resource {
     const key = `${resource.id}|sass`;
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
-    if (resource.text === undefined) throw new Exception("css.Sass expects a text resource");
+    const resourceText = resource.text;
+    if (resourceText === undefined) throw new Exception("css.Sass expects a text resource");
 
     const sassExeRaw = Environment.GetEnvironmentVariable("TSUMO_SASS");
-    const sassExe = sassExeRaw !== null && sassExeRaw.trim() !== "" ? sassExeRaw.trim() : "sass";
+    const sassExe = sassExeRaw !== undefined && sassExeRaw.trim() !== "" ? sassExeRaw.trim() : "sass";
 
     const tmpDir = Path.Combine(this.outputDir, ".tsumo", "sass");
     Directory.CreateDirectory(tmpDir);
 
     const inputPath = Path.Combine(tmpDir, "input.scss");
     const outputPath = Path.Combine(tmpDir, "output.css");
-    File.WriteAllText(inputPath, resource.text);
+    File.WriteAllText(inputPath, resourceText);
 
-    const args = new List<string>();
-    args.Add("--no-source-map");
-    args.Add("--style");
-    args.Add("expanded");
+    const args: string[] = [];
+    args.push("--no-source-map");
+    args.push("--style");
+    args.push("expanded");
     if (Directory.Exists(this.siteAssetsDir)) {
-      args.Add("--load-path");
-      args.Add(this.siteAssetsDir);
+      args.push("--load-path");
+      args.push(this.siteAssetsDir);
     }
-    if (this.themeAssetsDir !== undefined && Directory.Exists(this.themeAssetsDir)) {
-      args.Add("--load-path");
-      args.Add(this.themeAssetsDir);
+    const themeAssetsDir = this.themeAssetsDir;
+    if (themeAssetsDir !== undefined && Directory.Exists(themeAssetsDir)) {
+      args.push("--load-path");
+      args.push(themeAssetsDir);
     }
-    args.Add(inputPath);
-    args.Add(outputPath);
+    args.push(inputPath);
+    args.push(outputPath);
 
     const startInfo = new ProcessStartInfo();
     startInfo.FileName = sassExe;
     const argsText = new StringBuilder();
-    const argsArr = args.ToArray();
+    const argsArr = args;
     const quoteArg = (arg: string): string => {
       const trimmed = arg.trim();
       if (trimmed === "") return trimmed;
@@ -713,7 +751,7 @@ export class ResourceManager {
 
     let process: Process | undefined = undefined;
     try {
-      process = Process.Start(startInfo) ?? undefined;
+      process = Process.Start(startInfo);
     } catch (e) {
       throw new Exception(
         `Failed to start Sass compiler '${sassExe}'. Install Dart Sass (the \`sass\` CLI) or set TSUMO_SASS to the full path of a Sass executable. Details: ${e}`,
@@ -722,13 +760,13 @@ export class ResourceManager {
     if (process === undefined) throw new Exception("Failed to start Sass compiler");
     process.WaitForExit();
     if (process.ExitCode !== 0) {
-      const err = process.StandardError.ReadToEnd() ?? "";
+      const err = process.StandardError.ReadToEnd();
       throw new Exception(err.trim() === "" ? `Sass compiler failed (exit ${process.ExitCode})` : err);
     }
 
     if (!File.Exists(outputPath)) throw new Exception("Sass compiler did not produce output");
     const cssText = File.ReadAllText(outputPath);
-    const cssBytes = Encoding.UTF8.GetBytes(cssText);
+    const cssBytes = Buffer.from(cssText, "utf8");
 
     const outRel = resource.outputRelPath ?? "style.scss";
     const split = ResourceManager.splitDirAndFile(outRel);
@@ -737,7 +775,7 @@ export class ResourceManager {
     const cssRel = split.dir + cssFile;
 
     const updated = new Resource(key, resource.sourcePath, true, cssRel, cssBytes, cssText, resource.Data);
-    this.cache.Add(key, updated);
+    this.cache.set(key, updated);
     return updated;
   }
 
@@ -801,17 +839,17 @@ export class ResourceManager {
 
     // Build cache key
     const key = `${resource.id}|resize:${spec}`;
-    const emptyBytes: byte[] = [];
-    let cached = new Resource("", undefined, false, undefined, emptyBytes, undefined, new ResourceData(""));
-    if (this.cache.TryGetValue(key, cached)) return cached;
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
 
     // Need source path to process
-    if (resource.sourcePath === undefined) {
+    const sourcePath = resource.sourcePath;
+    if (sourcePath === undefined) {
       throw new Exception("Cannot resize resource without source path");
     }
 
     // Determine output extension
-    const srcExt = (Path.GetExtension(resource.sourcePath) ?? "").toLowerCase();
+    const srcExt = (Path.GetExtension(sourcePath) ?? "").toLowerCase();
     const outExt = outFormat !== undefined ? `.${outFormat}` : srcExt;
 
     // Calculate dimensions - if one is 0, compute proportionally
@@ -834,9 +872,10 @@ export class ResourceManager {
     // Create output path in temp directory
     const tmpDir = Path.Combine(this.outputDir, ".tsumo", "resize");
     Directory.CreateDirectory(tmpDir);
-    const tmpOut = Path.Combine(tmpDir, `${Path.GetFileNameWithoutExtension(resource.sourcePath)}_${width}x${height}${outExt}`);
+    const tmpOut = Path.Combine(tmpDir, `${Path.GetFileNameWithoutExtension(sourcePath)}_${width}x${height}${outExt}`);
 
     // Configure MagicScaler settings
+    ensureImageCodecsRegistered();
     const settings = new ProcessImageSettings();
     settings.Width = width;
     settings.Height = height;
@@ -847,10 +886,10 @@ export class ResourceManager {
     }
 
     // Process the image
-    MagicImageProcessor.ProcessImage(resource.sourcePath, tmpOut, settings);
+    MagicImageProcessor.ProcessImage(sourcePath, tmpOut, settings);
 
     // Read processed image
-    const bytes = File.ReadAllBytes(tmpOut);
+    const bytes = readFileSync(tmpOut);
 
     // Parse dimensions of output
     let outWidth: int = width;
@@ -870,7 +909,7 @@ export class ResourceManager {
 
     const mediaType = ResourceManager.getMediaType(outExt);
     const result = new Resource(key, tmpOut, true, resizedRel, bytes, undefined, new ResourceData(""), mediaType, outWidth, outHeight);
-    this.cache.Add(key, result);
+    this.cache.set(key, result);
     return result;
   }
 }

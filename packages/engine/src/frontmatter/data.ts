@@ -1,5 +1,5 @@
-import { ParamValue } from "../params.ts";
-import { FrontMatterMenu } from "./menu.ts";
+import { ParamValue } from "../params.js";
+import { FrontMatterMenu } from "./menu.js";
 
 export class FrontMatter {
   title: string | undefined;

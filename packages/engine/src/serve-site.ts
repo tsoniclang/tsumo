@@ -1,14 +1,14 @@
-import { readFileSync, readFileSyncBytes, statSync } from "@tsonic/nodejs/fs.js";
-import { Buffer } from "@tsonic/nodejs/buffer.js";
-import { createServer, type IncomingMessage, type ServerResponse } from "@tsonic/nodejs/http.js";
-import { extname, resolve, sep } from "@tsonic/nodejs/path.js";
-import type { byte, int } from "@tsonic/core/types.js";
-import { buildSite } from "./build-site.ts";
-import { loadDocsConfig } from "./docs/config.ts";
-import { dirExists, fileExists, listFilesRecursive } from "./fs.ts";
-import { ServeRequest } from "./models.ts";
-import { contentTypeForPath } from "./utils/mime.ts";
-import { ensureTrailingSlash } from "./utils/text.ts";
+import { readFileSync, statSync } from "node:fs";
+import { Buffer } from "node:buffer";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { extname, resolve, sep } from "node:path";
+import type { int } from "@tsonic/csharp/types.js";
+import { buildSite } from "./build-site.js";
+import { loadDocsConfig } from "./docs/config.js";
+import { dirExists, fileExists, listFilesRecursive } from "./fs.js";
+import { ServeRequest } from "./models.js";
+import { contentTypeForPath } from "./utils/mime.js";
+import { ensureTrailingSlash } from "./utils/text.js";
 
 const logLine = (message: string): void => {
   console.log(message);
@@ -24,10 +24,10 @@ const sendText = (response: ServerResponse, statusCode: int, contentType: string
   response.end(body);
 };
 
-const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
+const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: Buffer): void => {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", contentType);
-  response.end(Buffer.fromBytes(bytes));
+  response.end(bytes);
 };
 
 const isTextLikeContentType = (contentType: string): boolean => {
@@ -50,7 +50,8 @@ const getRequestPath = (request: IncomingMessage): string => {
   return path === "" ? "/" : path;
 };
 
-const safeResolveUnderRoot = (rootDir: string, requestPath: string, suffix?: string): string | undefined => {
+const safeResolveUnderRoot = (rootDir: string, requestPath: string, suffixRaw?: string): string | undefined => {
+  const suffix = suffixRaw;
   const rootFull = resolve(rootDir);
   const prefix = rootFull.endsWith(sep) ? rootFull : rootFull + sep;
   const candidate = suffix === undefined
@@ -97,7 +98,7 @@ const handleRequest = (outDir: string, request: IncomingMessage, response: Serve
     return;
   }
 
-  sendBytes(response, 200, contentType, readFileSyncBytes(filePath));
+  sendBytes(response, 200, contentType, readFileSync(filePath));
 };
 
 const collectWatchTargets = (req: ServeRequest): string[] => {
@@ -146,8 +147,10 @@ const createWatchSnapshot = (targets: string[]): Map<string, number> => {
 
 const snapshotsEqual = (left: Map<string, number>, right: Map<string, number>): boolean => {
   if (left.size !== right.size) return false;
-  for (const [filePath, stamp] of left.entries()) {
-    if (right.get(filePath) !== stamp) return false;
+  for (const filePath of left.keys()) {
+    const stamp = left.get(filePath);
+    const other = right.get(filePath);
+    if (stamp === undefined || other === undefined || other !== stamp) return false;
   }
   return true;
 };
@@ -182,7 +185,8 @@ export const serveSite = (req: ServeRequest): void => {
   const port = req.port;
   const prefix = `http://${host}:${port}/`;
 
-  if (req.baseURL === undefined || req.baseURL.trim() === "") {
+  const baseURL = req.baseURL;
+  if (baseURL === undefined || baseURL.trim() === "") {
     req.baseURL = ensureTrailingSlash(prefix);
   }
 

@@ -1,9 +1,9 @@
-import { process } from "@tsonic/nodejs/process.js";
-import type { int } from "@tsonic/core/types.js";
+import process from "node:process";
+import type { int } from "@tsonic/csharp/types.js";
 
 import { BuildRequest, buildSite } from "@tsumo/engine/index.js";
 
-import { logLine } from "../log-line.ts";
+import { logLine } from "../log-line.js";
 
 export const handleBuild = (args: readonly string[], buildArgStart: int): void => {
   let buildSourceDir = process.cwd();

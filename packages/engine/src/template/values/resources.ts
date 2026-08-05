@@ -1,6 +1,6 @@
-import { Resource, ResourceData } from "../../resources.ts";
-import type { ResourceManager } from "../../resources.ts";
-import { TemplateValue } from "./base.ts";
+import { Resource, ResourceData } from "../../resources.js";
+import type { ResourceManager } from "../../resources.js";
+import { TemplateValue } from "./base.js";
 
 export class ResourceDataValue extends TemplateValue {
   value: ResourceData;

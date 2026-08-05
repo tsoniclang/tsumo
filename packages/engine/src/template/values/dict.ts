@@ -1,10 +1,9 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { TemplateValue } from "./base.ts";
+import { TemplateValue } from "./base.js";
 
 export class DictValue extends TemplateValue {
-  value: Dictionary<string, TemplateValue>;
+  value: Map<string, TemplateValue>;
 
-  constructor(value: Dictionary<string, TemplateValue>) {
+  constructor(value: Map<string, TemplateValue>) {
     super();
     this.value = value;
   }

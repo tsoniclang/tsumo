@@ -41,9 +41,10 @@ authoring for normal site content.
 
 ## Repo layout
 
-- `packages/engine` — core build + server engine (Tsonic library)
-- `packages/cli` — `tsumo` CLI (Tsonic executable)
-- `packages/markdig` — vendored Markdig build (GFM Markdown)
+- `packages/engine` — core build + server engine (Tsonic source package, user-owned `Tsumo.Engine.csproj`)
+- `packages/cli` — `tsumo` CLI (Tsonic executable, user-owned `Tsumo.Cli.csproj` with NativeAOT publish)
+- `packages/tests` — Tsonic-authored xUnit tests (user-owned `Tsumo.Tests.csproj`)
+- `packages/markdig` — vendored Markdig source build (GFM Markdown; provider + target reference)
 - `examples/basic-blog` — example site (Hugo-style layout)
 - `examples/docs-site` — docs-mode example (mounts + nav + search)
 
@@ -58,26 +59,35 @@ npm install
 npm run build
 ```
 
-Source builds use sibling checkout `file:` dependencies for `../tsonic` and
-`../tsbindgen`.
+`npm run build` runs three ordered stages:
 
-## Selftest
+1. `prepare:provider-references` — builds the vendored Markdig assembly and
+   materializes the locked NuGet compile closure (PhotoSauce + codecs) into
+   `.temp/provider-references`; these exact assemblies are both the Tsonic
+   provider reflection input and the `.csproj` compile references.
+2. `build:tsonic` — `tsonic build` for the engine, CLI, and tests projects.
+   Tsonic emits C# source only into each package's ignored `out/csharp/`;
+   the user-owned `.csproj` files are never generated or modified.
+3. `build:dotnet` — `dotnet build` for the user-owned projects.
+
+Sibling checkouts are installed via `file:` dependencies (`../tsonic`,
+`../tsonic-csharp`, `../csharp-runtime`, `../csharp-js`, `../csharp-nodejs`).
+
+## Tests
 
 ```bash
-npm run selftest
+npm run test:dotnet   # Tsonic-authored xUnit tests through dotnet test
+npm test              # Node-driven end-to-end CLI/fixture tests
 ```
-
-The selftest uses local first-party package overlays when sibling package repos
-are available and keeps generated verification artifacts out of git.
 
 ## Try the example
 
 ```bash
 # Build the example site into examples/basic-blog/public
-./packages/cli/out/tsumo build --source ./examples/basic-blog
+dotnet run --project packages/cli/Tsumo.Cli.csproj -- build --source ./examples/basic-blog
 
 # Dev server (watch + rebuild)
-./packages/cli/out/tsumo server --source ./examples/basic-blog
+dotnet run --project packages/cli/Tsumo.Cli.csproj -- server --source ./examples/basic-blog
 ```
 
 ## Commands
@@ -87,9 +97,9 @@ are available and keeps generated verification artifacts out of git.
 - `tsumo build [--source <dir>]` — build site into `public/`
 - `tsumo server [--source <dir>]` — serve `public/` (watch + rebuild by default)
 
-## Native AOT (optional)
+## Native AOT
 
 ```bash
-npm run -w tsumo-cli build:aot
-./packages/cli/out/tsumo-aot --help
+npm run -w tsumo-cli publish:aot
+./packages/cli/bin/Release/net10.0/linux-x64/publish/tsumo --help
 ```

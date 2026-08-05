@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/csharp/types.js";
 
 export const parseIntArg = (value: string): int | undefined => {
   const trimmed = value.trim();

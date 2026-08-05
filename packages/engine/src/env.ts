@@ -1,6 +1,6 @@
-import { LayoutEnvironment } from "./layouts.ts";
-import { ResourceManager } from "./resources.ts";
-import { ModuleMount } from "./models.ts";
+import { LayoutEnvironment } from "./layouts.js";
+import { ResourceManager } from "./resources.js";
+import { ModuleMount } from "./models.js";
 
 export class BuildEnvironment extends LayoutEnvironment {
   siteDir: string;
@@ -16,7 +16,7 @@ export class BuildEnvironment extends LayoutEnvironment {
     this.resources = new ResourceManager(siteDir, themeDir, outputDir);
   }
 
-  override getResourceManager(): ResourceManager | undefined {
+  getResourceManager(): ResourceManager | undefined {
     return this.resources;
   }
 }

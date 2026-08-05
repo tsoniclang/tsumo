@@ -1,6 +1,6 @@
-export { initSite } from "./scaffold/init-site.ts";
-export { newContent } from "./scaffold/new-content.ts";
-export { buildSite } from "./build-site.ts";
-export { serveSite } from "./serve-site.ts";
+export { initSite } from "./scaffold/init-site.js";
+export { newContent } from "./scaffold/new-content.js";
+export { buildSite } from "./build-site.js";
+export { serveSite } from "./serve-site.js";
 
-export { BuildRequest, BuildResult, ServeRequest } from "./models.ts";
+export { BuildRequest, BuildResult, ServeRequest } from "./models.js";

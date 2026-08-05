@@ -1,9 +1,9 @@
-import { Markdown } from "markdig-types/Markdig.js";
-import type { int } from "@tsonic/core/types.js";
-import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
-import { MarkdownResult } from "./result.ts";
-import { markdownPipeline } from "./pipeline.ts";
-import { generateTableOfContents } from "./toc.ts";
+import { Markdown } from "@tsonic/dotnet/Markdig.js";
+import type { int } from "@tsonic/csharp/types.js";
+import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
+import { MarkdownResult } from "./result.js";
+import { markdownPipeline } from "./pipeline.js";
+import { generateTableOfContents } from "./toc.js";
 
 export const normalizeNewlines = (text: string): string => replaceLineEndings(text, "\n");
 

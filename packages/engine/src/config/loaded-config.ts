@@ -1,4 +1,4 @@
-import { SiteConfig } from "../models.ts";
+import { SiteConfig } from "../models.js";
 
 export class LoadedConfig {
   path: string | undefined;

@@ -1,0 +1,15 @@
+<header class="top">
+  <a class="brand" href="{{ relURL "/" }}">{{ .Site.Title }}</a>
+
+  <nav class="mount-nav">
+    {{ range .Site.Mounts }}
+      <a class="mount-link {{ if eq .Name $.Params.mount }}active{{ end }}" href="{{ .UrlPrefix }}">{{ .Name }}</a>
+    {{ end }}
+  </nav>
+
+  <div class="search">
+    <input id="searchBox" type="search" placeholder="Search docs…" autocomplete="off" />
+    <div id="searchResults" class="search-results"></div>
+  </div>
+</header>
+

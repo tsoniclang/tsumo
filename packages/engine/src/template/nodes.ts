@@ -1,27 +1,26 @@
 import { Exception } from "@tsonic/dotnet/System.js";
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/core/types.js";
-import type { DocsMountContext, NavItem } from "../docs/models.ts";
-import { MenuEntry, PageContext, SiteContext } from "../models.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import type { DocsMountContext, NavItem } from "../docs/models.js";
+import { MenuEntry, PageContext, SiteContext } from "../models.js";
 import {
   TemplateValue, NilValue, StringValue, NumberValue, PageValue, SiteValue,
   DocsMountValue, DocsMountArrayValue, NavItemValue, NavArrayValue,
   MenuEntryValue, MenuArrayValue, PageArrayValue, StringArrayValue,
   SitesArrayValue, AnyArrayValue, DictValue,
-} from "./values.ts";
-import { RenderScope } from "./scope.ts";
-import type { TemplateEnvironment } from "./environment.ts";
-import { nil, isTruthy, stringify } from "./runtime-helpers.ts";
-import type { Pipeline } from "./runtime.ts";
+} from "./values.js";
+import { RenderScope } from "./scope.js";
+import type { TemplateEnvironment } from "./environment.js";
+import { nil, isTruthy, stringify } from "./runtime-helpers.js";
+import type { Pipeline } from "./runtime.js";
 
 export class TemplateNode {
   render(
     _sb: StringBuilder,
     _scope: RenderScope,
     _env: TemplateEnvironment,
-    _overrides: Dictionary<string, TemplateNode[]>,
-    _defines: Dictionary<string, TemplateNode[]>,
+    _overrides: Map<string, TemplateNode[]>,
+    _defines: Map<string, TemplateNode[]>,
   ): void {
     throw new Exception("TemplateNode.render is not implemented");
   }
@@ -35,12 +34,12 @@ export class TextNode extends TemplateNode {
     this.text = text;
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     _scope: RenderScope,
     _env: TemplateEnvironment,
-    _overrides: Dictionary<string, TemplateNode[]>,
-    _defines: Dictionary<string, TemplateNode[]>,
+    _overrides: Map<string, TemplateNode[]>,
+    _defines: Map<string, TemplateNode[]>,
   ): void {
     sb.Append(this.text);
   }
@@ -56,12 +55,12 @@ export class OutputNode extends TemplateNode {
     this.escape = escape;
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
     const value = this.pipeline.eval(scope, env, overrides, defines);
     sb.Append(stringify(value, this.escape));
@@ -80,12 +79,12 @@ export class AssignmentNode extends TemplateNode {
     this.declare = declare;
   }
 
-  override render(
+  render(
     _sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
     const value = this.pipeline.eval(scope, env, overrides, defines);
     if (this.declare) scope.declareVar(this.name, value);
@@ -103,20 +102,19 @@ export class TemplateInvokeNode extends TemplateNode {
     this.context = context;
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
     const ctx = this.context.eval(scope, env, overrides, defines);
     const dot = ctx instanceof NilValue ? scope.dot : ctx;
-    let nodes: TemplateNode[] = [];
-    const hasOverride = overrides.TryGetValue(this.name, nodes);
-    if (!hasOverride) {
-      const hasLocal = defines.TryGetValue(this.name, nodes);
-      if (!hasLocal) return;
+    let nodes = overrides.get(this.name);
+    if (nodes === undefined) {
+      nodes = defines.get(this.name);
+      if (nodes === undefined) return;
     }
 
     const nextScope = new RenderScope(dot, dot, scope.site, scope.env, undefined);
@@ -136,12 +134,12 @@ export class IfNode extends TemplateNode {
     this.elseNodes = elseNodes;
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
     const value = this.condition.eval(scope, env, overrides, defines);
     if (isTruthy(value)) {
@@ -168,18 +166,20 @@ export class RangeNode extends TemplateNode {
     this.elseBody = elseBody;
   }
 
-  renderBody(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Dictionary<string, TemplateNode[]>, defines: Dictionary<string, TemplateNode[]>): void {
+  renderBody(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Map<string, TemplateNode[]>, defines: Map<string, TemplateNode[]>): void {
     for (let j = 0; j < this.body.length; j++) this.body[j]!.render(sb, scope, env, overrides, defines);
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
     const value = this.expr.eval(scope, env, overrides, defines);
+    const keyVar = this.keyVar;
+    const valueVar = this.valueVar;
 
     if (value instanceof PageArrayValue) {
       const pages: PageContext[] = value.value;
@@ -189,8 +189,8 @@ export class RangeNode extends TemplateNode {
       }
       for (let i = 0; i < pages.length; i++) {
         const valueScope = new RenderScope(scope.root, new PageValue(pages[i]!), scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, new PageValue(pages[i]!));
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, new PageValue(pages[i]!));
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(i));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -205,8 +205,8 @@ export class RangeNode extends TemplateNode {
       for (let i = 0; i < items.length; i++) {
         const itemValue = new StringValue(items[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, itemValue);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(i));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -221,8 +221,8 @@ export class RangeNode extends TemplateNode {
       for (let i = 0; i < mounts.length; i++) {
         const itemValue = new DocsMountValue(mounts[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, itemValue);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(i));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -237,8 +237,8 @@ export class RangeNode extends TemplateNode {
       for (let i = 0; i < items.length; i++) {
         const itemValue = new NavItemValue(items[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, itemValue);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(i));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -253,8 +253,8 @@ export class RangeNode extends TemplateNode {
       for (let i = 0; i < sites.length; i++) {
         const itemValue = new SiteValue(sites[i]!);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, itemValue);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(i));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -270,8 +270,8 @@ export class RangeNode extends TemplateNode {
       for (let i = 0; i < items.length; i++) {
         const itemValue = new MenuEntryValue(items[i]!, site);
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(i));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, itemValue);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(i));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -279,36 +279,31 @@ export class RangeNode extends TemplateNode {
 
     if (value instanceof AnyArrayValue) {
       const items = value.value;
-      if (items.Count === 0) {
+      if (items.length === 0) {
         for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      const it = items.GetEnumerator();
-      let index: int = 0;
-      while (it.MoveNext()) {
-        const itemValue = it.Current;
+      for (let index = 0; index < items.length; index++) {
+        const itemValue = items[index]!;
         const valueScope = new RenderScope(scope.root, itemValue, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, itemValue);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new NumberValue(index));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, itemValue);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new NumberValue(index));
         this.renderBody(sb, valueScope, env, overrides, defines);
-        index++;
       }
       return;
     }
 
     if (value instanceof DictValue) {
-      if (value.value.Count === 0) {
+      if (value.value.size === 0) {
         for (let i = 0; i < this.elseBody.length; i++) this.elseBody[i]!.render(sb, scope, env, overrides, defines);
         return;
       }
-      const it = value.value.GetEnumerator();
-      while (it.MoveNext()) {
-        const kv = it.Current;
-        const k = kv.Key;
-        const v = kv.Value;
+      for (const k of value.value.keys()) {
+        const v = value.value.get(k);
+        if (v === undefined) continue;
         const valueScope = new RenderScope(scope.root, v, scope.site, scope.env, scope);
-        if (this.valueVar !== undefined) valueScope.declareVar(this.valueVar, v);
-        if (this.keyVar !== undefined && this.valueVar !== undefined) valueScope.declareVar(this.keyVar, new StringValue(k));
+        if (valueVar !== undefined) valueScope.declareVar(valueVar, v);
+        if (keyVar !== undefined && valueVar !== undefined) valueScope.declareVar(keyVar, new StringValue(k));
         this.renderBody(sb, valueScope, env, overrides, defines);
       }
       return;
@@ -330,12 +325,12 @@ export class WithNode extends TemplateNode {
     this.elseBody = elseBody;
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
     const value = this.expr.eval(scope, env, overrides, defines);
     if (isTruthy(value)) {
@@ -359,20 +354,19 @@ export class BlockNode extends TemplateNode {
     this.fallback = fallback;
   }
 
-  override render(
+  render(
     sb: StringBuilder,
     scope: RenderScope,
     env: TemplateEnvironment,
-    overrides: Dictionary<string, TemplateNode[]>,
-    defines: Dictionary<string, TemplateNode[]>,
+    overrides: Map<string, TemplateNode[]>,
+    defines: Map<string, TemplateNode[]>,
   ): void {
-    let overrideNodes: TemplateNode[] = [];
-    const hasOverride = overrides.TryGetValue(this.name, overrideNodes);
+    const overrideNodes = overrides.get(this.name);
     const ctx = this.context.eval(scope, env, overrides, defines);
     const dot = ctx instanceof NilValue ? scope.dot : ctx;
     const nextScope = new RenderScope(scope.root, dot, scope.site, scope.env, scope);
 
-    if (hasOverride) {
+    if (overrideNodes !== undefined) {
       for (let i = 0; i < overrideNodes.length; i++) overrideNodes[i]!.render(sb, nextScope, env, overrides, defines);
       return;
     }

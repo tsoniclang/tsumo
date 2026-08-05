@@ -1,6 +1,6 @@
-import type { int } from "@tsonic/core/types.js";
-import { ParamValue } from "../params.ts";
-import type { PageContext } from "./page-context.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { ParamValue } from "../params.js";
+import type { PageContext } from "./page-context.js";
 
 export class MenuEntry {
   name: string;

@@ -1,16 +1,18 @@
-import { join, basename } from "@tsonic/nodejs/path.js";
-import { readdirSync } from "@tsonic/nodejs/fs.js";
-import { SiteConfig } from "../models.ts";
-import { readTextFile, dirExists } from "../fs.ts";
-import { LoadedConfig } from "./loaded-config.ts";
-import { tryGetFirstExisting } from "./helpers.ts";
-import { parseTomlConfig, mergeTomlIntoConfig, parseModuleToml } from "./toml.ts";
-import { parseYamlConfig, mergeYamlIntoConfig } from "./yaml.ts";
-import { parseJsonConfig } from "./json.ts";
+import { join, basename } from "node:path";
+import { readdirSync } from "node:fs";
+import { SiteConfig } from "../models.js";
+import { readTextFile, dirExists } from "../fs.js";
+import { LoadedConfig } from "./loaded-config.js";
+import { tryGetFirstExisting } from "./helpers.js";
+import { parseTomlConfig, mergeTomlIntoConfig, parseModuleToml } from "./toml.js";
+import { parseYamlConfig, mergeYamlIntoConfig } from "./yaml.js";
+import { parseJsonConfig } from "./json.js";
 
 const loadSplitConfig = (configDir: string): SiteConfig => {
-  let config = new SiteConfig("Tsumo Site", "", "en-us", undefined);
-  const files = readdirSync(configDir).map((entry) => join(configDir, entry));
+  let config = new SiteConfig("Tsumo Site", "", "en-us", undefined, undefined);
+  const entries = readdirSync(configDir);
+  const files: string[] = [];
+  for (let i = 0; i < entries.length; i++) files.push(join(configDir, entries[i]!));
 
   const sortedFiles: string[] = [];
   const baseFiles: string[] = [];
@@ -38,7 +40,12 @@ const loadSplitConfig = (configDir: string): SiteConfig => {
     }
   }
 
-  sortedFiles.push(...baseFiles, ...paramFiles, ...langFiles, ...menuFiles, ...moduleFiles, ...otherFiles);
+  for (let i = 0; i < baseFiles.length; i++) sortedFiles.push(baseFiles[i]!);
+  for (let i = 0; i < paramFiles.length; i++) sortedFiles.push(paramFiles[i]!);
+  for (let i = 0; i < langFiles.length; i++) sortedFiles.push(langFiles[i]!);
+  for (let i = 0; i < menuFiles.length; i++) sortedFiles.push(menuFiles[i]!);
+  for (let i = 0; i < moduleFiles.length; i++) sortedFiles.push(moduleFiles[i]!);
+  for (let i = 0; i < otherFiles.length; i++) sortedFiles.push(otherFiles[i]!);
 
   for (let i = 0; i < sortedFiles.length; i++) {
     const filePath = sortedFiles[i]!;
@@ -76,7 +83,7 @@ export const loadSiteConfig = (siteDir: string): LoadedConfig => {
 
   const path = tryGetFirstExisting(candidates);
   if (path === undefined) {
-    return new LoadedConfig(undefined, new SiteConfig("Tsumo Site", "", "en-us", undefined));
+    return new LoadedConfig(undefined, new SiteConfig("Tsumo Site", "", "en-us", undefined, undefined));
   }
 
   const text = readTextFile(path);

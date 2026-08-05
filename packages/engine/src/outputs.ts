@@ -1,7 +1,7 @@
-import { PageContext, SiteConfig } from "./models.ts";
-import { escapeHtml } from "./utils/html.ts";
-import { replaceText, substringFrom } from "./utils/strings.ts";
-import { ensureTrailingSlash } from "./utils/text.ts";
+import { PageContext, SiteConfig } from "./models.js";
+import { escapeHtml } from "./utils/html.js";
+import { replaceText, substringFrom } from "./utils/strings.js";
+import { ensureTrailingSlash } from "./utils/text.js";
 
 const toAbsoluteUrl = (baseURL: string, relPermalink: string): string => {
   const base = ensureTrailingSlash(baseURL);

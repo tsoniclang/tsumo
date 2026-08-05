@@ -1,6 +1,6 @@
 import { Exception } from "@tsonic/dotnet/System.js";
-import type { ResourceManager } from "../resources.ts";
-import type { Template } from "./template.ts";
+import type { ResourceManager } from "../resources.js";
+import type { Template } from "./template.js";
 
 export class TemplateEnvironment {
   /** True for production builds, false for dev/server mode. Defaults to true. */

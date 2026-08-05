@@ -1,5 +1,5 @@
 import { Uri } from "@tsonic/dotnet/System.js";
-import { TemplateValue } from "./base.ts";
+import { TemplateValue } from "./base.js";
 
 export class UrlParts {
   path: string;

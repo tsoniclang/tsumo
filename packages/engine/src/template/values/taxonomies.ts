@@ -1,5 +1,5 @@
-import { PageContext, SiteContext } from "../../models.ts";
-import { TemplateValue } from "./base.ts";
+import { PageContext, SiteContext } from "../../models.js";
+import { TemplateValue } from "./base.js";
 
 export class TaxonomiesValue extends TemplateValue {
   site: SiteContext;

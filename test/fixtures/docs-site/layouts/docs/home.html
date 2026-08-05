@@ -1,0 +1,14 @@
+{{ define "main" }}
+<article class="doc">
+  <h1>{{ .Title }}</h1>
+  {{ with .Content }}<div class="content">{{ . }}</div>{{ end }}
+
+  <h2>Docs</h2>
+  <ul class="mounts">
+    {{ range .Site.Mounts }}
+      <li><a href="{{ .UrlPrefix }}">{{ .Name }}</a></li>
+    {{ end }}
+  </ul>
+</article>
+{{ end }}
+

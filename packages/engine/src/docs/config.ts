@@ -1,9 +1,10 @@
-import { basename, isAbsolute, join, resolve } from "@tsonic/nodejs/path.js";
-import { fileExists, readTextFile } from "../fs.ts";
-import { DocsMountConfig, DocsSiteConfig } from "./models.ts";
-import { ensureLeadingSlash, ensureTrailingSlash } from "../utils/text.ts";
-import { trimEndChar, trimStartChar } from "../utils/strings.ts";
-import { JsonArray, JsonObject, jsonBool, jsonString, parseJson } from "../utils/json.ts";
+import { basename, isAbsolute, join, resolve } from "node:path";
+import { fileExists, readTextFile } from "../fs.js";
+import { DocsMountConfig, DocsSiteConfig } from "./models.js";
+import { ensureLeadingSlash, ensureTrailingSlash } from "../utils/text.js";
+import { trimEndChar, trimStartChar } from "../utils/strings.js";
+import { JsonArray, JsonObject, jsonBool, jsonObject, jsonString, parseJson } from "../utils/json.js";
+import { Exception } from "@tsonic/dotnet/System.js";
 
 export class LoadedDocsConfig {
   path: string;
@@ -24,7 +25,7 @@ const readBool = (root: JsonObject, propName: string): boolean | undefined =>
 const normalizePrefix = (raw: string): string => ensureTrailingSlash(ensureLeadingSlash(raw.trim()));
 
 const resolveSourceDir = (siteDir: string, raw: string): string => {
-  if (raw.trim() === "") throw new Error("Docs mount `source` cannot be empty");
+  if (raw.trim() === "") throw new Exception("Docs mount `source` cannot be empty");
   return isAbsolute(raw) ? resolve(raw) : resolve(join(siteDir, raw));
 };
 
@@ -79,10 +80,10 @@ export const loadDocsConfig = (siteDir: string): LoadedDocsConfig | undefined =>
   if (!fileExists(candidate)) return undefined;
 
   const rootValue = parseJson(readTextFile(candidate));
-  if (!(rootValue instanceof JsonObject)) throw new Error("tsumo.docs.json root must be an object");
-  const root = rootValue;
+  const root = jsonObject(rootValue);
+  if (root === undefined) throw new Exception("tsumo.docs.json root must be an object");
   const mounts = parseMounts(siteDir, root);
-  if (mounts.length === 0) throw new Error("tsumo.docs.json has no mounts");
+  if (mounts.length === 0) throw new Exception("tsumo.docs.json has no mounts");
 
   const config = new DocsSiteConfig(
     mounts,

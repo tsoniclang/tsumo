@@ -1,7 +1,8 @@
-import { readdirSync } from "@tsonic/nodejs/fs.js";
-import { basename, join, resolve } from "@tsonic/nodejs/path.js";
-import { ensureDir, dirExists, writeTextFile } from "../fs.ts";
-import { humanizeSlug } from "../utils/text.ts";
+import { readdirSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
+import { ensureDir, dirExists, writeTextFile } from "../fs.js";
+import { humanizeSlug } from "../utils/text.js";
+import { Exception } from "@tsonic/dotnet/System.js";
 
 const ensureEmptyDir = (path: string): void => {
   if (!dirExists(path)) {
@@ -10,7 +11,7 @@ const ensureEmptyDir = (path: string): void => {
   }
 
   if (readdirSync(path).length > 0) {
-    throw new Error(`Directory not empty: ${path}`);
+    throw new Exception(`Directory not empty: ${path}`);
   }
 };
 
@@ -185,7 +186,8 @@ export const initSite = (targetDir: string): void => {
   const dir = resolve(targetDir);
   ensureEmptyDir(dir);
 
-  const title = humanizeSlug(basename(dir) || "Tsumo Site");
+  const base = basename(dir);
+  const title = humanizeSlug(base === "" ? "Tsumo Site" : base);
 
   ensureDir(join(dir, "content"));
   ensureDir(join(dir, "content", "posts"));

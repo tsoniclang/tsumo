@@ -15,14 +15,13 @@
       "navPath": "README.md"
     },
     {
-      "name": "tsbindgen",
-      "source": "../../../tsbindgen/docs",
-      "prefix": "/tsbindgen/",
-      "repoUrl": "https://github.com/tsoniclang/tsbindgen",
+      "name": "Tsonic CSharp",
+      "source": "../../../tsonic-csharp/docs",
+      "prefix": "/tsonic-csharp/",
+      "repoUrl": "https://github.com/tsoniclang/tsonic-csharp",
       "repoBranch": "main",
       "repoPath": "docs",
       "navPath": "README.md"
     }
   ]
 }
-

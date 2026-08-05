@@ -1,8 +1,10 @@
-import { MenuEntry } from "./models.ts";
+import { MenuEntry } from "./models.js";
 
 // Sort menu entries by weight
 export const sortMenuEntries = (entries: MenuEntry[]): MenuEntry[] => {
-  return [...entries].sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+  const copy: MenuEntry[] = [];
+  for (let i = 0; i < entries.length; i++) copy.push(entries[i]!);
+  return copy.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
 };
 
 // Build parent/children hierarchy from flat entries array
@@ -28,7 +30,10 @@ export const buildMenuHierarchy = (entries: MenuEntry[]): MenuEntry[] => {
     } else {
       const parentEntry = byIdentifier.get(entry.parent);
       if (parentEntry !== undefined) {
-        parentEntry.children = [...parentEntry.children, entry].sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+        const mergedChildren: MenuEntry[] = [];
+        for (let j = 0; j < parentEntry.children.length; j++) mergedChildren.push(parentEntry.children[j]!);
+        mergedChildren.push(entry);
+        parentEntry.children = mergedChildren.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
       } else {
         topLevel.push(entry);
       }
@@ -53,12 +58,18 @@ export const findMenuEntryByIdentifier = (entries: MenuEntry[], identifier: stri
 
 // Add entry to parent's children array in sorted order
 export const addChildToParent = (parent: MenuEntry, child: MenuEntry): void => {
-  parent.children = [...parent.children, child].sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+  const mergedChildren: MenuEntry[] = [];
+  for (let i = 0; i < parent.children.length; i++) mergedChildren.push(parent.children[i]!);
+  mergedChildren.push(child);
+  parent.children = mergedChildren.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
 };
 
 // Add entry to top-level menu in sorted order
 export const addToTopLevel = (entries: MenuEntry[], entry: MenuEntry): MenuEntry[] => {
-  return [...entries, entry].sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
+  const merged: MenuEntry[] = [];
+  for (let i = 0; i < entries.length; i++) merged.push(entries[i]!);
+  merged.push(entry);
+  return merged.sort((a: MenuEntry, b: MenuEntry) => a.weight - b.weight);
 };
 
 // Helper to collect entries recursively into a list

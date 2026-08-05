@@ -1,13 +1,12 @@
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { TemplateValue, NilValue } from "./base.ts";
-import { DictValue } from "./dict.ts";
-import { AnyArrayValue } from "./arrays.ts";
+import { TemplateValue, NilValue } from "./base.js";
+import { DictValue } from "./dict.js";
+import { AnyArrayValue } from "./arrays.js";
 
 export class ScratchStore {
-  values: Dictionary<string, TemplateValue>;
+  values: Map<string, TemplateValue>;
 
   constructor() {
-    this.values = new Dictionary<string, TemplateValue>();
+    this.values = new Map<string, TemplateValue>();
   }
 
   getValues(): DictValue {
@@ -15,72 +14,63 @@ export class ScratchStore {
   }
 
   get(key: string): TemplateValue {
-    let v: TemplateValue = new NilValue();
-    return this.values.TryGetValue(key, v) ? v : new NilValue();
+    const v = this.values.get(key);
+    return v !== undefined ? v : new NilValue();
   }
 
   set(key: string, value: TemplateValue): void {
-    this.values.Remove(key);
-    this.values.Add(key, value);
+    this.values.set(key, value);
   }
 
   add(key: string, value: TemplateValue): void {
-    let cur: TemplateValue = new NilValue();
-    const has = this.values.TryGetValue(key, cur);
-    if (!has) {
+    const cur = this.values.get(key);
+    if (cur === undefined) {
       this.set(key, value);
       return;
     }
     if (cur instanceof AnyArrayValue) {
       const curArray = cur as AnyArrayValue;
-      const mergedList = new List<TemplateValue>();
-      const it = curArray.value.GetEnumerator();
-      while (it.MoveNext()) mergedList.Add(it.Current);
+      const mergedList: TemplateValue[] = [];
+      for (let i = 0; i < curArray.value.length; i++) mergedList.push(curArray.value[i]!);
       if (value instanceof AnyArrayValue) {
         const valueArray = value as AnyArrayValue;
-        const vit = valueArray.value.GetEnumerator();
-        while (vit.MoveNext()) mergedList.Add(vit.Current);
+        for (let i = 0; i < valueArray.value.length; i++) mergedList.push(valueArray.value[i]!);
       } else {
-        mergedList.Add(value);
+        mergedList.push(value);
       }
       this.set(key, new AnyArrayValue(mergedList));
       return;
     }
-    const pairList = new List<TemplateValue>();
-    pairList.Add(cur);
-    pairList.Add(value);
+    const pairList: TemplateValue[] = [];
+    pairList.push(cur);
+    pairList.push(value);
     this.set(key, new AnyArrayValue(pairList));
   }
 
   delete(key: string): void {
-    this.values.Remove(key);
+    this.values.delete(key);
   }
 
   setInMap(mapName: string, key: string, value: TemplateValue): void {
-    let cur: TemplateValue = new NilValue();
-    const has = this.values.TryGetValue(mapName, cur);
-    if (has) {
+    const cur = this.values.get(mapName);
+    if (cur !== undefined) {
       if (cur instanceof DictValue) {
         const dict = cur as DictValue;
-        dict.value.Remove(key);
-        dict.value.Add(key, value);
+        dict.value.set(key, value);
         return;
       }
     }
-    const map = new Dictionary<string, TemplateValue>();
-    map.Remove(key);
-    map.Add(key, value);
-    this.values.Remove(mapName);
-    this.values.Add(mapName, new DictValue(map));
+    const map = new Map<string, TemplateValue>();
+    map.set(key, value);
+    this.values.set(mapName, new DictValue(map));
   }
 
   deleteInMap(mapName: string, key: string): void {
-    let cur: TemplateValue = new NilValue();
-    const has = this.values.TryGetValue(mapName, cur);
-    if (has) {
+    const cur = this.values.get(mapName);
+    if (cur !== undefined) {
       if (cur instanceof DictValue) {
         const dict = cur as DictValue;
-        dict.value.Remove(key);
+        dict.value.delete(key);
       }
     }
   }

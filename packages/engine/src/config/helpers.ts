@@ -1,6 +1,6 @@
-import { LanguageConfig } from "../models.ts";
-import { fileExists } from "../fs.ts";
-import { substringCount } from "../utils/strings.ts";
+import { LanguageConfig } from "../models.js";
+import { fileExists } from "../fs.js";
+import { substringCount } from "../utils/strings.js";
 
 export const tryGetFirstExisting = (paths: string[]): string | undefined => {
   for (let i = 0; i < paths.length; i++) {
@@ -19,5 +19,7 @@ export const unquote = (value: string): string => {
 };
 
 export const sortLanguages = (langs: LanguageConfig[]): LanguageConfig[] => {
-  return [...langs].sort((a: LanguageConfig, b: LanguageConfig) => a.weight - b.weight);
+  const copy: LanguageConfig[] = [];
+  for (let i = 0; i < langs.length; i++) copy.push(langs[i]!);
+  return copy.sort((a: LanguageConfig, b: LanguageConfig) => a.weight - b.weight);
 };

@@ -18,12 +18,15 @@ mkdir -p "$PROVIDER_DIR"
 dotnet build "$REPO_ROOT/packages/markdig/vendor-src/Markdig.Vendored.csproj" -c Release -o "$MARKDIG_BUILD_DIR" --verbosity quiet
 cp "$MARKDIG_BUILD_DIR/Markdig.dll" "$PROVIDER_DIR/Markdig.dll"
 
-if [[ -f "$REPO_ROOT/packages/engine/packages.lock.json" ]]; then
-  dotnet restore "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" --locked-mode --verbosity quiet
-else
-  dotnet restore "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" --verbosity quiet
-fi
-dotnet msbuild "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" -target:PrepareTsonicProviderReferences -property:RestoreLockedMode=true -verbosity:quiet -nologo
+dotnet restore "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" --locked-mode --verbosity quiet
+dotnet msbuild "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" -target:PrepareTsonicProviderReferences -verbosity:quiet -nologo
+
+TEST_PROVIDER_DIR="$REPO_ROOT/.temp/provider-references-tests"
+rm -rf "$TEST_PROVIDER_DIR"
+dotnet restore "$REPO_ROOT/packages/tests/Tsumo.Tests.csproj" --locked-mode --verbosity quiet
+dotnet msbuild "$REPO_ROOT/packages/tests/Tsumo.Tests.csproj" -target:PrepareTsonicTestProviderReferences -verbosity:quiet -nologo
 
 echo "prepared provider references:"
 ls -1 "$PROVIDER_DIR"
+echo "prepared test provider references:"
+ls -1 "$TEST_PROVIDER_DIR"

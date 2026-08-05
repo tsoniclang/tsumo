@@ -7,8 +7,8 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-} from "@tsonic/nodejs/fs.js";
-import { dirname, join, relative } from "@tsonic/nodejs/path.js";
+} from "node:fs";
+import { dirname, join, relative } from "node:path";
 
 const matchesPattern = (filePath: string, searchPattern: string): boolean => {
   if (searchPattern === "*" || searchPattern === "*.*") return true;
@@ -17,11 +17,11 @@ const matchesPattern = (filePath: string, searchPattern: string): boolean => {
 };
 
 export const dirExists = (path: string): boolean => {
-  return existsSync(path) && statSync(path).isDirectory;
+  return existsSync(path) && statSync(path).isDirectory();
 };
 
 export const fileExists = (path: string): boolean => {
-  return existsSync(path) && statSync(path).isFile;
+  return existsSync(path) && statSync(path).isFile();
 };
 
 export const ensureDir = (path: string): void => {
@@ -54,7 +54,7 @@ export const listFilesRecursive = (rootDir: string, searchPattern: string): stri
       const entry = entries[i]!;
       const fullPath = join(currentDir, entry);
       const stats = statSync(fullPath);
-      if (stats.isDirectory) {
+      if (stats.isDirectory()) {
         walk(fullPath);
         continue;
       }

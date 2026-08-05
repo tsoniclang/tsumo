@@ -15,4 +15,4 @@ export {
   ScratchStore, ScratchValue,
   UrlParts, UrlValue,
   VersionStringValue,
-} from "./values/index.ts";
+} from "./values/index.js";

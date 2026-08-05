@@ -1,12 +1,12 @@
-import type { int } from "@tsonic/core/types.js";
-import { LanguageConfig, MenuEntry, ModuleMount, SiteConfig } from "../models.ts";
-import { ensureTrailingSlash } from "../utils/text.ts";
-import { parseInt32 } from "../utils/int32.ts";
-import { ParamValue } from "../params.ts";
-import { buildMenuHierarchy } from "../menus.ts";
-import { LanguageConfigBuilder, MenuEntryBuilder } from "./builders.ts";
-import { unquote, sortLanguages } from "./helpers.ts";
-import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { LanguageConfig, MenuEntry, ModuleMount, SiteConfig } from "../models.js";
+import { ensureTrailingSlash } from "../utils/text.js";
+import { parseInt32 } from "../utils/int32.js";
+import { ParamValue } from "../params.js";
+import { buildMenuHierarchy } from "../menus.js";
+import { LanguageConfigBuilder, MenuEntryBuilder } from "./builders.js";
+import { unquote, sortLanguages } from "./helpers.js";
+import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
 
 const tryParseInt = (value: string): int | undefined => parseInt32(value);
 
@@ -175,7 +175,9 @@ export const parseTomlConfig = (text: string): SiteConfig => {
   }
   config.Params = params;
 
-  for (const [menuName, builders] of menuBuilders) {
+  for (const menuName of menuBuilders.keys()) {
+    const builders = menuBuilders.get(menuName);
+    if (builders === undefined) continue;
     const entries: MenuEntry[] = [];
     for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
     config.Menus.set(menuName, buildMenuHierarchy(entries));
@@ -345,7 +347,9 @@ export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: 
       }
     }
 
-    for (const [menuName, builders] of menuBuilders) {
+    for (const menuName of menuBuilders.keys()) {
+      const builders = menuBuilders.get(menuName);
+      if (builders === undefined) continue;
       const entries: MenuEntry[] = [];
       for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
       config.Menus.set(menuName, buildMenuHierarchy(entries));

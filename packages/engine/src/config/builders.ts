@@ -1,6 +1,6 @@
-import type { int } from "@tsonic/core/types.js";
-import { LanguageConfig, MenuEntry } from "../models.ts";
-import { ParamValue } from "../params.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { LanguageConfig, MenuEntry } from "../models.js";
+import { ParamValue } from "../params.js";
 
 export class MenuEntryBuilder {
   name: string;

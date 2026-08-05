@@ -1,14 +1,11 @@
-import { attributes as A } from "@tsonic/core/lang.js";
+import { attribute } from "@tsonic/core/lang.js";
 
-import { Assert, FactAttribute } from "xunit-types/Xunit.js";
+import { Assert, FactAttribute } from "@tsonic/dotnet/Xunit.js";
 
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
 import { Guid } from "@tsonic/dotnet/System.js";
 
-import { BuildRequest } from "../build.ts";
-import { buildSite } from "../build-site.ts";
-import { initSite } from "../scaffold/init-site.ts";
-import { newContent } from "../scaffold/new-content.ts";
+import { BuildRequest, buildSite, initSite, newContent } from "@tsumo/engine/index.js";
 
 const createTempDir = (name: string): string => {
   const root = Path.Combine(Path.GetTempPath(), "tsumo-tests");
@@ -91,6 +88,6 @@ export class ScaffoldAndBuildTests {
   }
 }
 
-A<ScaffoldAndBuildTests>().method((t) => t.scaffold_then_build).add(FactAttribute);
-A<ScaffoldAndBuildTests>().method((t) => t.drafts_skipped_by_default).add(FactAttribute);
-A<ScaffoldAndBuildTests>().method((t) => t.new_content_then_build).add(FactAttribute);
+attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_then_build).add(FactAttribute);
+attribute<ScaffoldAndBuildTests>().method((target) => target.drafts_skipped_by_default).add(FactAttribute);
+attribute<ScaffoldAndBuildTests>().method((target) => target.new_content_then_build).add(FactAttribute);

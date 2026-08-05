@@ -1,8 +1,8 @@
-export { MediaType } from "./media-type.ts";
-export { OutputFormat } from "./output-format.ts";
-export { LanguageConfig, LanguageContext } from "./language.ts";
-export { PageFile } from "./page-file.ts";
-export { MenuEntry } from "./menu-entry.ts";
-export { SiteConfig, ModuleMount } from "./site-config.ts";
-export { SiteContext } from "./site-context.ts";
-export { PageContext } from "./page-context.ts";
+export { MediaType } from "./media-type.js";
+export { OutputFormat } from "./output-format.js";
+export { LanguageConfig, LanguageContext } from "./language.js";
+export { PageFile } from "./page-file.js";
+export { MenuEntry } from "./menu-entry.js";
+export { SiteConfig, ModuleMount } from "./site-config.js";
+export { SiteContext } from "./site-context.js";
+export { PageContext } from "./page-context.js";

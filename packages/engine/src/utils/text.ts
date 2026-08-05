@@ -1,13 +1,12 @@
-import type { char } from "@tsonic/core/types.js";
-import { replaceText, substringCount, trimEndChar, toChars } from "./strings.ts";
+import { replaceText, substringCount, trimEndChar } from "./strings.js";
 
-const wordSeparatorSpace: char = " ";
-const wordSeparatorDash: char = "-";
-const wordSeparatorUnderscore: char = "_";
-const wordSeparatorDot: char = ".";
-const wordSeparatorSlash: char = "/";
+const wordSeparatorSpace = " ";
+const wordSeparatorDash = "-";
+const wordSeparatorUnderscore = "_";
+const wordSeparatorDot = ".";
+const wordSeparatorSlash = "/";
 
-const isWordSeparator = (ch: char): boolean => {
+const isWordSeparator = (ch: string): boolean => {
   return (
     ch === wordSeparatorSpace ||
     ch === wordSeparatorDash ||
@@ -19,7 +18,7 @@ const isWordSeparator = (ch: char): boolean => {
 
 export const slugify = (input: string): string => {
   const lower = input.trim().toLowerCase();
-  const chars = toChars(lower);
+  const chars = lower.split("");
   const output: string[] = [];
   let wroteDash = false;
 

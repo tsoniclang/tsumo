@@ -1,6 +1,6 @@
-import type { int } from "@tsonic/core/types.js";
-import { indexOfText, indexOfTextFrom, lastIndexOfText, substringCount, substringFrom } from "./utils/strings.ts";
-import { ParamValue } from "./params.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { indexOfText, indexOfTextFrom, lastIndexOfText, substringCount, substringFrom } from "./utils/strings.js";
+import { ParamValue } from "./params.js";
 
 export class ShortcodeCall {
   name: string;
@@ -77,15 +77,15 @@ class ParseState {
 const isInCodeBlock = (text: string, pos: int): boolean => {
   let inFence = false;
   let fenceChar = "";
-  let fenceLen = 0;
-  let i = 0;
+  let fenceLen: int = 0;
+  let i: int = 0;
 
   while (i < pos) {
     const c = substringCount(text, i, 1);
 
     if (!inFence) {
       if (c === "`" || c === "~") {
-      let len = 1;
+      let len: int = 1;
       while (i + len < text.length && substringCount(text, i + len, 1) === c) len++;
       if (len >= 3) {
         inFence = true;
@@ -99,7 +99,7 @@ const isInCodeBlock = (text: string, pos: int): boolean => {
     }
 
     if (inFence && c === fenceChar) {
-      let len = 1;
+      let len: int = 1;
       while (i + len < text.length && substringCount(text, i + len, 1) === c) len++;
       if (len >= fenceLen) {
         inFence = false;
@@ -212,7 +212,7 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
   const closeTagPrefix = isMarkdown ? `{{% /${name}` : `{{< /${name}`;
   const closeTagPrefix2 = isMarkdown ? `{{% / ${name}` : `{{< / ${name}`;
 
-  let depth = 1;
+  let depth: int = 1;
   let pos = startPos;
   let innerStart = startPos;
 
@@ -245,7 +245,7 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
 
 export const parseShortcodes = (text: string): ShortcodeCall[] => {
   const results: ShortcodeCall[] = [];
-  let pos = 0;
+  let pos: int = 0;
 
   while (pos < text.length) {
     const openAngle = indexOfTextFrom(text, "{{<", pos);
@@ -375,11 +375,11 @@ export const innerDeindent = (inner: string): string => {
   if (lines.length === 0) return inner;
 
   let minIndent: int = -1;
-  for (let i = 0; i < lines.length; i++) {
+  for (let i: int = 0; i < lines.length; i++) {
     const line = lines[i]!;
     if (line.trim() === "") continue;
-    let indent = 0;
-    for (let j = 0; j < line.length; j++) {
+    let indent: int = 0;
+    for (let j: int = 0; j < line.length; j++) {
       const c = substringCount(line, j, 1);
       if (c === " ") indent++;
       else if (c === "\t") indent += 4;
@@ -391,15 +391,15 @@ export const innerDeindent = (inner: string): string => {
   if (minIndent <= 0) return inner;
 
   const result: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
+  for (let i: int = 0; i < lines.length; i++) {
     const line = lines[i]!;
     if (line.trim() === "") {
       result.push(line);
       continue;
     }
-    let removed = 0;
-    let startIdx = 0;
-    for (let j = 0; j < line.length && removed < minIndent; j++) {
+    let removed: int = 0;
+    let startIdx: int = 0;
+    for (let j: int = 0; j < line.length && removed < minIndent; j++) {
       const c = substringCount(line, j, 1);
       if (c === " ") {
         removed++;
@@ -416,7 +416,7 @@ export const innerDeindent = (inner: string): string => {
 
   const arr = result;
   let out = "";
-  for (let i = 0; i < arr.length; i++) {
+  for (let i: int = 0; i < arr.length; i++) {
     if (i > 0) out += "\n";
     out += arr[i]!;
   }

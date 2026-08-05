@@ -1,12 +1,12 @@
-import type { int } from "@tsonic/core/types.js";
-import { LanguageConfig, MenuEntry, SiteConfig } from "../models.ts";
-import { ensureTrailingSlash } from "../utils/text.ts";
-import { toInt32 } from "../utils/int32.ts";
-import { ParamValue } from "../params.ts";
-import { buildMenuHierarchy } from "../menus.ts";
-import { MenuEntryBuilder } from "./builders.ts";
-import { sortLanguages } from "./helpers.ts";
-import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson } from "../utils/json.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { LanguageConfig, MenuEntry, SiteConfig } from "../models.js";
+import { ensureTrailingSlash } from "../utils/text.js";
+import { toInt32 } from "../utils/int32.js";
+import { ParamValue } from "../params.js";
+import { buildMenuHierarchy } from "../menus.js";
+import { MenuEntryBuilder } from "./builders.js";
+import { sortLanguages } from "./helpers.js";
+import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson } from "../utils/json.js";
 
 export const parseJsonConfig = (text: string): SiteConfig => {
   let title = "Tsumo Site";
@@ -149,7 +149,9 @@ export const parseJsonConfig = (text: string): SiteConfig => {
   }
 
   const menus = new Map<string, MenuEntry[]>();
-  for (const [menuName, builders] of menuBuilders) {
+  for (const menuName of menuBuilders.keys()) {
+    const builders = menuBuilders.get(menuName);
+    if (builders === undefined) continue;
     const entries: MenuEntry[] = [];
     for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
     menus.set(menuName, buildMenuHierarchy(entries));

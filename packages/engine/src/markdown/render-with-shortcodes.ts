@@ -1,16 +1,18 @@
-import { Markdown } from "markdig-types/Markdig.js";
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
+import { Markdown } from "@tsonic/dotnet/Markdig.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import { parseShortcodes, ShortcodeCall } from "../shortcode.ts";
-import { ShortcodeContext, ShortcodeValue, RenderScope, TemplateEnvironment, TemplateNode } from "../template/index.ts";
-import { PageContext, SiteContext } from "../models.ts";
-import { MarkdownResult } from "./result.ts";
-import { markdownPipeline } from "./pipeline.ts";
-import { generateTableOfContents } from "./toc.ts";
-import { RenderHookContext, renderMarkdownWithHooks } from "./render-hooks.ts";
-import { processShortcodes, createOrdinalTracker } from "./shortcodes.ts";
-import { normalizeNewlines, findSummaryDividerIndex, summaryMarkerLength, firstBlock } from "./render-basic.ts";
-import { substringCount, substringFrom } from "../utils/strings.ts";
+import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
+import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
+import { RenderScope } from "../template/scope.js";
+import { TemplateEnvironment } from "../template/environment.js";
+import { TemplateNode } from "../template/nodes.js";
+import { PageContext, SiteContext } from "../models.js";
+import { MarkdownResult } from "./result.js";
+import { markdownPipeline } from "./pipeline.js";
+import { generateTableOfContents } from "./toc.js";
+import { RenderHookContext, renderMarkdownWithHooks } from "./render-hooks.js";
+import { processShortcodes, createOrdinalTracker } from "./shortcodes.js";
+import { normalizeNewlines, findSummaryDividerIndex, summaryMarkerLength, firstBlock } from "./render-basic.js";
+import { substringCount, substringFrom } from "../utils/strings.js";
 
 export const renderMarkdownWithShortcodes = (
   markdownRaw: string,
@@ -20,22 +22,22 @@ export const renderMarkdownWithShortcodes = (
 ): MarkdownResult => {
   const markdown = normalizeNewlines(markdownRaw);
   const ordinalTracker = createOrdinalTracker();
-  const recursionGuard = new Dictionary<string, boolean>();
+  const recursionGuard = new Map<string, boolean>();
 
   // Step 1: Process markdown-notation shortcodes ({{% ... %}}) BEFORE markdown rendering
   const calls = parseShortcodes(markdown);
   let textAfterMarkdownShortcodes = markdown;
 
   // Filter markdown-notation shortcodes and process them first
-  const mdCalls = new List<ShortcodeCall>();
+  const mdCalls: ShortcodeCall[] = [];
   for (let i = 0; i < calls.length; i++) {
     const call = calls[i]!;
-    if (call.isMarkdown) mdCalls.Add(call);
+    if (call.isMarkdown) mdCalls.push(call);
   }
 
-  if (mdCalls.Count > 0) {
+  if (mdCalls.length > 0) {
     // Sort descending by startIndex
-    const mdArr = mdCalls.ToArray();
+    const mdArr = mdCalls;
     for (let i = 0; i < mdArr.length; i++) {
       for (let j = i + 1; j < mdArr.length; j++) {
         if (mdArr[j]!.startIndex > mdArr[i]!.startIndex) {
@@ -74,7 +76,7 @@ export const renderMarkdownWithShortcodes = (
         );
         const shortcodeValue = new ShortcodeValue(ctx);
         const scope = new RenderScope(shortcodeValue, shortcodeValue, site, env, undefined);
-        const emptyOverrides = new Dictionary<string, TemplateNode[]>();
+        const emptyOverrides = new Map<string, TemplateNode[]>();
         template.renderInto(sb, scope, env, emptyOverrides);
         const output = sb.ToString();
         textAfterMarkdownShortcodes = substringCount(textAfterMarkdownShortcodes, 0, call.startIndex) + output + substringFrom(textAfterMarkdownShortcodes, call.endIndex);

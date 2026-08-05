@@ -1,9 +1,9 @@
-import { process } from "@tsonic/nodejs/process.js";
+import process from "node:process";
 
 import { initSite, newContent } from "@tsumo/engine/index.js";
 
-import { logErrorLine } from "../log-error-line.ts";
-import { logLine } from "../log-line.ts";
+import { logErrorLine } from "../log-error-line.js";
+import { logLine } from "../log-line.js";
 
 export const handleNew = (args: readonly string[]): void => {
   if (args.length >= 2 && args[1] === "site") {

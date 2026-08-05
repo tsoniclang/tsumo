@@ -1,10 +1,10 @@
-import { process } from "@tsonic/nodejs/process.js";
-import type { int } from "@tsonic/core/types.js";
+import process from "node:process";
+import type { int } from "@tsonic/csharp/types.js";
 
 import { ServeRequest, serveSite } from "@tsumo/engine/index.js";
 
-import { logErrorLine } from "../log-error-line.ts";
-import { parseIntArg } from "../parse-int.ts";
+import { logErrorLine } from "../log-error-line.js";
+import { parseIntArg } from "../parse-int.js";
 
 export const handleServe = (args: readonly string[]): void => {
   let serveSourceDir = process.cwd();

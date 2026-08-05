@@ -1,24 +1,24 @@
-import { Markdown } from "markdig-types/Markdig.js";
-import { HtmlAttributesExtensions } from "markdig-types/Markdig.Renderers.Html.js";
-import { HtmlRenderer } from "markdig-types/Markdig.Renderers.js";
-import { HtmlBlockParser } from "markdig-types/Markdig.Parsers.js";
-import { HtmlBlock } from "markdig-types/Markdig.Syntax.js";
-import type { ContainerBlock, HeadingBlock, LeafBlock, MarkdownDocument } from "markdig-types/Markdig.Syntax.js";
-import { HtmlInline } from "markdig-types/Markdig.Syntax.Inlines.js";
-import type { ContainerInline, LinkInline } from "markdig-types/Markdig.Syntax.Inlines.js";
-import { StringLineGroup } from "markdig-types/Markdig.Helpers.js";
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
+import { Markdown } from "@tsonic/dotnet/Markdig.js";
+import { HtmlAttributesExtensions } from "@tsonic/dotnet/Markdig.Renderers.Html.js";
+import { HtmlRenderer } from "@tsonic/dotnet/Markdig.Renderers.js";
+import { HtmlBlockParser } from "@tsonic/dotnet/Markdig.Parsers.js";
+import { HtmlBlock, ContainerBlock, HeadingBlock, LeafBlock } from "@tsonic/dotnet/Markdig.Syntax.js";
+import type { MarkdownDocument } from "@tsonic/dotnet/Markdig.Syntax.js";
+import { HtmlInline, ContainerInline, LinkInline } from "@tsonic/dotnet/Markdig.Syntax.Inlines.js";
+import { StringLineGroup } from "@tsonic/dotnet/Markdig.Helpers.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { StringWriter } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/core/types.js";
-import { trycast } from "@tsonic/core/lang.js";
+import type { int } from "@tsonic/csharp/types.js";
+import { RenderScope } from "../template/scope.js";
+import { TemplateEnvironment } from "../template/environment.js";
+import { TemplateNode } from "../template/nodes.js";
+import { Template } from "../template/template.js";
 import {
-  RenderScope, TemplateEnvironment, TemplateNode, Template,
-  LinkHookContext, LinkHookValue, ImageHookContext, ImageHookValue, HeadingHookContext, HeadingHookValue
-} from "../template/index.ts";
-import { PageContext, SiteContext } from "../models.ts";
-import { markdownPipeline, setupRenderer } from "./pipeline.ts";
-import { substringCount } from "../utils/strings.ts";
+  LinkHookContext, LinkHookValue, ImageHookContext, ImageHookValue, HeadingHookContext, HeadingHookValue,
+} from "../template/contexts.js";
+import { PageContext, SiteContext } from "../models.js";
+import { markdownPipeline, setupRenderer } from "./pipeline.js";
+import { substringCount } from "../utils/strings.js";
 
 // Render hook context for passing to Markdig renderer interceptors
 export class RenderHookContext {
@@ -44,12 +44,13 @@ export class RenderHookContext {
 }
 
 // Shared HtmlBlockParser instance for creating HtmlBlocks
-let sharedHtmlBlockParser: object | undefined = undefined;
-const getHtmlBlockParser = (): object => {
-  if (sharedHtmlBlockParser === undefined) {
-    sharedHtmlBlockParser = new HtmlBlockParser();
-  }
-  return sharedHtmlBlockParser;
+let sharedHtmlBlockParser: HtmlBlockParser | undefined = undefined;
+const getHtmlBlockParser = (): HtmlBlockParser => {
+  const existing = sharedHtmlBlockParser;
+  if (existing !== undefined) return existing;
+  const created = new HtmlBlockParser();
+  sharedHtmlBlockParser = created;
+  return created;
 };
 
 // Render inline children to HTML string (for hook .Text property)
@@ -88,7 +89,7 @@ const renderLinkHookTemplate = (
 ): string => {
   const sb = new StringBuilder();
   const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
-  const emptyOverrides = new Dictionary<string, TemplateNode[]>();
+  const emptyOverrides = new Map<string, TemplateNode[]>();
   template.renderInto(sb, scope, env, emptyOverrides);
   return sb.ToString();
 };
@@ -101,7 +102,7 @@ const renderImageHookTemplate = (
 ): string => {
   const sb = new StringBuilder();
   const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
-  const emptyOverrides = new Dictionary<string, TemplateNode[]>();
+  const emptyOverrides = new Map<string, TemplateNode[]>();
   template.renderInto(sb, scope, env, emptyOverrides);
   return sb.ToString();
 };
@@ -114,7 +115,7 @@ const renderHeadingHookTemplate = (
 ): string => {
   const sb = new StringBuilder();
   const scope = new RenderScope(hookValue, hookValue, site, env, undefined);
-  const emptyOverrides = new Dictionary<string, TemplateNode[]>();
+  const emptyOverrides = new Map<string, TemplateNode[]>();
   template.renderInto(sb, scope, env, emptyOverrides);
   return sb.ToString();
 };
@@ -125,31 +126,32 @@ const renderHeadingHookTemplate = (
 // Process inline elements - replaces LinkInline with HtmlInline containing hook output
 const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookContext): void => {
   // Collect links to rewrite (can't modify during iteration)
-  const linksToRewrite = new List<LinkInline>();
+  const linksToRewrite: LinkInline[] = [];
   const it = container.GetEnumerator();
   while (it.MoveNext()) {
     const inline = it.Current;
-    const link = trycast<LinkInline>(inline);
-    if (link !== null) {
+    if (inline instanceof LinkInline) {
+      const link = inline as LinkInline;
       const isImage = link.IsImage;
       const hasHook = isImage ? hookCtx.imageHook !== undefined : hookCtx.linkHook !== undefined;
       if (hasHook) {
-        linksToRewrite.Add(link);
+        linksToRewrite.push(link);
       }
     }
     // Recurse into child containers first (before potential replacement)
-    const childContainer = trycast<ContainerInline>(inline);
-    if (childContainer !== null) rewriteInlinesForHooks(childContainer, hookCtx);
+    if (inline instanceof ContainerInline) rewriteInlinesForHooks(inline as ContainerInline, hookCtx);
   }
   it.Dispose();
 
   // Now perform replacements
-  const linkArr = linksToRewrite.ToArray();
+  const linkArr = linksToRewrite;
   for (let i = 0; i < linkArr.length; i++) {
     const link = linkArr[i]!;
     const isImage = link.IsImage;
+    const imageHook = hookCtx.imageHook;
+    const linkHook = hookCtx.linkHook;
 
-    if (isImage && hookCtx.imageHook !== undefined) {
+    if (isImage && imageHook !== undefined) {
       // For images: use the rendered label content as alt text
       const altHtml = renderInlineChildrenToHtml(link);
       const alt = stripHtmlTags(altHtml);
@@ -158,12 +160,12 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
 
       const ctx = new ImageHookContext(url, alt, title, alt, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
-      const hookHtml = renderImageHookTemplate(hookCtx.imageHook, hookValue, hookCtx.site, hookCtx.env);
+      const hookHtml = renderImageHookTemplate(imageHook, hookValue, hookCtx.site, hookCtx.env);
 
       // Replace LinkInline with HtmlInline
       const htmlInline = new HtmlInline(hookHtml);
       link.ReplaceBy(htmlInline, false);
-    } else if (!isImage && hookCtx.linkHook !== undefined) {
+    } else if (!isImage && linkHook !== undefined) {
       // For links: render inner content to HTML
       const innerHtml = renderInlineChildrenToHtml(link);
       const plainText = stripHtmlTags(innerHtml);
@@ -172,7 +174,7 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
 
       const ctx = new LinkHookContext(url, innerHtml, title, plainText, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
-      const hookHtml = renderLinkHookTemplate(hookCtx.linkHook, hookValue, hookCtx.site, hookCtx.env);
+      const hookHtml = renderLinkHookTemplate(linkHook, hookValue, hookCtx.site, hookCtx.env);
 
       // Replace LinkInline with HtmlInline
       const htmlInline = new HtmlInline(hookHtml);
@@ -184,30 +186,29 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
 // Process block elements - replaces HeadingBlock with HtmlBlock containing hook output
 const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHookContext): void => {
   // Collect headings to rewrite with their indices (can't modify during iteration)
-  const headingsToRewrite = new List<HeadingBlock>();
-  const headingIndices = new List<int>();
+  const headingsToRewrite: HeadingBlock[] = [];
+  const headingIndices: int[] = [];
 
   const blockIt = containerBlock.GetEnumerator();
   let idx = 0;
   while (blockIt.MoveNext()) {
     const block = blockIt.Current;
 
-    const heading = trycast<HeadingBlock>(block);
-    if (heading !== null && hookCtx.headingHook !== undefined) {
-      headingsToRewrite.Add(heading);
-      headingIndices.Add(idx);
+    if (block instanceof HeadingBlock && hookCtx.headingHook !== undefined) {
+      const heading = block as HeadingBlock;
+      headingsToRewrite.push(heading);
+      headingIndices.push(idx);
     }
 
     // Process inlines in leaf blocks
-    const leaf = trycast<LeafBlock>(block);
-    if (leaf !== null) {
+    if (block instanceof LeafBlock) {
+      const leaf = block as LeafBlock;
       const inline = leaf.Inline;
       if (inline != null) rewriteInlinesForHooks(inline, hookCtx);
     }
 
     // Recurse into child container blocks
-    const childContainer = trycast<ContainerBlock>(block);
-    if (childContainer !== null) rewriteBlocksForHooks(childContainer, hookCtx);
+    if (block instanceof ContainerBlock) rewriteBlocksForHooks(block as ContainerBlock, hookCtx);
 
     idx = idx + 1;
   }
@@ -217,8 +218,8 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
   const headingHookTemplate = hookCtx.headingHook;
   if (headingHookTemplate === undefined) return; // Type guard
 
-  const headingArr = headingsToRewrite.ToArray();
-  const indexArr = headingIndices.ToArray();
+  const headingArr = headingsToRewrite;
+  const indexArr = headingIndices;
   for (let i = headingArr.length - 1; i >= 0; i--) {
     const heading = headingArr[i]!;
     const headingIdx = indexArr[i]!;
@@ -238,7 +239,7 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
 
     // Create HtmlBlock with hook output
     const parser = getHtmlBlockParser();
-    const htmlBlock = new HtmlBlock(parser as HtmlBlockParser);
+    const htmlBlock = new HtmlBlock(parser);
     htmlBlock.Lines = new StringLineGroup(hookHtml);
 
     // Replace heading with HtmlBlock in parent
