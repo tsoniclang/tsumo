@@ -14,7 +14,7 @@ export class ShortcodeContext {
   IsNamedParams: boolean;
   Inner: string;
   InnerDeindent: string;
-  Ordinal: number;
+  Ordinal: int;
   Parent: ShortcodeContext | undefined;
 
   constructor(
@@ -25,7 +25,7 @@ export class ShortcodeContext {
     positionalParams: string[],
     isNamedParams: boolean,
     inner: string,
-    ordinal: number,
+    ordinal: int,
     parent: ShortcodeContext | undefined,
   ) {
     this.name = name;

@@ -1,9 +1,9 @@
 import type { int } from "@tsonic/csharp/types.js";
-import { Exception } from "@tsonic/dotnet/System.js";
+import { Exception, String as DotnetString } from "@tsonic/dotnet/System.js";
 
-const substringError = (): never => {
+function substringError(): void {
   throw new Exception("substring bounds are out of range");
-};
+}
 
 const requireSubstringBounds = (source: string, startIndex: int, length: int): void => {
   if (startIndex < 0 || length < 0 || startIndex > source.length || startIndex + length > source.length) {
@@ -30,7 +30,7 @@ export const lastIndexOfText = (source: string, value: string): int => source.la
 export const containsText = (source: string, value: string): boolean => source.includes(value);
 
 export const compareText = (left: string, right: string): int => {
-  return (left === right ? 0 : left < right ? -1 : 1) as int;
+  return DotnetString.CompareOrdinal(left, right);
 };
 
 export const substringFrom = (source: string, startIndex: int): string => {

@@ -1,5 +1,6 @@
 import type { int } from "@tsonic/csharp/types.js";
 import { Exception } from "@tsonic/dotnet/System.js";
+import { compareText } from "./strings.js";
 
 export class JsonValue {
   kind: string;
@@ -275,7 +276,7 @@ class JsonParser {
   }
 
   isDigit(ch: string): boolean {
-    return ch >= "0" && ch <= "9";
+    return compareText(ch, "0") >= 0 && compareText(ch, "9") <= 0;
   }
 }
 

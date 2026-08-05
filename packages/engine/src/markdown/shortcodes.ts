@@ -1,3 +1,4 @@
+import type { int } from "@tsonic/csharp/types.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
 import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
@@ -10,15 +11,15 @@ import { substringCount, substringFrom } from "../utils/strings.js";
 
 // Shortcode execution ordinal tracker
 export class ShortcodeOrdinalTracker {
-  counts: Map<string, number>;
+  counts: Map<string, int>;
 
   constructor() {
-    this.counts = new Map<string, number>();
+    this.counts = new Map<string, int>();
   }
 
-  next(name: string): number {
+  next(name: string): int {
     const count = this.counts.get(name);
-    const nextVal = count !== undefined ? count + 1 : 0;
+    const nextVal = (count !== undefined ? count + 1 : 0) as int;
     this.counts.set(name, nextVal);
     return nextVal;
   }
