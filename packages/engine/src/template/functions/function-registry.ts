@@ -6,7 +6,7 @@ const knownTemplateFunctions = new Set<string>([
   "resources.get", "resources.getmatch", "resources.match", "resources.bytype",
   "resources.concat", "resources.fromstring", "resources.executeastemplate",
   "resources.minify", "minify", "resources.fingerprint", "fingerprint",
-  "resources.copy", "resources.postprocess", "images.resize", "resize", "css.sass",
+  "resources.copy", "images.resize", "resize", "css.sass",
   "partial", "partialcached", "templates.exists", "errorf", "warnf",
   "safehtml", "safehtmlattr", "safejs", "safeurl", "safecss", "htmlescape",
   "htmlunescape", "time.format", "path.base", "title",

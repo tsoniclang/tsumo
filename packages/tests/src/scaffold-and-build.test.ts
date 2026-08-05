@@ -3,30 +3,14 @@ import { attribute } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "@tsonic/dotnet/Xunit.js";
 
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
-import { Environment, Exception, Guid } from "@tsonic/dotnet/System.js";
 
 import { BuildRequest, buildSite, initSite, newContent } from "@tsumo/engine/index.js";
-
-const createTempDir = (name: string): string => {
-  const configuredRoot = Environment.GetEnvironmentVariable("TSUMO_TEST_ROOT");
-  if (configuredRoot === undefined || configuredRoot.trim() === "") {
-    throw new Exception("TSUMO_TEST_ROOT must name the test-owned scratch directory");
-  }
-  const root = Path.GetFullPath(configuredRoot);
-  Directory.CreateDirectory(root);
-
-  const dir = Path.Combine(root, `${name}-${Guid.NewGuid().ToString("n")}`);
-  return dir;
-};
-
-const deleteIfExists = (path: string): void => {
-  if (Directory.Exists(path)) Directory.Delete(path, true);
-};
+import { createTestDirectory, deleteTestDirectory } from "./test-root.js";
 
 export class ScaffoldAndBuildTests {
   scaffold_then_build(): void {
-    const siteDir = createTempDir("site");
-    const outDir = createTempDir("out");
+    const siteDir = createTestDirectory("site");
+    const outDir = createTestDirectory("out");
 
     try {
       initSite(siteDir);
@@ -43,14 +27,14 @@ export class ScaffoldAndBuildTests {
       Assert.Equal(12, result.pagesBuilt);
       Assert.Equal(13, Directory.GetFiles(outDir, "*", SearchOption.AllDirectories).length);
     } finally {
-      deleteIfExists(outDir);
-      deleteIfExists(siteDir);
+      deleteTestDirectory(outDir);
+      deleteTestDirectory(siteDir);
     }
   }
 
   drafts_skipped_by_default(): void {
-    const siteDir = createTempDir("site");
-    const outDir = createTempDir("out");
+    const siteDir = createTestDirectory("site");
+    const outDir = createTestDirectory("out");
 
     try {
       initSite(siteDir);
@@ -65,14 +49,14 @@ export class ScaffoldAndBuildTests {
 
       Assert.True(!File.Exists(Path.Combine(outDir, "posts", "my-draft", "index.html")));
     } finally {
-      deleteIfExists(outDir);
-      deleteIfExists(siteDir);
+      deleteTestDirectory(outDir);
+      deleteTestDirectory(siteDir);
     }
   }
 
   new_content_then_build(): void {
-    const siteDir = createTempDir("site");
-    const outDir = createTempDir("out");
+    const siteDir = createTestDirectory("site");
+    const outDir = createTestDirectory("out");
 
     try {
       initSite(siteDir);
@@ -87,8 +71,8 @@ export class ScaffoldAndBuildTests {
 
       Assert.True(File.Exists(Path.Combine(outDir, "posts", "my-post", "index.html")));
     } finally {
-      deleteIfExists(outDir);
-      deleteIfExists(siteDir);
+      deleteTestDirectory(outDir);
+      deleteTestDirectory(siteDir);
     }
   }
 }

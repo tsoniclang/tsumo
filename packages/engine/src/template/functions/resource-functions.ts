@@ -147,17 +147,6 @@ export const callResourceFunction = (
     return new ResourceValue(mgr, res);
   }
 
-  if (name === "resources.postprocess" && args.length >= 1) {
-    const mgr = env.getResourceManager();
-    if (mgr === undefined) return nil;
-    const piped = args[args.length - 1]!;
-    const isResource = piped instanceof ResourceValue;
-    if (isResource === false) return nil;
-    const src = (piped as ResourceValue).value;
-    const res = mgr.postProcess(src);
-    return new ResourceValue(mgr, res);
-  }
-
   if ((name === "images.resize" || name === "resize") && args.length >= 1) {
     const mgr = env.getResourceManager();
     if (mgr === undefined) return nil;
