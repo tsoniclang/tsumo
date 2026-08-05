@@ -4,7 +4,12 @@ import type { TemplateNode } from "../nodes.js";
 import type { RenderScope } from "../scope.js";
 import { AccessExpr, Command, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
 import type { TemplateValue } from "../values.js";
-import { TemplateRuntime } from "../runtime.js";
+import { parseStringLiteral } from "../parser/tokens.js";
+import { nil } from "../runtime-helpers.js";
+import { callMethod, evalToken } from "./expression-semantics.js";
+import { resolvePath } from "./property-semantics.js";
+import { isNumberLiteral } from "./scalar-semantics.js";
+import { callTemplateFunction } from "../functions/call-function.js";
 
 export class TemplateEvaluationContext {
   scope: RenderScope;
@@ -33,7 +38,7 @@ export function evaluatePipeline(
   defines: Map<string, TemplateNode[]>,
 ): TemplateValue {
   const context = new TemplateEvaluationContext(scope, environment, overrides, defines);
-  if (pipeline.stages.length === 0) return TemplateRuntime.nil;
+  if (pipeline.stages.length === 0) return nil;
 
   let value = evaluateCommand(pipeline.stages[0]!, context, undefined);
   for (let index = 1; index < pipeline.stages.length; index++) {
@@ -58,7 +63,7 @@ function evaluateCommand(
       args.push(evaluateExpression(command.args[index]!, context));
     }
     if (piped !== undefined) args.push(piped);
-    return TemplateRuntime.callFunction(
+    return callTemplateFunction(
       head.token,
       args,
       context.scope,
@@ -75,7 +80,7 @@ function evaluateCommand(
       for (let index = 0; index < head.segments.length - 1; index++) {
         receiverSegments.push(head.segments[index]!);
       }
-      receiver = TemplateRuntime.resolvePath(receiver, receiverSegments, context.scope);
+      receiver = resolvePath(receiver, receiverSegments, context.scope);
     }
 
     const args: TemplateValue[] = [];
@@ -83,7 +88,7 @@ function evaluateCommand(
       args.push(evaluateExpression(command.args[index]!, context));
     }
     if (piped !== undefined) args.push(piped);
-    return TemplateRuntime.callMethod(
+    return callMethod(
       receiver,
       head.segments[head.segments.length - 1]!,
       args,
@@ -107,14 +112,14 @@ function evaluateExpression(expression: Expr, context: TemplateEvaluationContext
       token.startsWith(".") ||
       token.startsWith("$") ||
       token.startsWith("site") ||
-      TemplateRuntime.parseStringLiteral(token) !== undefined ||
+      parseStringLiteral(token) !== undefined ||
       token === "true" ||
       token === "false" ||
-      TemplateRuntime.isNumberLiteral(token)
+      isNumberLiteral(token)
     ) {
-      return TemplateRuntime.evalToken(token, context.scope);
+      return evalToken(token, context.scope);
     }
-    return TemplateRuntime.callFunction(
+    return callTemplateFunction(
       token,
       [],
       context.scope,
@@ -136,7 +141,7 @@ function evaluateExpression(expression: Expr, context: TemplateEvaluationContext
 
   if (expression instanceof AccessExpr) {
     const value = evaluateExpression(expression.base, context);
-    return TemplateRuntime.resolvePath(value, expression.segments, context.scope);
+    return resolvePath(value, expression.segments, context.scope);
   }
 
   throw createTsumoError("TSUMO_TEMPLATE_EXPRESSION_INVALID", "The parsed template expression has no supported evaluation form");

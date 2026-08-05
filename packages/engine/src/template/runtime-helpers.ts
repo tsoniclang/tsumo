@@ -1,8 +1,11 @@
 import { escapeHtml } from "../utils/html.js";
+import { parseInt32 } from "../utils/int32.js";
+import type { int } from "@tsonic/csharp/types.js";
 import {
   TemplateValue, NilValue, BoolValue, NumberValue, StringValue, HtmlValue,
   PageValue, DictValue, PageArrayValue, StringArrayValue, SitesArrayValue,
   DocsMountArrayValue, NavArrayValue, AnyArrayValue,
+  VersionStringValue,
 } from "./values.js";
 
 export const nil: TemplateValue = new NilValue();
@@ -76,5 +79,16 @@ export const toPlainString = (value: TemplateValue): string => {
     return value.value.relPermalink;
   }
 
+  if (value instanceof VersionStringValue) {
+    return value.value;
+  }
+
   return "";
+};
+
+export const toNumber = (value: TemplateValue): int => {
+  if (value instanceof NumberValue) return value.value;
+  if (value instanceof StringValue) return parseInt32(value.value) ?? 0;
+  if (value instanceof BoolValue) return value.value ? 1 : 0;
+  return 0;
 };
