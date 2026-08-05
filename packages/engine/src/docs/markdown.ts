@@ -1,27 +1,30 @@
-import { Exception } from "@tsonic/dotnet/System.js";
 import type { char, int } from "@tsonic/csharp/types.js";
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
 import { ContainerBlock, LeafBlock, LinkReferenceDefinition } from "@tsonic/dotnet/Markdig.Syntax.js";
 import type { Block, MarkdownDocument } from "@tsonic/dotnet/Markdig.Syntax.js";
 import { ContainerInline, LinkInline } from "@tsonic/dotnet/Markdig.Syntax.Inlines.js";
 import { MarkdownResult, markdownPipeline } from "../markdown.js";
+import { createTsumoError } from "../diagnostics.js";
 import { DocsMountConfig } from "./models.js";
 import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.js";
 import { splitUrlSuffix } from "./url.js";
 
 export class DocsLinkRewriteContext {
   mount: DocsMountConfig;
+  sourcePath: string;
   currentDirKey: string;
   relPermalinkByRelPathLower: Map<string, string>;
   strictLinks: boolean;
 
   constructor(
     mount: DocsMountConfig,
+    sourcePath: string,
     currentDirKey: string,
     relPermalinkByRelPathLower: Map<string, string>,
     strictLinks: boolean,
   ) {
     this.mount = mount;
+    this.sourcePath = sourcePath;
     this.currentDirKey = currentDirKey;
     this.relPermalinkByRelPathLower = relPermalinkByRelPathLower;
     this.strictLinks = strictLinks;
@@ -37,9 +40,13 @@ const isExternalUrl = (url: string): boolean => {
     lower.startsWith("https://") ||
     lower.startsWith("mailto:") ||
     lower.startsWith("tel:") ||
-    lower.startsWith("javascript:") ||
     lower.startsWith("//")
   );
+};
+
+const isUnsafeUrl = (url: string): boolean => {
+  const lower = url.trim().toLowerCase();
+  return lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:");
 };
 
 const isMarkdownLink = (path: string): boolean => {
@@ -96,6 +103,9 @@ const maybeRewriteUrl = (urlValue: string | null | undefined, ctx: DocsLinkRewri
   const urlRaw = urlValue;
   if (urlRaw == null) return undefined;
   const url = urlRaw.trim();
+  if (isUnsafeUrl(url)) {
+    throw createTsumoError("TSUMO_DOCS_LINK_UNSAFE", `Unsafe docs link: ${url}`, ctx.sourcePath);
+  }
   if (url === "" || url.startsWith("#") || isExternalUrl(url)) return undefined;
 
   const split = splitUrlSuffix(url);
@@ -127,10 +137,14 @@ const maybeRewriteUrl = (urlValue: string | null | undefined, ctx: DocsLinkRewri
 
   if (escaped) {
     if (ctx.strictLinks) {
-      throw new Exception(`Out-of-mount link from ${ctx.mount.name}: ${url}`);
+      throw createTsumoError(
+        "TSUMO_DOCS_LINK_ESCAPES_MOUNT",
+        `Out-of-mount link from ${ctx.mount.name}: ${url}`,
+        ctx.sourcePath,
+      );
     }
 
-    // Best-effort: rewrite to GitHub if mount has repo info.
+    // Repository metadata defines the explicit fallback for links outside the mounted source root.
     const repoPathRaw = ctx.mount.repoPath;
     if (repoPathRaw === undefined || repoPathRaw.trim() === "") return undefined;
 
@@ -149,7 +163,15 @@ const maybeRewriteUrl = (urlValue: string | null | undefined, ctx: DocsLinkRewri
 
   const key = resolvedRel.toLowerCase();
   const mapped = ctx.relPermalinkByRelPathLower.get(key);
-  return mapped !== undefined ? mapped + suffix : undefined;
+  if (mapped !== undefined) return mapped + suffix;
+  if (ctx.strictLinks) {
+    throw createTsumoError(
+      "TSUMO_DOCS_LINK_UNRESOLVED",
+      `Unresolved docs link from ${ctx.mount.name}: ${url}`,
+      ctx.sourcePath,
+    );
+  }
+  return undefined;
 };
 
 const rewriteInInlines = (container: ContainerInline, ctx: DocsLinkRewriteContext): void => {

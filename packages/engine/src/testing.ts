@@ -1,4 +1,15 @@
 export { TsumoDiagnostic, TsumoError } from "./diagnostics.js";
+export { loadDocsConfig } from "./docs/config.js";
+export { loadDocsContent } from "./docs/content.js";
+export { DocsLinkRewriteContext, renderDocsMarkdown } from "./docs/markdown.js";
+export { DocsMountConfig } from "./docs/models.js";
+export {
+  docsOutputPathForPermalink,
+  DocsOutputClaims,
+  resolveDocsOutputPath,
+} from "./docs/output.js";
+export { discoverDocsMountRoutes } from "./docs/routes.js";
+export { renderSearchIndexJson, SearchDocument } from "./docs/search-index.js";
 export { PageContext } from "./models/page-context.js";
 export { SiteConfig } from "./models/site-config.js";
 export { SiteContext } from "./models/site-context.js";

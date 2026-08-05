@@ -8,7 +8,9 @@ export const createTestDirectory = (name: string): string => {
   }
   const root = Path.GetFullPath(configuredRoot);
   Directory.CreateDirectory(root);
-  return Path.Combine(root, `${name}-${Guid.NewGuid().ToString("n")}`);
+  const testDirectory = Path.Combine(root, `${name}-${Guid.NewGuid().ToString("n")}`);
+  Directory.CreateDirectory(testDirectory);
+  return testDirectory;
 };
 
 export const deleteTestDirectory = (path: string): void => {
