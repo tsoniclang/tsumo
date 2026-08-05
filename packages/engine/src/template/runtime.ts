@@ -646,7 +646,7 @@ class TemplateRuntime {
           continue;
         }
         if (k === "byweight") {
-          const sorted = TemplateRuntime.sortPagesByWeight(pages);
+          const sorted = TemplateRuntime.sortPagesByWeight();
           cur = new PageArrayValue(sorted);
           continue;
         }
@@ -925,12 +925,8 @@ class TemplateRuntime {
    * Sort pages by weight. Returns a new sorted array (ascending).
    * Note: PageContext currently doesn't have a weight field, so this returns original order.
    */
-  static sortPagesByWeight(pages: PageContext[]): PageContext[] {
-    // TODO: Add weight field to PageContext when needed
-    // For now, return a copy in original order
-    const copy: PageContext[] = [];
-    for (let i = 0; i < pages.length; i++) copy.push(pages[i]!);
-    return copy;
+  static sortPagesByWeight(): PageContext[] {
+    throw new Exception("Page weight sorting is not supported by the current page model");
   }
 
   /**
@@ -1874,7 +1870,7 @@ class TemplateRuntime {
     if (name === "plainify" && args.length >= 1) {
       const v = args[0]!;
       const s = TemplateRuntime.toPlainString(v);
-      // very small tag stripper (best-effort)
+      // Deterministic markup stripping for Tsumo's plainify subset.
       const sb = new StringBuilder();
       let inTag = false;
       for (let i = 0; i < s.length; i++) {
@@ -2547,11 +2543,12 @@ class TemplateRuntime {
 
     // Handle ResourceValue methods
     if (receiver instanceof ResourceValue) {
-      // Resize for images
       if (method === "resize" && args.length >= 1) {
-        // TODO: Implement actual image resizing
-        // For now, return the same resource (placeholder)
-        return receiver;
+        const resized = receiver.manager.resize(
+          receiver.value,
+          TemplateRuntime.toPlainString(args[0]!),
+        );
+        return new ResourceValue(receiver.manager, resized);
       }
     }
 

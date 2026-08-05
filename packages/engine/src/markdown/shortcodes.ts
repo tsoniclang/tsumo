@@ -1,4 +1,5 @@
 import type { int } from "@tsonic/csharp/types.js";
+import { Exception } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
 import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
@@ -25,7 +26,7 @@ export class ShortcodeOrdinalTracker {
   }
 }
 
-const executeShortcode = (
+export const renderShortcode = (
   call: ShortcodeCall,
   page: PageContext,
   site: SiteContext,
@@ -36,15 +37,14 @@ const executeShortcode = (
 ): string => {
   const template = env.getShortcodeTemplate(call.name);
   if (template === undefined) {
-    // Return raw shortcode text if no template found
-    return "";
+    throw new Exception(`Shortcode template not found: ${call.name}`);
   }
 
   // Check recursion guard
   const guardKey = call.name;
   const isRecursing = recursionGuard.get(guardKey);
   if (isRecursing !== undefined && isRecursing) {
-    return `<!-- shortcode recursion detected: ${call.name} -->`;
+    throw new Exception(`Shortcode recursion detected: ${call.name}`);
   }
 
   recursionGuard.set(guardKey, true);
@@ -94,28 +94,28 @@ export const processShortcodes = (
   const calls = parseShortcodes(text);
   if (calls.length === 0) return text;
 
-  // Sort by startIndex descending to process from end to beginning
-  const arr: ShortcodeCall[] = [];
-  for (let i = 0; i < calls.length; i++) arr.push(calls[i]!);
-  for (let i = 0; i < arr.length; i++) {
-    for (let j = i + 1; j < arr.length; j++) {
-      if (arr[j]!.startIndex > arr[i]!.startIndex) {
-        const tmp = arr[i]!;
-        arr[i] = arr[j]!;
-        arr[j] = tmp;
-      }
-    }
+  return processShortcodeCalls(text, calls, page, site, env, ordinalTracker, parent, recursionGuard);
+};
+
+export const processShortcodeCalls = (
+  text: string,
+  calls: readonly ShortcodeCall[],
+  page: PageContext,
+  site: SiteContext,
+  env: TemplateEnvironment,
+  ordinalTracker: ShortcodeOrdinalTracker,
+  parent: ShortcodeContext | undefined,
+  recursionGuard: Map<string, boolean>,
+): string => {
+  const replacements: string[] = [];
+  for (let i = 0; i < calls.length; i++) {
+    replacements.push(renderShortcode(calls[i]!, page, site, env, ordinalTracker, parent, recursionGuard));
   }
 
   let result = text;
-  for (let i = 0; i < arr.length; i++) {
-    const call = arr[i]!;
-
-    // Skip comment shortcodes ({{</* ... */>}} or {{%/* ... */%}})
-    // These are handled by parseShortcodes skipping them already
-
-    const replacement = executeShortcode(call, page, site, env, ordinalTracker, parent, recursionGuard);
-    result = substringCount(result, 0, call.startIndex) + replacement + substringFrom(result, call.endIndex);
+  for (let i = calls.length - 1; i >= 0; i--) {
+    const call = calls[i]!;
+    result = substringCount(result, 0, call.startIndex) + replacements[i]! + substringFrom(result, call.endIndex);
   }
 
   return result;

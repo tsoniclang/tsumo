@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
 import { copyFixture, fileManifest, filePaths, makeTempDir, repoRoot, runTsumo } from "./helpers.mjs";
@@ -75,6 +75,43 @@ test("builds YAML, TOML, and JSON front matter through one typed page model", ()
   assert.match(yaml, /<h2>Hello World<\/h2>/u);
   assert.match(toml, /<h2>TOML Page<\/h2>[\s\S]*TOML body marker\./u);
   assert.match(json, /<h2>JSON Page<\/h2>[\s\S]*JSON body marker\./u);
+});
+
+test("renders shortcodes, Markdown hooks, and fingerprinted resources", () => {
+  const site = copyFixture(join(repoRoot, "examples/basic-blog"), "tsumo-e2e-feature-contract-");
+  const outDir = makeTempDir("tsumo-e2e-feature-contract-out-");
+  mkdirSync(join(site, "layouts/shortcodes"), { recursive: true });
+  mkdirSync(join(site, "layouts/_markup"), { recursive: true });
+  mkdirSync(join(site, "layouts/posts"), { recursive: true });
+  mkdirSync(join(site, "assets"), { recursive: true });
+
+  writeFileSync(
+    join(site, "layouts/shortcodes/badge.html"),
+    "<span data-shortcode=\"{{ .Get \"label\" }}\">{{ .Get \"label\" }}</span>",
+  );
+  writeFileSync(
+    join(site, "layouts/_markup/render-link.html"),
+    "<a data-render-hook=\"link\" href=\"{{ .Destination }}\">{{ .Text }}</a>",
+  );
+  writeFileSync(
+    join(site, "layouts/posts/single.html"),
+    "{{ define \"main\" }}{{ $asset := resources.Get \"contract.css\" | resources.Fingerprint }}<link data-resource=\"fingerprint\" href=\"{{ $asset.RelPermalink }}\" integrity=\"{{ $asset.Data.Integrity }}\"><article>{{ .Content }}</article>{{ end }}",
+  );
+  writeFileSync(join(site, "assets/contract.css"), "body { color: rebeccapurple; }\n");
+  writeFileSync(
+    join(site, "content/posts/feature-contract.md"),
+    "---\ntitle: Feature Contract\ndate: \"2026-01-05T00:00:00Z\"\ndraft: false\n---\n\n[Hook text](https://example.invalid/path)\n\n{{< badge label=\"named\" >}}\n",
+  );
+
+  const result = runTsumo(["build", "--source", site, "--destination", outDir]);
+  assert.equal(result.status, 0, result.stderr);
+
+  const output = readFileSync(join(outDir, "posts/feature-contract/index.html"), "utf8");
+  assert.match(output, /data-render-hook="link" href="https:\/\/example\.invalid\/path"/u);
+  assert.match(output, /data-shortcode="named">named<\/span>/u);
+  const resourceMatch = output.match(/href="\/(contract\.[a-f0-9]{16}\.css)" integrity="(sha256-[A-Za-z0-9+/=]+)"/u);
+  assert.notEqual(resourceMatch, null, output);
+  assert.equal(readFileSync(join(outDir, resourceMatch[1]), "utf8"), "body { color: rebeccapurple; }\n");
 });
 
 test("omits drafts by default and includes them with --buildDrafts", () => {
@@ -227,6 +264,18 @@ test("CLI failure paths exit non-zero with usage output", () => {
   const help = runTsumo(["--help"]);
   assert.equal(help.status, 0);
   assert.match(help.stdout, /USAGE/u);
+
+  const unknownBuildOption = runTsumo(["build", "--wat"]);
+  assert.equal(unknownBuildOption.status, 2);
+  assert.match(unknownBuildOption.stdout + unknownBuildOption.stderr, /Unknown build option: --wat/u);
+
+  const missingBuildValue = runTsumo(["build", "--source"]);
+  assert.equal(missingBuildValue.status, 2);
+  assert.match(missingBuildValue.stdout + missingBuildValue.stderr, /Missing value for --source/u);
+
+  const invalidPort = runTsumo(["server", "--port", "0"]);
+  assert.equal(invalidPort.status, 2);
+  assert.match(invalidPort.stdout + invalidPort.stderr, /Invalid port: 0/u);
 });
 
 function stagingEntries(outputDir) {

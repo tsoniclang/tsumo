@@ -53,4 +53,9 @@ export function main(): void {
   handleBuild(args, buildArgStart);
 }
 
-main();
+try {
+  main();
+} catch (error) {
+  logErrorLine(`${error}`);
+  process.exitCode = 1;
+}

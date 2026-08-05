@@ -28,6 +28,7 @@ test("product source contains no retired Tsonic mechanisms", () => {
     ["explicit class accessibility", /^\s*(?:public|private|protected)\s+/u],
     ["TypeScript override modifier", /^\s*override\s+/u],
     ["runtime reflection", /\b(?:System\.Reflection|MethodInfo\.Invoke|Activator\.CreateInstance|Assembly\.Load|GetProperties?\s*\(|GetMethods?\s*\()/u],
+    ["unfinished product marker", /\b(?:TODO|FIXME|HACK)\b|\bbest[- ]effort\b|\bFor now\b/u],
   ];
   const violations = [];
   for (const path of sourceFiles) {

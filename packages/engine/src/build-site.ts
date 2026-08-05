@@ -448,12 +448,11 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
     }
   }
 
-  // Create site with multilingual settings
-  // For now, build the default (first) language; full multilingual build will iterate through all
+  // The selected first language is the one language materialized by this build.
   const currentLang = config.languages.length > 0 ? config.languages[0] : undefined;
   const site = new SiteContext(config, emptyPages, currentLang, allLanguages.length > 0 ? allLanguages : undefined);
 
-  // Set up Sites array (for now, just this site; full implementation would have all language sites)
+  // A single-language build exposes exactly one site context.
   const allSites: SiteContext[] = [site];
   site.Sites = allSites;
 

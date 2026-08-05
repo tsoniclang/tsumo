@@ -1,5 +1,5 @@
 import type { int } from "@tsonic/csharp/types.js";
-import { indexOfText, indexOfTextFrom, lastIndexOfText, substringCount, substringFrom } from "./utils/strings.js";
+import { indexOfText, indexOfTextFrom, substringCount, substringFrom } from "./utils/strings.js";
 import { ParamValue } from "./params.js";
 
 export class ShortcodeCall {
@@ -273,19 +273,7 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
       continue;
     }
 
-    const after3 = substringCount(text, openPos + 3, 1);
-    if (after3 === "*") {
-      pos = openPos + 4;
-      continue;
-    }
-
-    if (after3 === " ") {
-      pos = openPos + 3;
-      continue;
-    }
-
     const closeSuffix = isMarkdown ? "%}}" : ">}}";
-    const selfCloseSuffix = isMarkdown ? "/%}}" : "/>}}";
 
     let closePos = indexOfTextFrom(text, closeSuffix, openPos + 3);
     if (closePos < 0) {
@@ -293,16 +281,15 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
       continue;
     }
 
-    const content = substringCount(text, openPos + 3, closePos - (openPos + 3));
+    const content = substringCount(text, openPos + 3, closePos - (openPos + 3)).trim();
+    const isSelfClosing = content.endsWith("/");
+    const tagContent = isSelfClosing
+      ? substringCount(content, 0, content.length - 1).trim()
+      : content;
 
-    const selfClosePattern = isMarkdown ? "/%" : "/>";
-    const selfCloseIdx = lastIndexOfText(content, selfClosePattern);
-    let isSelfClosing = false;
-    if (selfCloseIdx >= 0) isSelfClosing = substringFrom(content, selfCloseIdx).trim() === selfClosePattern;
-
-    let tagContent = content;
-    if (isSelfClosing === true) {
-      tagContent = substringCount(content, 0, selfCloseIdx).trim();
+    if (tagContent.startsWith("/*")) {
+      pos = closePos + closeSuffix.length;
+      continue;
     }
 
     const firstSpace = tagContent.indexOf(" ");

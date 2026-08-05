@@ -55,7 +55,7 @@ export class SiteContext {
       const langs: LanguageContext[] = [this.Language];
       this.Languages = langs;
     }
-    this.IsMultiLingual = false; // TODO: Set true when per-language build is implemented
+    this.IsMultiLingual = false;
 
     // Set language prefix (e.g., "/fr" for non-default language)
     this.LanguagePrefix = "";
