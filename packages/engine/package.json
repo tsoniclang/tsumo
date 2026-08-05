@@ -3,26 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
-    },
-    "./index.js": {
-      "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
-    }
+    "./index.js": "./src/index.ts",
+    "./package.json": "./package.json"
   },
-  "files": [
-    "dist/**/*.d.ts",
-    "src/**/*.ts",
-    "tsonic.package.json"
-  ],
   "scripts": {
-    "restore": "${TSONIC_BIN:-tsonic} restore",
-    "typecheck": "${TSONIC_BIN:-tsonic} restore && tsc -p tsconfig.json",
-    "build": "${TSONIC_BIN:-tsonic} restore && ${TSONIC_BIN:-tsonic} build",
-    "test": "${TSONIC_BIN:-tsonic} test"
+    "build": "tsonic build --project tsonic.json"
+  },
+  "devDependencies": {
+    "@tsonic/cli": "file:../../../tsonic/packages/cli",
+    "@tsonic/csharp-nodejs": "file:../../../csharp-nodejs",
+    "@tsonic/target-csharp": "file:../../../tsonic-csharp"
   }
 }

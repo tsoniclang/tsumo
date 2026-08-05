@@ -1,26 +1,21 @@
 {
   "$schema": "https://tsonic.org/schema/v1.json",
-  "rootNamespace": "Tsumo.Engine",
-  "entryPoint": "src/index.ts",
-  "sourceRoot": "src",
-  "outputDirectory": "generated",
-  "outputName": "Tsumo.Engine",
-  "output": {
-    "type": "library",
-    "targetFrameworks": [
-      "net10.0"
-    ],
-    "generateDocumentation": false,
-    "includeSymbols": false,
-    "packable": false
-  },
-  "tests": {
-    "entryPoint": "src/tests/index.ts",
-    "outputDirectory": ".tsonic/generated-tests",
-    "outputName": "Tsumo.Engine.Tests"
-  },
-  "buildOptions": {
-    "stripSymbols": true,
-    "invariantGlobalization": true
-  }
+  "entryPoint": "index.ts",
+  "rootDir": "src",
+  "outDir": "out",
+  "targets": [
+    {
+      "id": "csharp",
+      "surfaces": ["js"],
+      "options": {
+        "namespace": "Tsumo.Engine",
+        "assemblyName": "Tsumo.Engine",
+        "outputType": "Library",
+        "projectFile": "Tsumo.Engine.csproj",
+        "providerReferences": {
+          "directories": ["../../.temp/provider-references"]
+        }
+      }
+    }
+  ]
 }

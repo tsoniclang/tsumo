@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <!-- Tsonic currently emits some unqualified BCL types (e.g., Exception). -->
-    <ImplicitUsings>true</ImplicitUsings>
-  </PropertyGroup>
-</Project>

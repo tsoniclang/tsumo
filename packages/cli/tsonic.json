@@ -1,17 +1,21 @@
 {
   "$schema": "https://tsonic.org/schema/v1.json",
-  "rootNamespace": "Tsumo.Cli",
-  "entryPoint": "src/cli-main.ts",
-  "sourceRoot": "src",
-  "outputDirectory": "generated",
-  "outputName": "tsumo",
-  "output": {
-    "nativeAot": false,
-    "trimmed": false,
-    "singleFile": false
-  },
-  "buildOptions": {
-    "stripSymbols": true,
-    "invariantGlobalization": true
-  }
+  "entryPoint": "cli-main.ts",
+  "rootDir": "src",
+  "outDir": "out",
+  "targets": [
+    {
+      "id": "csharp",
+      "surfaces": ["js"],
+      "options": {
+        "namespace": "Tsumo.Cli",
+        "assemblyName": "tsumo",
+        "outputType": "Exe",
+        "projectFile": "Tsumo.Cli.csproj",
+        "providerReferences": {
+          "directories": ["../../.temp/provider-references"]
+        }
+      }
+    }
+  ]
 }
