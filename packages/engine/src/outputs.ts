@@ -20,8 +20,7 @@ const parsePageDate = (value: string, fallback: Date): Date => {
   return Number.isNaN(parsed.getTime()) ? fallback : parsed;
 };
 
-export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
-  const now = new Date();
+export const renderRss = (config: SiteConfig, pages: PageContext[], buildTime: Date): string => {
   const out: string[] = [
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     "<rss version=\"2.0\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">",
@@ -30,14 +29,14 @@ export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
     `<link>${escapeXml(toAbsoluteUrl(config.baseURL, "/"))}</link>`,
     `<description>${escapeXml(config.title)}</description>`,
     `<language>${escapeXml(config.languageCode)}</language>`,
-    `<lastBuildDate>${now.toISOString()}</lastBuildDate>`,
+    `<lastBuildDate>${buildTime.toISOString()}</lastBuildDate>`,
     "<generator>tsumo</generator>",
   ];
 
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i]!;
     const link = toAbsoluteUrl(config.baseURL, page.relPermalink);
-    const pubDate = parsePageDate(page.date, now).toISOString();
+    const pubDate = parsePageDate(page.date, buildTime).toISOString();
 
     out.push("<item>");
     out.push(`<title>${escapeXml(page.title)}</title>`);
@@ -54,8 +53,8 @@ export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
   return out.join("\n") + "\n";
 };
 
-export const renderSitemap = (config: SiteConfig, relPermalinks: string[]): string => {
-  const now = new Date().toISOString();
+export const renderSitemap = (config: SiteConfig, relPermalinks: string[], buildTime: Date): string => {
+  const buildTimestamp = buildTime.toISOString();
   const out: string[] = [
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
@@ -64,7 +63,7 @@ export const renderSitemap = (config: SiteConfig, relPermalinks: string[]): stri
   for (let i = 0; i < relPermalinks.length; i++) {
     const rel = relPermalinks[i]!;
     const loc = toAbsoluteUrl(config.baseURL, rel);
-    out.push(`<url><loc>${escapeXml(loc)}</loc><lastmod>${now}</lastmod></url>`);
+    out.push(`<url><loc>${escapeXml(loc)}</loc><lastmod>${buildTimestamp}</lastmod></url>`);
   }
 
   out.push("</urlset>");

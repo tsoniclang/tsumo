@@ -9,7 +9,6 @@
   --link-hover: #a5b4fc;
   --code-bg: rgba(255, 255, 255, 0.06);
 }
-
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #ffffff;
@@ -237,4 +236,3 @@ td {
     width: min(420px, 52vw);
   }
 }
-

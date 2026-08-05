@@ -30,3 +30,4 @@
 ## Environment variables
 
 - `TSUMO_SASS`: full path to a Sass compiler executable (Dart Sass `sass` CLI). Used by `css.Sass` in templates.
+- `SOURCE_DATE_EPOCH`: non-negative integer Unix timestamp used as the build clock for reproducible RSS and sitemap output. The build captures the clock once; without this variable it uses the process start-time build request.

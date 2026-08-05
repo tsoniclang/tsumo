@@ -14,8 +14,8 @@
         "projectFile": "Tsumo.Tests.csproj",
         "providerReferences": {
           "directories": [
-            "../../.temp/provider-references",
-            "../../.temp/provider-references-tests"
+            "../../.temp/active-provider-references/product",
+            "../../.temp/active-provider-references/tests"
           ]
         }
       }

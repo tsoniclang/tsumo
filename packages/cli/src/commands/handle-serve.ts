@@ -5,6 +5,7 @@ import { ServeRequest, serveSite } from "@tsumo/engine/index.js";
 
 import { logErrorLine } from "../log-error-line.js";
 import { parseIntArg } from "../parse-int.js";
+import { readSourceDateEpoch } from "../source-date-epoch.js";
 
 export const handleServe = (args: readonly string[]): void => {
   let serveSourceDir = process.cwd();
@@ -66,6 +67,7 @@ export const handleServe = (args: readonly string[]): void => {
   serveReq.watch = serveWatch;
   serveReq.buildDrafts = serveBuildDrafts;
   serveReq.cleanDestinationDir = serveClean;
+  serveReq.buildTime = readSourceDateEpoch() ?? serveReq.buildTime;
 
   serveSite(serveReq);
 };

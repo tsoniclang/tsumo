@@ -97,9 +97,3 @@ Example:
 ```bash
 TSUMO_SASS=$(which sass) ./packages/cli/bin/Debug/net10.0/tsumo build -s ./my-site
 ```
-
-## Selftest package overlays
-
-`npm run selftest` uses local first-party package repos when the sibling
-checkouts exist beside this repo. The generated verification artifacts are
-ignored by git.

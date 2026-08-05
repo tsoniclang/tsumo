@@ -13,7 +13,7 @@
         "outputType": "Exe",
         "projectFile": "Tsumo.Cli.csproj",
         "providerReferences": {
-          "directories": ["../../.temp/provider-references"]
+          "directories": ["../../.temp/active-provider-references/product"]
         }
       }
     }

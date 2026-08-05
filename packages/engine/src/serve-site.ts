@@ -172,8 +172,8 @@ const startWatchLoop = (req: ServeRequest, onRebuild: (outputDir: string) => voi
       const result = buildSite(req);
       onRebuild(result.outputDir);
       logLine(`[tsumo] rebuilt → ${result.outputDir}`);
-    } catch {
-      logErrorLine("[tsumo] rebuild failed");
+    } catch (error) {
+      logErrorLine(`[tsumo] rebuild failed: ${error}`);
     } finally {
       rebuilding = false;
     }

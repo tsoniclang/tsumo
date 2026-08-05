@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsonic build --project tsonic.json",
-    "test:dotnet": "dotnet test Tsumo.Tests.csproj"
+    "test:dotnet": "TSUMO_TEST_ROOT=$PWD/../../.temp/test-runs/dotnet dotnet test Tsumo.Tests.csproj"
   },
   "devDependencies": {
     "@tsonic/cli": "file:../../../tsonic/packages/cli",

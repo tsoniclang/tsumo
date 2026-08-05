@@ -5,9 +5,9 @@ import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { char, int } from "@tsonic/csharp/types.js";
 import { loadSiteConfig } from "../config.js";
 import { parseContent } from "../frontmatter.js";
-import { copyDirRecursive, deleteDirRecursive, ensureDir, readTextFile, writeTextFile } from "../fs.js";
+import { copyDirRecursive, ensureDir, readTextFile, writeTextFile } from "../fs.js";
 import { BuildEnvironment } from "../env.js";
-import { BuildRequest, BuildResult, PageContext, PageFile, SiteContext } from "../models.js";
+import { BuildRequest, PageContext, PageFile, SiteContext } from "../models.js";
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
 import { markdownPipeline } from "../markdown.js";
 import { HtmlString } from "../utils/html.js";
@@ -271,7 +271,7 @@ function assignAncestry(page: PageContext, parent: PageContext | undefined, ance
   }
 }
 
-export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfig): BuildResult => {
+export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfig, outDir: string): int => {
   const siteDir = Path.GetFullPath(request.siteDir);
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
@@ -284,10 +284,8 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   const docsConfig = docsLoaded.config;
   if (docsConfig.siteName.trim() !== "") config.title = docsConfig.siteName.trim();
 
-  const outDir = Path.IsPathRooted(request.destinationDir) ? request.destinationDir : Path.Combine(siteDir, request.destinationDir);
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
   const env = new BuildEnvironment(siteDir, themeDir, outDir);
-  if (request.cleanDestinationDir) deleteDirRecursive(outDir);
   ensureDir(outDir);
 
   if (themeDir !== undefined) {
@@ -642,5 +640,5 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     }
   }
 
-  return new BuildResult(outDir, pagesBuilt);
+  return pagesBuilt;
 };

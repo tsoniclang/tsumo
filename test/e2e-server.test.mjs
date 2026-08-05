@@ -3,7 +3,7 @@ import test from "node:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { copyFixture, removeDir, repoRoot, spawnTsumo, waitForHttp } from "./helpers.mjs";
+import { copyFixture, repoRoot, spawnTsumo, waitForHttp } from "./helpers.mjs";
 
 const onePixelPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -51,6 +51,5 @@ test("server binds the requested host and serves text and binary responses", asy
         resolveExit();
       }, 5000);
     });
-    removeDir(site);
   }
 });

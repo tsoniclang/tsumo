@@ -4,8 +4,10 @@ import { initSite, newContent } from "@tsumo/engine/index.js";
 
 import { logErrorLine } from "../log-error-line.js";
 import { logLine } from "../log-line.js";
+import { readSourceDateEpoch } from "../source-date-epoch.js";
 
 export const handleNew = (args: readonly string[]): void => {
+  const creationTime = readSourceDateEpoch();
   if (args.length >= 2 && args[1] === "site") {
     if (args.length < 3) {
       logErrorLine("Missing <dir> for `tsumo new site`");
@@ -13,7 +15,7 @@ export const handleNew = (args: readonly string[]): void => {
       return;
     }
     const dir = args[2]!;
-    initSite(dir);
+    initSite(dir, creationTime);
     logLine(`Created site: ${dir}`);
     return;
   }
@@ -33,6 +35,6 @@ export const handleNew = (args: readonly string[]): void => {
     }
   }
 
-  const created = newContent(contentSourceDir, args[1]!);
+  const created = newContent(contentSourceDir, args[1]!, creationTime);
   logLine(`Created content: ${created}`);
 };

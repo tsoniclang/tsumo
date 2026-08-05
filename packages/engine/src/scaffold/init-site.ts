@@ -150,9 +150,9 @@ description: "Example site for tsumo."
 Welcome to your new site.
 `;
 
-const helloWorldMd = (): string => `---
+const helloWorldMd = (creationTime: Date): string => `---
 title: "Hello World"
-date: "${new Date().toISOString()}"
+date: "${creationTime.toISOString()}"
 draft: false
 description: "An end-to-end demo of tsumo with GFM markdown."
 tags: ["hello", "tsumo", "gfm"]
@@ -182,8 +182,9 @@ nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 .content pre { padding: 0.75rem 1rem; background: rgba(127,127,127,0.15); overflow: auto; border-radius: 10px; }
 `;
 
-export const initSite = (targetDir: string): void => {
+export const initSite = (targetDir: string, creationTime?: Date): void => {
   const dir = resolve(targetDir);
+  const scaffoldTime = creationTime ?? new Date();
   ensureEmptyDir(dir);
 
   const base = basename(dir);
@@ -207,5 +208,5 @@ export const initSite = (targetDir: string): void => {
   writeTextFile(join(dir, "layouts", "partials", "footer.html"), partialFooter());
   writeTextFile(join(dir, "static", "style.css"), styleCss());
   writeTextFile(join(dir, "content", "_index.md"), indexMd());
-  writeTextFile(join(dir, "content", "posts", "hello-world.md"), helloWorldMd());
+  writeTextFile(join(dir, "content", "posts", "hello-world.md"), helloWorldMd(scaffoldTime));
 };

@@ -17,7 +17,6 @@ Edit `examples/docs-site/tsumo.docs.json` and update each mount’s `source` to 
 From the repo root:
 
 ```bash
-./packages/cli/out/tsumo build --source ./examples/docs-site
-./packages/cli/out/tsumo server --source ./examples/docs-site
+./packages/cli/bin/Debug/net10.0/tsumo build --source ./examples/docs-site
+./packages/cli/bin/Debug/net10.0/tsumo server --source ./examples/docs-site
 ```
-

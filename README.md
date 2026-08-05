@@ -63,7 +63,9 @@ npm run build
 
 1. `prepare:provider-references` — builds the vendored Markdig assembly and
    materializes the locked NuGet compile closure (PhotoSauce + codecs) into
-   `.temp/provider-references`; these exact assemblies are both the Tsonic
+   an immutable `.temp/provider-reference-snapshots/*/product` directory and
+   atomically selects it through `.temp/active-provider-references`; these
+   exact assemblies are both the Tsonic
    provider reflection input and the `.csproj` compile references.
 2. `build:tsonic` — `tsonic build` for the engine, CLI, and tests projects.
    Tsonic emits C# source only into each package's ignored `out/csharp/`;

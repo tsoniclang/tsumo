@@ -8,10 +8,10 @@
   "scripts": {
     "prepare:provider-references": "bash scripts/prepare-provider-references.sh",
     "build": "npm run prepare:provider-references && npm run build:tsonic && npm run build:dotnet",
-    "build:tsonic": "npm run -w @tsumo/engine build && npm run -w tsumo-cli build && npm run -w tsumo-tests build",
-    "build:dotnet": "dotnet build packages/engine/Tsumo.Engine.csproj && dotnet build packages/cli/Tsumo.Cli.csproj && dotnet build packages/tests/Tsumo.Tests.csproj",
+    "build:tsonic": "bash scripts/build-tsonic.sh",
+    "build:dotnet": "bash scripts/build-dotnet.sh",
     "test": "node --test \"test/**/*.test.mjs\"",
-    "test:dotnet": "dotnet test packages/tests/Tsumo.Tests.csproj",
+    "test:dotnet": "TSUMO_TEST_ROOT=$PWD/.temp/test-runs/dotnet dotnet test packages/tests/Tsumo.Tests.csproj",
     "verify-all": "bash scripts/verify-all.sh"
   },
   "devDependencies": {

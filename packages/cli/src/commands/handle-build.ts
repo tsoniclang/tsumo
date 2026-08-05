@@ -4,6 +4,7 @@ import type { int } from "@tsonic/csharp/types.js";
 import { BuildRequest, buildSite } from "@tsumo/engine/index.js";
 
 import { logLine } from "../log-line.js";
+import { readSourceDateEpoch } from "../source-date-epoch.js";
 
 export const handleBuild = (args: readonly string[], buildArgStart: int): void => {
   let buildSourceDir = process.cwd();
@@ -42,6 +43,7 @@ export const handleBuild = (args: readonly string[], buildArgStart: int): void =
   buildReq.themesDir = buildThemesDir;
   buildReq.buildDrafts = includeDrafts;
   buildReq.cleanDestinationDir = cleanDestinationDir;
+  buildReq.buildTime = readSourceDateEpoch() ?? buildReq.buildTime;
 
   const result = buildSite(buildReq);
   logLine(`Built → ${result.outputDir} (${result.pagesBuilt} pages)`);

@@ -1,10 +1,11 @@
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const repoRoot = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
+const testRunsRoot = join(repoRoot, ".temp/test-runs");
 
 export function tsumoBinary() {
   const binary = join(repoRoot, "packages/cli/bin/Debug/net10.0/tsumo");
@@ -27,7 +28,8 @@ export function spawnTsumo(args, options = {}) {
 }
 
 export function makeTempDir(prefix) {
-  return mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(testRunsRoot, { recursive: true });
+  return mkdtempSync(join(testRunsRoot, prefix));
 }
 
 export function copyFixture(sourceDir, prefix) {
@@ -36,8 +38,29 @@ export function copyFixture(sourceDir, prefix) {
   return target;
 }
 
-export function removeDir(path) {
-  rmSync(path, { recursive: true, force: true });
+export function filePaths(root) {
+  return walkFiles(root).map(({ path }) => path);
+}
+
+export function fileManifest(root) {
+  return walkFiles(root).map(({ path, fullPath }) => {
+    const hash = createHash("sha256").update(readFileSync(fullPath)).digest("hex");
+    return `${path}:${hash}`;
+  });
+}
+
+function walkFiles(root) {
+  const entries = [];
+  const visit = (directory, prefix) => {
+    for (const name of readdirSync(directory).sort()) {
+      const fullPath = join(directory, name);
+      const path = prefix === "" ? name : `${prefix}/${name}`;
+      if (statSync(fullPath).isDirectory()) visit(fullPath, path);
+      else entries.push({ path, fullPath });
+    }
+  };
+  visit(root, "");
+  return entries;
 }
 
 export async function waitForHttp(url, timeoutMs = 30_000) {

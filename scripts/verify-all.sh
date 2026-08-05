@@ -7,41 +7,51 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+mkdir -p "$ROOT/.temp/verification-runs"
+VERIFY_ROOT="$(mktemp -d "$ROOT/.temp/verification-runs/run-XXXXXXXX")"
+echo "Verification artifacts: $VERIFY_ROOT"
 
 echo "=== prepare provider references ==="
-bash scripts/prepare-provider-references.sh
+bash scripts/prepare-provider-references.sh 2>&1 | tee "$VERIFY_ROOT/provider-references.log"
 
-echo "=== tsonic build: engine ==="
-(cd packages/engine && node "$ROOT/node_modules/@tsonic/cli/dist/src/index.js" build --project tsonic.json)
+echo "=== parallel tsonic builds ==="
+TSONIC_PHASE_TIMINGS=1 \
+TSUMO_BUILD_LOG_DIR="$VERIFY_ROOT/tsonic" \
+bash scripts/build-tsonic.sh
 
-echo "=== tsonic build: cli ==="
-(cd packages/cli && node "$ROOT/node_modules/@tsonic/cli/dist/src/index.js" build --project tsonic.json)
-
-echo "=== tsonic build: tests ==="
-(cd packages/tests && node "$ROOT/node_modules/@tsonic/cli/dist/src/index.js" build --project tsonic.json)
-
-echo "=== dotnet build ==="
-dotnet build packages/engine/Tsumo.Engine.csproj
-dotnet build packages/cli/Tsumo.Cli.csproj
-dotnet build packages/tests/Tsumo.Tests.csproj
+echo "=== parallel dotnet builds ==="
+TSUMO_DOTNET_LOG_DIR="$VERIFY_ROOT/dotnet" bash scripts/build-dotnet.sh
 
 echo "=== dotnet test ==="
-dotnet test packages/tests/Tsumo.Tests.csproj --no-build
+TSUMO_TEST_ROOT="$VERIFY_ROOT/dotnet-test-runs" \
+dotnet test packages/tests/Tsumo.Tests.csproj --no-build --no-restore \
+  2>&1 | tee "$VERIFY_ROOT/dotnet-test.log"
 
 echo "=== node e2e tests ==="
-node --test "test/"
+node --test "test/**/*.test.mjs" 2>&1 | tee "$VERIFY_ROOT/node-e2e.log"
 
 echo "=== NativeAOT publish + smoke ==="
-dotnet publish packages/cli/Tsumo.Cli.csproj -c Release
-AOT_BIN="$(find packages/cli/bin/Release -type f -name tsumo -path "*/publish/*" | head -1)"
-if [[ -z "$AOT_BIN" ]]; then
+AOT_PUBLISH="$VERIFY_ROOT/aot-publish"
+mkdir -p "$AOT_PUBLISH"
+dotnet publish packages/cli/Tsumo.Cli.csproj -c Release --no-restore -o "$AOT_PUBLISH" \
+  2>&1 | tee "$VERIFY_ROOT/aot-publish.log"
+AOT_BIN="$AOT_PUBLISH/tsumo"
+if [[ ! -x "$AOT_BIN" ]]; then
   echo "FAIL: NativeAOT publish produced no tsumo executable" >&2
   exit 1
 fi
 "$AOT_BIN" --help >/dev/null
-AOT_OUT="$ROOT/.temp/verify-aot-site"
-rm -rf "$AOT_OUT"
-"$AOT_BIN" build --source "$ROOT/examples/basic-blog" --destination "$AOT_OUT"
-test -f "$AOT_OUT/index.html"
+NORMAL_OUT="$VERIFY_ROOT/normal-site"
+AOT_OUT="$VERIFY_ROOT/aot-site"
+SOURCE_DATE_EPOCH=1767225600 \
+  "$ROOT/packages/cli/bin/Debug/net10.0/tsumo" build \
+  --source "$ROOT/examples/basic-blog" --destination "$NORMAL_OUT"
+SOURCE_DATE_EPOCH=1767225600 \
+  "$AOT_BIN" build --source "$ROOT/examples/basic-blog" --destination "$AOT_OUT"
+diff \
+  <(cd "$NORMAL_OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) \
+  <(cd "$AOT_OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) \
+  | tee "$VERIFY_ROOT/aot-output-diff.log"
+test "$(find "$AOT_OUT" -type f | wc -l)" -eq 21
 
 echo "ALL VERIFICATIONS PASSED"

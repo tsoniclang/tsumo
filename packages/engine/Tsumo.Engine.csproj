@@ -10,7 +10,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <TsumoRepoRoot>$(MSBuildThisFileDirectory)../../</TsumoRepoRoot>
-    <TsumoProviderReferenceDirectory>$(TsumoRepoRoot).temp/provider-references</TsumoProviderReferenceDirectory>
+    <TsumoProviderReferenceDirectory>$(TsumoRepoRoot).temp/active-provider-references/product</TsumoProviderReferenceDirectory>
     <TsonicRuntimeAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-runtime/runtimes/$(TargetFramework)/Tsonic.CSharp.Runtime.dll</TsonicRuntimeAssembly>
     <TsonicJsAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-js/runtimes/$(TargetFramework)/Tsonic.CSharp.Js.dll</TsonicJsAssembly>
     <TsonicNodeAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-nodejs/runtimes/$(TargetFramework)/Tsonic.CSharp.Node.dll</TsonicNodeAssembly>

@@ -47,4 +47,3 @@
     results.style.display = "none";
   });
 })();
-

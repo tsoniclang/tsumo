@@ -8,7 +8,7 @@ import { renderRobotsTxt, renderRss, renderSitemap } from "./outputs.js";
 import { loadSiteConfig } from "./config.js";
 import { loadDocsConfig } from "./docs/config.js";
 import { parseContent, FrontMatterMenu } from "./frontmatter.js";
-import { copyDirRecursive, deleteDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.js";
+import { copyDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.js";
 import { BuildEnvironment } from "./env.js";
 import { renderMarkdownWithShortcodes } from "./markdown.js";
 import { HtmlString } from "./utils/html.js";
@@ -17,6 +17,7 @@ import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./b
 import { buildDocsSite } from "./docs/builder.js";
 import { buildMenuHierarchy, flattenMenuEntries } from "./menus.js";
 import { replaceText, substringCount, trimEndChar, trimStartChar } from "./utils/strings.js";
+import { beginOutputPublication } from "./output-publication.js";
 
 class ContentPageBuild {
   sourcePath: string;
@@ -328,10 +329,7 @@ const integrateFrontmatterMenus = (
   }
 };
 
-export const buildSite = (request: BuildRequest): BuildResult => {
-  const siteDir = Path.GetFullPath(request.siteDir);
-  const docs = loadDocsConfig(siteDir);
-  if (docs !== undefined) return buildDocsSite(request, docs);
+const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: string): int => {
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
 
@@ -340,16 +338,9 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     config.baseURL = ensureTrailingSlash(requestBaseURL.trim());
   }
 
-  const outDir = Path.IsPathRooted(request.destinationDir)
-    ? request.destinationDir
-    : Path.Combine(siteDir, request.destinationDir);
-
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
   const env = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts);
 
-  if (request.cleanDestinationDir) {
-    deleteDirRecursive(outDir);
-  }
   ensureDir(outDir);
 
   if (themeDir !== undefined) {
@@ -977,13 +968,13 @@ export const buildSite = (request: BuildRequest): BuildResult => {
 
   const sitemapPath = Path.Combine(outDir, "sitemap.xml");
   if (!File.Exists(sitemapPath)) {
-    writeTextFile(sitemapPath, renderSitemap(config, relArr));
+    writeTextFile(sitemapPath, renderSitemap(config, relArr, request.buildTime));
     pagesBuilt++;
   }
 
   const rssPath = Path.Combine(outDir, "index.xml");
   if (!File.Exists(rssPath)) {
-    writeTextFile(rssPath, renderRss(config, site.pages));
+    writeTextFile(rssPath, renderRss(config, site.pages, request.buildTime));
     pagesBuilt++;
   }
 
@@ -993,5 +984,20 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     pagesBuilt++;
   }
 
-  return new BuildResult(outDir, pagesBuilt);
+  return pagesBuilt;
+};
+
+export const buildSite = (request: BuildRequest): BuildResult => {
+  const siteDir = Path.GetFullPath(request.siteDir);
+  const docs = loadDocsConfig(siteDir);
+  const publication = beginOutputPublication(
+    siteDir,
+    request.destinationDir,
+    !request.cleanDestinationDir,
+  );
+  const pagesBuilt = docs === undefined
+    ? buildStandardSite(request, siteDir, publication.stagingDir)
+    : buildDocsSite(request, docs, publication.stagingDir);
+  publication.publish();
+  return new BuildResult(publication.destinationDir, pagesBuilt);
 };

@@ -52,3 +52,5 @@ export function main(): void {
   const buildArgStart: int = first === "build" || first === "gen" || first === "generate" ? 1 : 0;
   handleBuild(args, buildArgStart);
 }
+
+main();

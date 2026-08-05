@@ -11,8 +11,8 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <IsPackable>false</IsPackable>
     <TsumoRepoRoot>$(MSBuildThisFileDirectory)../../</TsumoRepoRoot>
-    <TsumoProviderReferenceDirectory>$(TsumoRepoRoot).temp/provider-references</TsumoProviderReferenceDirectory>
-    <TsumoTestProviderReferenceDirectory>$(TsumoRepoRoot).temp/provider-references-tests</TsumoTestProviderReferenceDirectory>
+    <TsumoProviderReferenceDirectory>$(TsumoRepoRoot).temp/active-provider-references/product</TsumoProviderReferenceDirectory>
+    <TsumoTestProviderReferenceDirectory>$(TsumoRepoRoot).temp/active-provider-references/tests</TsumoTestProviderReferenceDirectory>
     <TsonicRuntimeAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-runtime/runtimes/$(TargetFramework)/Tsonic.CSharp.Runtime.dll</TsonicRuntimeAssembly>
     <TsonicJsAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-js/runtimes/$(TargetFramework)/Tsonic.CSharp.Js.dll</TsonicJsAssembly>
     <TsonicNodeAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-nodejs/runtimes/$(TargetFramework)/Tsonic.CSharp.Node.dll</TsonicNodeAssembly>
@@ -42,7 +42,7 @@
   </Target>
   <!-- Materializes only the xUnit provider reflection inputs for
        Tsonic-authored tests. Product provider references stay in
-       .temp/provider-references; test-only assemblies never leak there. -->
+       the active product snapshot; test-only assemblies never leak there. -->
   <Target Name="PrepareTsonicTestProviderReferences" DependsOnTargets="ResolveReferences">
     <ItemGroup>
       <TsonicTestProviderReference

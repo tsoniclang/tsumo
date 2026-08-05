@@ -6,6 +6,7 @@ import { ParsedContent } from "./parsed-content.js";
 import { parseInt32, toInt32 } from "../utils/int32.js";
 import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
 import { JsonArray, JsonBool, JsonNumber, JsonObject, JsonString, parseJson as parseJsonValue, type JsonValue } from "../utils/json.js";
+import { Exception } from "@tsonic/dotnet/System.js";
 
 const tryParseInt = (value: string): int | undefined => parseInt32(value);
 
@@ -439,14 +440,17 @@ export const parseContent = (text: string): ParsedContent => {
   if (firstLine.trim() === "---") {
     const fmLines: string[] = [];
     let bodyStart = lines.length;
+    let closed = false;
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i]!;
       if (line.trim() === "---") {
         bodyStart = i + 1;
+        closed = true;
         break;
       }
       fmLines.push(line);
     }
+    if (!closed) throw new Exception("YAML front matter is missing its closing --- delimiter");
     const body = lines.slice(bodyStart).join("\n").trimStart();
     return new ParsedContent(parseYaml(fmLines), body);
   }
@@ -454,14 +458,17 @@ export const parseContent = (text: string): ParsedContent => {
   if (firstLine.trim() === "+++") {
     const fmLines: string[] = [];
     let bodyStart = lines.length;
+    let closed = false;
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i]!;
       if (line.trim() === "+++") {
         bodyStart = i + 1;
+        closed = true;
         break;
       }
       fmLines.push(line);
     }
+    if (!closed) throw new Exception("TOML front matter is missing its closing +++ delimiter");
     const body = lines.slice(bodyStart).join("\n").trimStart();
     return new ParsedContent(parseToml(fmLines), body);
   }
