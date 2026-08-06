@@ -7,6 +7,8 @@ import {
   buildMenuHierarchy,
   configureSiteMenus,
   ContentPageSource,
+  createStandardPageGraph,
+  createStandardTaxonomies,
   discoverContent,
   FrontMatterMenu,
   HtmlString,
@@ -200,9 +202,50 @@ export class ContentAndMenuTests {
       }),
     );
   }
+
+  page_graph_finalizes_home_ancestry_and_taxonomies_before_rendering(): void {
+    const root = createTestDirectory("standard-page-graph");
+    try {
+      Directory.CreateDirectory(Path.Combine(root, "posts", "series"));
+      File.WriteAllText(Path.Combine(root, "posts", "_index.md"), "---\ntitle: Posts\n---\nPosts");
+      File.WriteAllText(Path.Combine(root, "posts", "series", "_index.md"), "---\ntitle: Series\n---\nSeries");
+      File.WriteAllText(
+        Path.Combine(root, "posts", "series", "part.md"),
+        "---\ntitle: Part\ndate: 2026-01-01T00:00:00Z\ntags: [alpha]\ncategories: [guides]\n---\nPart",
+      );
+
+      const config = new SiteConfig("Test", "https://example.invalid/", "en", undefined, undefined);
+      const graph = createStandardPageGraph(config, discoverContent(root, false));
+      const taxonomies = createStandardTaxonomies(graph);
+      const page = graph.contentPages[0]!;
+      const parent = page.parent;
+      Assert.True(parent !== undefined);
+      if (parent === undefined) throw new Exception("Expected page parent");
+      Assert.Equal("/posts/series/", parent.relPermalink);
+      Assert.Equal(3, page.ancestors.length);
+      Assert.Equal("/", page.ancestors[0]!.relPermalink);
+      Assert.Equal("/posts/", page.ancestors[1]!.relPermalink);
+      Assert.Equal("/posts/series/", page.ancestors[2]!.relPermalink);
+      const home = graph.site.home;
+      Assert.True(home !== undefined);
+      if (home === undefined) throw new Exception("Expected site home");
+      Assert.Equal("/", home.relPermalink);
+      Assert.Equal(1, home.pages.length);
+      Assert.Equal(2, taxonomies.taxonomies.length);
+      const tags = graph.site.Taxonomies.get("tags");
+      Assert.True(tags !== undefined);
+      if (tags === undefined) throw new Exception("Expected tags taxonomy");
+      const tagPages = tags.get("alpha");
+      Assert.True(tagPages !== undefined);
+      Assert.Equal(8, graph.site.allPages.length);
+    } finally {
+      deleteTestDirectory(root);
+    }
+  }
 }
 
 attribute<ContentAndMenuTests>().method((target) => target.content_discovery_is_deterministic_and_excludes_drafts_before_claiming_routes).add(FactAttribute);
 attribute<ContentAndMenuTests>().method((target) => target.content_routes_reject_escape_segments_and_duplicate_outputs).add(FactAttribute);
 attribute<ContentAndMenuTests>().method((target) => target.menu_hierarchy_is_deterministic_and_fails_closed).add(FactAttribute);
 attribute<ContentAndMenuTests>().method((target) => target.menu_page_references_use_exact_routes_without_slug_fallback).add(FactAttribute);
+attribute<ContentAndMenuTests>().method((target) => target.page_graph_finalizes_home_ancestry_and_taxonomies_before_rendering).add(FactAttribute);

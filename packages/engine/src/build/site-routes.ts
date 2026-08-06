@@ -7,8 +7,6 @@ export const splitSitePath = (path: string): string[] => normalizeSitePath(path)
 
 export const joinSitePath = (segments: string[]): string => segments.join("/");
 
-export const sitePathIsNested = (path: string): boolean => path.includes("/");
-
 export const withoutMarkdownExtension = (fileName: string): string =>
   fileName.toLowerCase().endsWith(".md")
     ? substringCount(fileName, 0, fileName.length - 3)

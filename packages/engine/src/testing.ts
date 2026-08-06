@@ -3,6 +3,8 @@ export { ContentPageSource } from "./build/content-model.js";
 export { discoverContent } from "./build/discover-content.js";
 export { configureSiteMenus } from "./build/menu-resolution.js";
 export { SiteOutputPlan } from "./build/output-plan.js";
+export { createStandardPageGraph, StandardPageGraph } from "./build/standard-page-graph.js";
+export { createStandardTaxonomies, StandardTaxonomyGraph } from "./build/standard-taxonomies.js";
 export { loadDocsConfig } from "./docs/config.js";
 export { loadDocsContent } from "./docs/content.js";
 export { DocsLinkRewriteContext, renderDocsMarkdown } from "./docs/markdown.js";
