@@ -146,7 +146,7 @@ export const loadDocsConfig = (siteDir: string): LoadedDocsConfig | undefined =>
   const candidate = join(siteDir, "tsumo.docs.json");
   if (!fileExists(candidate)) return undefined;
 
-  const parsedRoot = jsonObject(parseJson(readTextFile(candidate)));
+  const parsedRoot = jsonObject(parseJson(readTextFile(candidate), candidate));
   if (parsedRoot === undefined) {
     throw docsConfigError("TSUMO_DOCS_CONFIG_TYPE", "tsumo.docs.json root must be an object", candidate);
   }

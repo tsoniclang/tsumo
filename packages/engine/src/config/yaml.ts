@@ -1,16 +1,66 @@
 import type { int } from "@tsonic/csharp/types.js";
+
+import { createTsumoError } from "../diagnostics.js";
 import { MenuEntry, SiteConfig } from "../models.js";
-import { parseInt32 } from "../utils/int32.js";
-import { ensureTrailingSlash } from "../utils/text.js";
-import { ParamValue } from "../params.js";
 import { buildMenuHierarchy } from "../menus.js";
+import { ParamValue } from "../params.js";
+import { substringCount, substringFrom } from "../utils/strings.js";
+import { stripStructuredComment } from "../utils/structured-scalars.js";
+import { ensureTrailingSlash } from "../utils/text.js";
 import { MenuEntryBuilder } from "./builders.js";
-import { unquote } from "./helpers.js";
-import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
+import { parseConfigInt, parseConfigParam, parseConfigString } from "./scalars.js";
 
-const tryParseInt = (value: string): int | undefined => parseInt32(value);
+const indentationOf = (line: string): int => {
+  let indentation: int = 0;
+  while (indentation < line.length && line[indentation] === " ") indentation++;
+  return indentation;
+};
 
-export const parseYamlConfig = (text: string): SiteConfig => {
+const yamlText = (line: string): string => stripStructuredComment(line, "yaml").trim();
+
+const splitPair = (text: string, sourcePath: string | undefined, line: int): string[] => {
+  const separator = text.indexOf(":");
+  if (separator <= 0) {
+    throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "YAML configuration entries require 'key: value' syntax", sourcePath, line, 1);
+  }
+  return [substringCount(text, 0, separator).trim(), substringFrom(text, separator + 1).trim()];
+};
+
+const recordField = (
+  fields: Set<string>,
+  field: string,
+  context: string,
+  sourcePath: string | undefined,
+  line: int,
+): void => {
+  const normalized = field.toLowerCase();
+  if (fields.has(normalized)) {
+    throw createTsumoError("TSUMO_CONFIG_DUPLICATE_FIELD", `${context} field '${field}' is declared more than once`, sourcePath, line, 1);
+  }
+  fields.add(normalized);
+};
+
+const applyMenuField = (
+  builder: MenuEntryBuilder,
+  keyRaw: string,
+  value: string,
+  sourcePath: string | undefined,
+  line: int,
+): void => {
+  const key = keyRaw.toLowerCase();
+  if (key === "name") builder.name = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "url") builder.url = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "pageref") builder.pageRef = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "title") builder.title = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "parent") builder.parent = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "identifier") builder.identifier = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "pre") builder.pre = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "post") builder.post = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
+  else if (key === "weight") builder.weight = parseConfigInt(keyRaw, value, "yaml", sourcePath, line);
+  else throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown menu configuration field '${keyRaw}'`, sourcePath, line, 1);
+};
+
+export const parseYamlConfig = (text: string, sourcePath?: string): SiteConfig => {
   let title = "Tsumo Site";
   let baseURL = "";
   let languageCode = "en-us";
@@ -19,168 +69,150 @@ export const parseYamlConfig = (text: string): SiteConfig => {
   let copyright: string | undefined;
   const params = new Map<string, ParamValue>();
   const menuBuilders = new Map<string, MenuEntryBuilder[]>();
+  const rootFields = new Set<string>();
+  const lines = text.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
 
-  const lines = replaceLineEndings(text, "\n").split("\n");
-
-  let inParams = false;
-  let inMenu = false;
-  let currentMenuName = "";
-  let currentMenuEntry: MenuEntryBuilder | undefined;
-
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i]!;
-    const line = raw.trim();
-    if (line === "" || line.startsWith("#")) continue;
-
-    if (!raw.startsWith(" ")) {
-      inParams = false;
-      inMenu = false;
-      currentMenuName = "";
-      currentMenuEntry = undefined;
+  let index: int = 0;
+  while (index < lines.length) {
+    const raw = lines[index]!;
+    const lineNumber = index + 1;
+    if (raw.includes("\t")) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "YAML configuration indentation must use spaces", sourcePath, lineNumber, 1);
+    const textValue = yamlText(raw);
+    if (textValue === "" || textValue.startsWith("#")) {
+      index++;
+      continue;
     }
-
-    if (!raw.startsWith(" ") && line.toLowerCase() === "params:") {
-      inParams = true;
+    if (indentationOf(raw) !== 0) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "YAML configuration has an unexpected indented entry", sourcePath, lineNumber, 1);
+    const pair = splitPair(textValue, sourcePath, lineNumber);
+    const keyRaw = pair[0]!;
+    const key = keyRaw.toLowerCase();
+    const value = pair[1]!;
+    recordField(rootFields, keyRaw, "Configuration", sourcePath, lineNumber);
+    if (value !== "") {
+      if (key === "title") title = parseConfigString(keyRaw, value, "yaml", sourcePath, lineNumber);
+      else if (key === "baseurl") baseURL = parseConfigString(keyRaw, value, "yaml", sourcePath, lineNumber);
+      else if (key === "languagecode") languageCode = parseConfigString(keyRaw, value, "yaml", sourcePath, lineNumber);
+      else if (key === "contentdir") contentDir = parseConfigString(keyRaw, value, "yaml", sourcePath, lineNumber);
+      else if (key === "theme") theme = parseConfigString(keyRaw, value, "yaml", sourcePath, lineNumber);
+      else if (key === "copyright") copyright = parseConfigString(keyRaw, value, "yaml", sourcePath, lineNumber);
+      else throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown configuration field '${keyRaw}'`, sourcePath, lineNumber, 1);
+      index++;
       continue;
     }
 
-    if (!raw.startsWith(" ") && line.toLowerCase() === "menu:") {
-      inMenu = true;
-      continue;
-    }
-
-    if (inParams && raw.startsWith("  ") && line.includes(":")) {
-      const idx = line.indexOf(":");
-      const key = substringCount(line, 0, idx).trim();
-      const val = unquote(substringFrom(line, idx + 1).trim());
-      params.set(key, ParamValue.parseScalar(val));
-      continue;
-    }
-
-    if (inMenu) {
-      if (raw.startsWith("  ") && !raw.startsWith("    ") && line.endsWith(":")) {
-        currentMenuName = substringCount(line, 0, line.length - 1).trim();
-        if (!menuBuilders.has(currentMenuName)) {
-          menuBuilders.set(currentMenuName, []);
+    index++;
+    if (key === "params") {
+      const paramFields = new Set<string>();
+      while (index < lines.length && indentationOf(lines[index]!) > 0) {
+        const childRaw = lines[index]!;
+        const childLine = index + 1;
+        const childText = yamlText(childRaw);
+        if (childText !== "" && !childText.startsWith("#")) {
+          if (indentationOf(childRaw) !== 2) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Configuration params require one scalar mapping level", sourcePath, childLine, 1);
+          const child = splitPair(childText, sourcePath, childLine);
+          if (child[1] === "") throw createTsumoError("TSUMO_CONFIG_INVALID_FIELD", `Configuration param '${child[0]}' requires a scalar value`, sourcePath, childLine, 1);
+          recordField(paramFields, child[0]!, "Configuration params", sourcePath, childLine);
+          params.set(child[0]!, parseConfigParam(child[1]!, "yaml", sourcePath, childLine));
         }
-        currentMenuEntry = undefined;
-        continue;
+        index++;
       }
+      continue;
+    }
 
-      if (raw.startsWith("    ") && !raw.startsWith("      ") && line.startsWith("-") && currentMenuName !== "") {
-        currentMenuEntry = new MenuEntryBuilder(currentMenuName);
-        const entries = menuBuilders.get(currentMenuName) ?? [];
-        entries.push(currentMenuEntry);
-        menuBuilders.set(currentMenuName, entries);
-
-        const rest = substringFrom(line, 1).trim();
-        if (rest.includes(":")) {
-          const colonIdx = rest.indexOf(":");
-          const propKey = substringCount(rest, 0, colonIdx).trim().toLowerCase();
-          const propVal = unquote(substringFrom(rest, colonIdx + 1).trim());
-          if (propKey === "name") currentMenuEntry.name = propVal;
-          else if (propKey === "url") currentMenuEntry.url = propVal;
-          else if (propKey === "pageref") currentMenuEntry.pageRef = propVal;
-          else if (propKey === "title") currentMenuEntry.title = propVal;
-          else if (propKey === "parent") currentMenuEntry.parent = propVal;
-          else if (propKey === "identifier") currentMenuEntry.identifier = propVal;
-          else if (propKey === "pre") currentMenuEntry.pre = propVal;
-          else if (propKey === "post") currentMenuEntry.post = propVal;
-          else if (propKey === "weight") {
-            const parsed = tryParseInt(propVal);
-            if (parsed !== undefined) currentMenuEntry.weight = parsed;
+    if (key === "menu") {
+      const menuNames = new Set<string>();
+      while (index < lines.length && indentationOf(lines[index]!) > 0) {
+        const menuRaw = lines[index]!;
+        const menuLine = index + 1;
+        const menuText = yamlText(menuRaw);
+        if (menuText === "" || menuText.startsWith("#")) {
+          index++;
+          continue;
+        }
+        if (indentationOf(menuRaw) !== 2) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Menu names require one mapping level", sourcePath, menuLine, 1);
+        const menuPair = splitPair(menuText, sourcePath, menuLine);
+        if (menuPair[1] !== "") throw createTsumoError("TSUMO_CONFIG_INVALID_FIELD", `Menu '${menuPair[0]}' requires an array of entries`, sourcePath, menuLine, 1);
+        const menuName = menuPair[0]!;
+        recordField(menuNames, menuName, "Configuration menu", sourcePath, menuLine);
+        const entries = menuBuilders.get(menuName) ?? [];
+        index++;
+        while (index < lines.length && indentationOf(lines[index]!) > 2) {
+          const entryRaw = lines[index]!;
+          const entryLine = index + 1;
+          const entryText = yamlText(entryRaw);
+          if (entryText === "" || entryText.startsWith("#")) {
+            index++;
+            continue;
           }
+          if (indentationOf(entryRaw) !== 4 || !entryText.startsWith("-")) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", `Menu '${menuName}' requires '- field: value' entries`, sourcePath, entryLine, 1);
+          const builder = new MenuEntryBuilder(menuName);
+          const first = splitPair(substringFrom(entryText, 1).trim(), sourcePath, entryLine);
+          if (first[1] === "") throw createTsumoError("TSUMO_CONFIG_INVALID_FIELD", `Menu field '${first[0]}' requires a value`, sourcePath, entryLine, 1);
+          const entryFields = new Set<string>();
+          recordField(entryFields, first[0]!, `Menu '${menuName}' entry`, sourcePath, entryLine);
+          applyMenuField(builder, first[0]!, first[1]!, sourcePath, entryLine);
+          index++;
+          while (index < lines.length && indentationOf(lines[index]!) > 4) {
+            const fieldRaw = lines[index]!;
+            const fieldLine = index + 1;
+            const fieldText = yamlText(fieldRaw);
+            if (fieldText !== "" && !fieldText.startsWith("#")) {
+              if (indentationOf(fieldRaw) !== 6) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Menu entry fields require three mapping levels", sourcePath, fieldLine, 1);
+              const field = splitPair(fieldText, sourcePath, fieldLine);
+              if (field[1] === "") throw createTsumoError("TSUMO_CONFIG_INVALID_FIELD", `Menu field '${field[0]}' requires a value`, sourcePath, fieldLine, 1);
+              recordField(entryFields, field[0]!, `Menu '${menuName}' entry`, sourcePath, fieldLine);
+              applyMenuField(builder, field[0]!, field[1]!, sourcePath, fieldLine);
+            }
+            index++;
+          }
+          entries.push(builder);
         }
-        continue;
+        menuBuilders.set(menuName, entries);
       }
-
-      if (raw.startsWith("      ") && currentMenuEntry !== undefined && line.includes(":")) {
-        const colonIdx = line.indexOf(":");
-        const propKey = substringCount(line, 0, colonIdx).trim().toLowerCase();
-        const propVal = unquote(substringFrom(line, colonIdx + 1).trim());
-        if (propKey === "name") currentMenuEntry.name = propVal;
-        else if (propKey === "url") currentMenuEntry.url = propVal;
-        else if (propKey === "pageref") currentMenuEntry.pageRef = propVal;
-        else if (propKey === "title") currentMenuEntry.title = propVal;
-        else if (propKey === "parent") currentMenuEntry.parent = propVal;
-        else if (propKey === "identifier") currentMenuEntry.identifier = propVal;
-        else if (propKey === "pre") currentMenuEntry.pre = propVal;
-        else if (propKey === "post") currentMenuEntry.post = propVal;
-        else if (propKey === "weight") {
-          const parsed = tryParseInt(propVal);
-          if (parsed !== undefined) currentMenuEntry.weight = parsed;
-        }
-        continue;
-      }
+      continue;
     }
-
-    if (!raw.startsWith(" ") && line.includes(":")) {
-      const idx = line.indexOf(":");
-      const key = substringCount(line, 0, idx).trim().toLowerCase();
-      const val = unquote(substringFrom(line, idx + 1).trim());
-      if (key === "title") title = val;
-      else if (key === "baseurl") baseURL = val;
-      else if (key === "languagecode") languageCode = val;
-      else if (key === "contentdir") contentDir = val;
-      else if (key === "theme") theme = val;
-      else if (key === "copyright") copyright = val;
-    }
+    throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown nested configuration field '${keyRaw}'`, sourcePath, lineNumber, 1);
   }
 
   const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
   config.contentDir = contentDir;
   config.Params = params;
-
   for (const menuName of menuBuilders.keys()) {
     const builders = menuBuilders.get(menuName);
-    if (builders === undefined) continue;
+    if (builders === undefined) {
+      throw createTsumoError("TSUMO_CONFIG_MODEL_INCONSISTENT", `Menu '${menuName}' disappeared during configuration finalization`, sourcePath);
+    }
     const entries: MenuEntry[] = [];
-    for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
+    for (let index = 0; index < builders.length; index++) entries.push(builders[index]!.toEntry());
     config.Menus.set(menuName, buildMenuHierarchy(entries));
   }
-
   return config;
 };
 
-export const mergeYamlIntoConfig = (config: SiteConfig, text: string, fileName: string): SiteConfig => {
-  const lowerFileName = fileName.toLowerCase();
-
-  if (lowerFileName === "hugo.yaml" || lowerFileName === "hugo.yml" || lowerFileName === "config.yaml" || lowerFileName === "config.yml") {
-    const parsed = parseYamlConfig(text);
-    if (parsed.title !== "Tsumo Site") config.title = parsed.title;
-    if (parsed.baseURL !== "") config.baseURL = parsed.baseURL;
-    if (parsed.languageCode !== "en-us") config.languageCode = parsed.languageCode;
-    if (parsed.theme !== undefined) config.theme = parsed.theme;
-    if (parsed.copyright !== undefined) config.copyright = parsed.copyright;
-    if (parsed.contentDir !== "content") config.contentDir = parsed.contentDir;
-
-    for (const key of parsed.Params.keys()) {
-      const value = parsed.Params.get(key);
-      if (value !== undefined) config.Params.set(key, value);
-    }
-    for (const key of parsed.Menus.keys()) {
-      const value = parsed.Menus.get(key);
-      if (value !== undefined) config.Menus.set(key, value);
+export const mergeYamlIntoConfig = (
+  config: SiteConfig,
+  text: string,
+  fileName: string,
+  sourcePath?: string,
+): SiteConfig => {
+  const lower = fileName.toLowerCase();
+  if (lower === "hugo.yaml" || lower === "hugo.yml" || lower === "config.yaml" || lower === "config.yml") {
+    return parseYamlConfig(text, sourcePath);
+  }
+  if (lower === "params.yaml" || lower === "params.yml") {
+    const lines = text.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
+    const fields = new Set<string>();
+    for (let index: int = 0; index < lines.length; index++) {
+      const raw = lines[index]!;
+      const value = yamlText(raw);
+      if (value === "" || value.startsWith("#")) continue;
+      if (indentationOf(raw) !== 0) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Split params configuration requires a flat scalar mapping", sourcePath, index + 1, 1);
+      const pair = splitPair(value, sourcePath, index + 1);
+      if (pair[1] === "") throw createTsumoError("TSUMO_CONFIG_INVALID_FIELD", `Configuration param '${pair[0]}' requires a scalar value`, sourcePath, index + 1, 1);
+      recordField(fields, pair[0]!, "Configuration params", sourcePath, index + 1);
+      config.Params.set(pair[0]!, parseConfigParam(pair[1]!, "yaml", sourcePath, index + 1));
     }
     return config;
   }
-
-  if (lowerFileName === "params.yaml" || lowerFileName === "params.yml") {
-    const lines = replaceLineEndings(text, "\n").split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
-      if (raw.startsWith(" ")) continue;
-
-      if (line.includes(":")) {
-        const idx = line.indexOf(":");
-        const key = substringCount(line, 0, idx).trim();
-        const val = unquote(substringFrom(line, idx + 1).trim());
-        config.Params.set(key, ParamValue.parseScalar(val));
-      }
-    }
-  }
-
-  return config;
+  throw createTsumoError("TSUMO_CONFIG_FILE_UNSUPPORTED", `Unsupported split configuration file '${fileName}'`, sourcePath);
 };

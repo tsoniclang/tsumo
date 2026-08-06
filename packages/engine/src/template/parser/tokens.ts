@@ -57,7 +57,7 @@ export const sliceTokens = (tokens: string[], startIndex: int): string[] => {
   return result;
 };
 
-export const scanTemplateSegments = (template: string): TemplateSegment[] => {
+export const scanTemplateSegments = (template: string, sourcePath?: string): TemplateSegment[] => {
   const segments: TemplateSegment[] = [];
   let offset: int = 0;
   let lastSegment: TemplateSegment | undefined = undefined;
@@ -84,7 +84,7 @@ export const scanTemplateSegments = (template: string): TemplateSegment[] => {
       throw createTsumoError(
         "TSUMO_TEMPLATE_ACTION_UNCLOSED",
         "Template action opened with '{{' but has no closing '}}'",
-        undefined,
+        sourcePath,
         position.line,
         position.column,
       );
@@ -136,6 +136,7 @@ export const tokenizeTemplateAction = (
   action: string,
   line?: int,
   column?: int,
+  sourcePath?: string,
 ): string[] => {
   const tokens: string[] = [];
   let offset: int = 0;
@@ -172,7 +173,7 @@ export const tokenizeTemplateAction = (
         throw createTsumoError(
           "TSUMO_TEMPLATE_STRING_UNCLOSED",
           `Template string opened with ${quote} but is not closed`,
-          undefined,
+          sourcePath,
           line,
           column,
         );

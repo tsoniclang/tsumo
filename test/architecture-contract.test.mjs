@@ -15,6 +15,18 @@ const repositoryFiles = execFileSync(
 const sourceFiles = repositoryFiles.filter((path) =>
   /^packages\/(?:cli|engine|tests)\/src\/.*\.ts$/u.test(path)
 );
+const productSourceFiles = sourceFiles.filter((path) =>
+  /^packages\/(?:cli|engine)\/src\/.*\.ts$/u.test(path)
+);
+
+test("authored TypeScript modules stay within the reviewed size boundary", () => {
+  const oversized = sourceFiles.flatMap((path) => {
+    const text = readFileSync(join(repoRoot, path), "utf8");
+    const lineCount = text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+    return lineCount > 600 ? [`${path}: ${lineCount} lines`] : [];
+  });
+  assert.deepEqual(oversized, []);
+});
 
 test("product source contains no retired Tsonic mechanisms", () => {
   const patterns = [
@@ -41,6 +53,16 @@ test("product source contains no retired Tsonic mechanisms", () => {
       }
     }
   }
+  assert.deepEqual(violations, []);
+});
+
+test("product source does not bypass shared recursive filesystem traversal", () => {
+  const violations = productSourceFiles.flatMap((path) => {
+    const text = readFileSync(join(repoRoot, path), "utf8");
+    return /Directory\.(?:Get|Enumerate)(?:Files|Directories)\(|SearchOption\.AllDirectories/u.test(text)
+      ? [`${path}: bypasses shared recursive filesystem traversal`]
+      : [];
+  });
   assert.deepEqual(violations, []);
 });
 

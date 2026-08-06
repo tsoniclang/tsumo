@@ -1,6 +1,7 @@
-import { Directory, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { Directory, Path } from "@tsonic/dotnet/System.IO.js";
 import type { int } from "@tsonic/csharp/types.js";
 import { createTsumoError } from "../diagnostics.js";
+import { listFilesRecursive } from "../fs.js";
 import { compareText, substringCount, trimEndChar, trimStartChar } from "../utils/strings.js";
 import { combineUrl } from "../build/layout.js";
 import { DocsMountConfig } from "./models.js";
@@ -123,7 +124,7 @@ export const discoverDocsMountRoutes = (mount: DocsMountConfig): DocsMountRoutes
   const markdown: DocsMarkdownRoute[] = [];
   const assets: DocsAssetRoute[] = [];
   const outputs = new Map<string, string>();
-  const files = Array.from(Directory.GetFiles(mount.sourceDir, "*", SearchOption.AllDirectories));
+  const files = listFilesRecursive(mount.sourceDir, "*");
   sortPaths(files);
 
   for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {

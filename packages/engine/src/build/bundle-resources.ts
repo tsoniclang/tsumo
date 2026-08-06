@@ -1,4 +1,5 @@
-import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { File, Path } from "@tsonic/dotnet/System.IO.js";
+import { listDirectoriesTopDirectory, listFilesTopDirectory } from "../fs.js";
 import { SiteOutputPlan } from "./output-plan.js";
 import { compareSitePaths } from "./site-routes.js";
 
@@ -11,9 +12,7 @@ export const addBundleResources = (
   owner: string,
   outputPlan: SiteOutputPlan,
 ): void => {
-  if (!Directory.Exists(sourceDir)) return;
-
-  const files = Array.from(Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly));
+  const files = listFilesTopDirectory(sourceDir, "*");
   files.sort((left: string, right: string) => compareSitePaths(left, right));
   for (let index = 0; index < files.length; index++) {
     const sourceFile = files[index]!;
@@ -24,12 +23,12 @@ export const addBundleResources = (
     outputPlan.addAsset(outputPath, sourceFile, owner, "bundle");
   }
 
-  const directories = Array.from(Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly));
+  const directories = listDirectoriesTopDirectory(sourceDir);
   directories.sort((left: string, right: string) => compareSitePaths(left, right));
   for (let index = 0; index < directories.length; index++) {
     const child = directories[index]!;
     if (isBundleDirectory(child)) continue;
-    if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).length > 0) continue;
+    if (listFilesTopDirectory(child, "*.md").length > 0) continue;
     const name = Path.GetFileName(child);
     if (name === undefined || name === "") continue;
     const childPrefix = outputPrefix === "" ? name : outputPrefix + "/" + name;

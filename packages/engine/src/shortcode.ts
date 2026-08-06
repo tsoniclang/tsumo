@@ -1,4 +1,5 @@
 import type { int } from "@tsonic/csharp/types.js";
+import { createTsumoError } from "./diagnostics.js";
 import { indexOfText, indexOfTextFrom, substringCount, substringFrom } from "./utils/strings.js";
 import { ParamValue } from "./params.js";
 
@@ -12,6 +13,9 @@ export class ShortcodeCall {
   isSelfClosing: boolean;
   startIndex: int;
   endIndex: int;
+  sourcePath: string | undefined;
+  line: int;
+  column: int;
 
   constructor(
     name: string,
@@ -23,6 +27,9 @@ export class ShortcodeCall {
     isSelfClosing: boolean,
     startIndex: int,
     endIndex: int,
+    sourcePath: string | undefined,
+    line: int,
+    column: int,
   ) {
     this.name = name;
     this.params = params;
@@ -33,6 +40,9 @@ export class ShortcodeCall {
     this.isSelfClosing = isSelfClosing;
     this.startIndex = startIndex;
     this.endIndex = endIndex;
+    this.sourcePath = sourcePath;
+    this.line = line;
+    this.column = column;
   }
 }
 
@@ -74,58 +84,120 @@ class ParseState {
   }
 }
 
-const isInCodeBlock = (text: string, pos: int): boolean => {
-  let inFence = false;
-  let fenceChar = "";
-  let fenceLen: int = 0;
-  let i: int = 0;
+class ShortcodePosition {
+  line: int;
+  column: int;
 
-  while (i < pos) {
-    const c = substringCount(text, i, 1);
+  constructor(line: int, column: int) {
+    this.line = line;
+    this.column = column;
+  }
+}
 
-    if (!inFence) {
-      if (c === "`" || c === "~") {
-      let len: int = 1;
-      while (i + len < text.length && substringCount(text, i + len, 1) === c) len++;
-      if (len >= 3) {
-        inFence = true;
-        fenceChar = c;
-        fenceLen = len;
-        i += len;
-        while (i < text.length && substringCount(text, i, 1) !== "\n") i++;
-        continue;
+class ShortcodeRange {
+  start: int;
+  end: int;
+
+  constructor(start: int, end: int) {
+    this.start = start;
+    this.end = end;
+  }
+}
+
+class ShortcodeSourceMap {
+  lineStarts: int[];
+  codeFences: ShortcodeRange[];
+
+  constructor(text: string) {
+    this.lineStarts = [0];
+    for (let index: int = 0; index < text.length; index++) {
+      const current = text[index]!;
+      if (current === "\r") {
+        if (index + 1 < text.length && text[index + 1] === "\n") index++;
+        this.lineStarts.push(index + 1);
+      } else if (current === "\n") {
+        this.lineStarts.push(index + 1);
       }
     }
-    }
 
-    if (inFence && c === fenceChar) {
-      let len: int = 1;
-      while (i + len < text.length && substringCount(text, i + len, 1) === c) len++;
-      if (len >= fenceLen) {
-        inFence = false;
-        fenceChar = "";
-        fenceLen = 0;
-        i += len;
-        continue;
+    this.codeFences = [];
+    let fenceStart: int = -1;
+    let fenceCharacter = "";
+    let fenceLength: int = 0;
+    let position: int = 0;
+    while (position < text.length) {
+      const current = text[position]!;
+      if (fenceStart < 0 && (current === "`" || current === "~")) {
+        let length: int = 1;
+        while (position + length < text.length && text[position + length] === current) length++;
+        if (length >= 3) {
+          fenceStart = position;
+          fenceCharacter = current;
+          fenceLength = length;
+          position += length;
+          while (position < text.length && text[position] !== "\n") position++;
+          continue;
+        }
+      } else if (fenceStart >= 0 && current === fenceCharacter) {
+        let length: int = 1;
+        while (position + length < text.length && text[position + length] === current) length++;
+        if (length >= fenceLength) {
+          this.codeFences.push(new ShortcodeRange(fenceStart, position + length));
+          fenceStart = -1;
+          fenceCharacter = "";
+          fenceLength = 0;
+          position += length;
+          continue;
+        }
       }
+      position++;
     }
-
-    i++;
+    if (fenceStart >= 0) this.codeFences.push(new ShortcodeRange(fenceStart, text.length));
   }
 
-  return inFence;
-};
+  positionAt(offset: int): ShortcodePosition {
+    let low: int = 0;
+    let high: int = this.lineStarts.length - 1;
+    while (low <= high) {
+      const middle = (low + Math.floor((high - low) / 2)) as int;
+      if (this.lineStarts[middle]! <= offset) low = middle + 1;
+      else high = middle - 1;
+    }
+    const lineIndex: int = high < 0 ? 0 : high;
+    return new ShortcodePosition(lineIndex + 1, offset - this.lineStarts[lineIndex]! + 1);
+  }
 
-const parseQuotedString = (state: ParseState): string => {
+  isInCodeBlock(offset: int): boolean {
+    let low: int = 0;
+    let high: int = this.codeFences.length - 1;
+    while (low <= high) {
+      const middle = (low + Math.floor((high - low) / 2)) as int;
+      const range = this.codeFences[middle]!;
+      if (offset < range.start) high = middle - 1;
+      else if (offset >= range.end) low = middle + 1;
+      else return true;
+    }
+    return false;
+  }
+}
+
+const parseQuotedString = (
+  state: ParseState,
+  sourcePath: string | undefined,
+  line: int,
+  column: int,
+): string => {
   const quote = state.peek(0);
   if (quote !== "\"" && quote !== "'") return "";
   state.advance(1);
 
   let result = "";
+  let closed = false;
   while (!state.atEnd()) {
     const c = state.peek(0);
     if (c === quote) {
       state.advance(1);
+      closed = true;
       break;
     }
     if (c === "\\" && !state.atEnd()) {
@@ -136,6 +208,9 @@ const parseQuotedString = (state: ParseState): string => {
     }
     result += c;
     state.advance(1);
+  }
+  if (!closed) {
+    throw createTsumoError("TSUMO_SHORTCODE_STRING_UNCLOSED", `Shortcode string opened with ${quote} but is not closed`, sourcePath, line, column);
   }
   return result;
 };
@@ -151,7 +226,12 @@ const parseUnquotedValue = (state: ParseState): string => {
   return result;
 };
 
-const parseParams = (argsText: string): { params: Map<string, ParamValue>; positional: string[]; isNamed: boolean } => {
+const parseParams = (
+  argsText: string,
+  sourcePath: string | undefined,
+  line: int,
+  column: int,
+): { params: Map<string, ParamValue>; positional: string[]; isNamed: boolean } => {
   const params = new Map<string, ParamValue>();
   const positional: string[] = [];
   let isNamed = false;
@@ -169,7 +249,6 @@ const parseParams = (argsText: string): { params: Map<string, ParamValue>; posit
     let value = "";
     let foundEquals = false;
 
-    const startPos = state.pos;
     while (!state.atEnd()) {
       const c = state.peek(0);
       if (c === "=" && state.peek(1) !== "=") {
@@ -184,24 +263,41 @@ const parseParams = (argsText: string): { params: Map<string, ParamValue>; posit
     }
 
     if (foundEquals) {
+      if (key === "") {
+        throw createTsumoError("TSUMO_SHORTCODE_PARAMETER_INVALID", "Shortcode named parameters require a name", sourcePath, line, column);
+      }
+      if (params.has(key)) {
+        throw createTsumoError("TSUMO_SHORTCODE_PARAMETER_DUPLICATE", `Shortcode parameter '${key}' is declared more than once`, sourcePath, line, column);
+      }
       isNamed = true;
       state.skipWhitespace();
+      if (state.atEnd()) {
+        throw createTsumoError("TSUMO_SHORTCODE_PARAMETER_INVALID", `Shortcode parameter '${key}' requires a value`, sourcePath, line, column);
+      }
       const q = state.peek(0);
-      if (q === "\"" || q === "'") {
-        value = parseQuotedString(state);
+      const quoted = q === "\"" || q === "'";
+      if (quoted) {
+        value = parseQuotedString(state, sourcePath, line, column);
       } else {
         value = parseUnquotedValue(state);
       }
-      params.set(key, ParamValue.parseScalar(value));
+      if (!quoted && value === "") {
+        throw createTsumoError("TSUMO_SHORTCODE_PARAMETER_INVALID", `Shortcode parameter '${key}' requires a value`, sourcePath, line, column);
+      }
+      params.set(key, quoted ? ParamValue.string(value) : ParamValue.parseScalar(value));
     } else {
       if (key === "") {
         const q = state.peek(0);
-        if (q === "\"" || q === "'") key = parseQuotedString(state);
+        if (q === "\"" || q === "'") key = parseQuotedString(state, sourcePath, line, column);
       }
       if (key !== "") {
         positional.push(key);
       }
     }
+  }
+
+  if (isNamed && positional.length > 0) {
+    throw createTsumoError("TSUMO_SHORTCODE_PARAMETER_STYLE_MIXED", "Shortcode parameters cannot mix named and positional forms", sourcePath, line, column);
   }
 
   return { params, positional, isNamed };
@@ -214,7 +310,7 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
 
   let depth: int = 1;
   let pos = startPos;
-  let innerStart = startPos;
+  const innerStart = startPos;
 
   while (pos < text.length) {
     const remaining = substringFrom(text, pos);
@@ -243,8 +339,9 @@ const findClosingTag = (text: string, name: string, startPos: int, isMarkdown: b
   return undefined;
 };
 
-export const parseShortcodes = (text: string): ShortcodeCall[] => {
+export const parseShortcodes = (text: string, sourcePath?: string): ShortcodeCall[] => {
   const results: ShortcodeCall[] = [];
+  const sourceMap = new ShortcodeSourceMap(text);
   let pos: int = 0;
 
   while (pos < text.length) {
@@ -268,17 +365,17 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
 
     if (openPos < 0) break;
 
-    if (isInCodeBlock(text, openPos)) {
+    if (sourceMap.isInCodeBlock(openPos)) {
       pos = openPos + 3;
       continue;
     }
 
     const closeSuffix = isMarkdown ? "%}}" : ">}}";
 
-    let closePos = indexOfTextFrom(text, closeSuffix, openPos + 3);
+    const closePos = indexOfTextFrom(text, closeSuffix, openPos + 3);
     if (closePos < 0) {
-      pos = openPos + 3;
-      continue;
+      const position = sourceMap.positionAt(openPos);
+      throw createTsumoError("TSUMO_SHORTCODE_ACTION_UNCLOSED", `Shortcode action opened with '${isMarkdown ? "{{%" : "{{<"}' but is not closed`, sourcePath, position.line, position.column);
     }
 
     const content = substringCount(text, openPos + 3, closePos - (openPos + 3)).trim();
@@ -297,11 +394,16 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
     const argsText = firstSpace >= 0 ? substringFrom(tagContent, firstSpace + 1) : "";
 
     if (name === "" || name.startsWith("/")) {
+      if (name.startsWith("/")) {
+        const position = sourceMap.positionAt(openPos);
+        throw createTsumoError("TSUMO_SHORTCODE_CLOSE_UNEXPECTED", `Unexpected shortcode closing action '${name}'`, sourcePath, position.line, position.column);
+      }
       pos = closePos + closeSuffix.length;
       continue;
     }
 
-    const parsed = parseParams(argsText);
+    const position = sourceMap.positionAt(openPos);
+    const parsed = parseParams(argsText, sourcePath, position.line, position.column);
 
     if (isSelfClosing === true) {
       const call = new ShortcodeCall(
@@ -314,6 +416,9 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         true,
         openPos,
         closePos + closeSuffix.length,
+        sourcePath,
+        position.line,
+        position.column,
       );
       results.push(call);
       pos = closePos + closeSuffix.length;
@@ -334,6 +439,9 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         false,
         openPos,
         closeResult.endPos,
+        sourcePath,
+        position.line,
+        position.column,
       );
       results.push(call);
       pos = closeResult.endPos;
@@ -348,6 +456,9 @@ export const parseShortcodes = (text: string): ShortcodeCall[] => {
         true,
         openPos,
         tagEndPos,
+        sourcePath,
+        position.line,
+        position.column,
       );
       results.push(call);
       pos = tagEndPos;

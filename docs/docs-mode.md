@@ -66,6 +66,6 @@ Each item supports:
 - `children` (nested items)
 
 Docs-mode configuration is parsed into typed mount, navigation, search, and repo
-metadata models. Unknown fields are ignored. Supported fields are matched by
-their documented names, and path-like fields are normalized before link
-rewriting and route generation.
+metadata models. Unknown or mistyped fields fail with a `TSUMO_DOCS_CONFIG_*`
+diagnostic. Supported fields are matched by their documented names, and
+path-like fields are normalized before link rewriting and route generation.

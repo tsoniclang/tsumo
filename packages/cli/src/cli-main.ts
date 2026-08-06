@@ -1,5 +1,6 @@
 import process from "node:process";
 import type { int } from "@tsonic/csharp/types.js";
+import { TsumoError } from "@tsumo/engine/index.js";
 
 import { logErrorLine } from "./log-error-line.js";
 import { logLine } from "./log-line.js";
@@ -56,6 +57,6 @@ export function main(): void {
 try {
   main();
 } catch (error) {
-  logErrorLine(`${error}`);
+  logErrorLine(error instanceof TsumoError ? error.diagnostic.format() : `${error}`);
   process.exitCode = 1;
 }

@@ -1,8 +1,8 @@
-import { Exception } from "@tsonic/dotnet/System.js";
 import { File, Path } from "@tsonic/dotnet/System.IO.js";
 import { JsonDocument, JsonElement, JsonValueKind } from "@tsonic/dotnet/System.Text.Json.js";
 import type { char, int } from "@tsonic/csharp/types.js";
 import { DocsMountConfig, NavItem } from "./models.js";
+import { createTsumoError } from "../diagnostics.js";
 import { splitUrlSuffix } from "./url.js";
 import { replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.js";
 
@@ -346,7 +346,7 @@ export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Map<s
 
   const rel = normalizeSlashes(Path.GetRelativePath(mount.sourceDir, navFile));
   if (rel === "" || rel.startsWith("..")) {
-    throw new Exception(`Mount nav must be inside sourceDir: ${navFile}`);
+    throw createTsumoError("TSUMO_DOCS_NAV_OUTSIDE_MOUNT", `Mount nav must be inside sourceDir: ${navFile}`, navFile);
   }
 
   const parts = rel.split("/");

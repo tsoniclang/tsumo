@@ -6,10 +6,20 @@ import { AccessExpr, Command, Expr, Pipeline, PipelineExpr, TokenExpr } from "..
 class PipelineParser {
   tokens: string[];
   index: int;
+  sourcePath: string | undefined;
+  line: int | undefined;
+  column: int | undefined;
 
-  constructor(tokens: string[]) {
+  constructor(tokens: string[], sourcePath?: string, line?: int, column?: int) {
     this.tokens = tokens;
     this.index = 0;
+    this.sourcePath = sourcePath;
+    this.line = line;
+    this.column = column;
+  }
+
+  error(code: string, message: string): ReturnType<typeof createTsumoError> {
+    return createTsumoError(code, message, this.sourcePath, this.line, this.column);
   }
 
   parse(stopOnRightParen: boolean): Pipeline {
@@ -18,13 +28,13 @@ class PipelineParser {
       const token = this.tokens[this.index]!;
       if (stopOnRightParen && token === ")") break;
       if (token === "|") {
-        throw createTsumoError("TSUMO_TEMPLATE_PIPELINE_EMPTY_STAGE", "Template pipeline contains an empty stage");
+        throw this.error("TSUMO_TEMPLATE_PIPELINE_EMPTY_STAGE", "Template pipeline contains an empty stage");
       }
       stages.push(this.parseCommand());
       if (this.index < this.tokens.length && this.tokens[this.index] === "|") {
         this.index++;
         if (this.index >= this.tokens.length) {
-          throw createTsumoError("TSUMO_TEMPLATE_PIPELINE_EMPTY_STAGE", "Template pipeline ends with an empty stage");
+          throw this.error("TSUMO_TEMPLATE_PIPELINE_EMPTY_STAGE", "Template pipeline ends with an empty stage");
         }
       }
     }
@@ -44,18 +54,18 @@ class PipelineParser {
 
   parseExpression(): Expr {
     if (this.index >= this.tokens.length) {
-      throw createTsumoError("TSUMO_TEMPLATE_EXPRESSION_MISSING", "Template command is missing an expression");
+      throw this.error("TSUMO_TEMPLATE_EXPRESSION_MISSING", "Template command is missing an expression");
     }
     const token = this.tokens[this.index]!;
     if (token === ")") {
-      throw createTsumoError("TSUMO_TEMPLATE_PAREN_UNEXPECTED", "Template expression contains an unexpected ')'");
+      throw this.error("TSUMO_TEMPLATE_PAREN_UNEXPECTED", "Template expression contains an unexpected ')'");
     }
 
     if (token === "(") {
       this.index++;
       const inner = this.parse(true);
       if (this.index >= this.tokens.length || this.tokens[this.index] !== ")") {
-        throw createTsumoError("TSUMO_TEMPLATE_PAREN_UNCLOSED", "Template expression opened with '(' but has no closing ')'");
+        throw this.error("TSUMO_TEMPLATE_PAREN_UNCLOSED", "Template expression opened with '(' but has no closing ')'");
       }
       this.index++;
       let expression: Expr = new PipelineExpr(inner);
@@ -73,12 +83,23 @@ class PipelineParser {
   }
 }
 
-export const parsePipeline = (tokens: string[]): Pipeline => {
+export const parsePipeline = (
+  tokens: string[],
+  sourcePath?: string,
+  line?: int,
+  column?: int,
+): Pipeline => {
   if (tokens.length === 0) return new Pipeline([]);
-  const parser = new PipelineParser(tokens);
+  const parser = new PipelineParser(tokens, sourcePath, line, column);
   const pipeline = parser.parse(false);
   if (parser.index !== tokens.length) {
-    throw createTsumoError("TSUMO_TEMPLATE_TOKEN_UNEXPECTED", `Unexpected template token: ${tokens[parser.index]!}`);
+    throw createTsumoError(
+      "TSUMO_TEMPLATE_TOKEN_UNEXPECTED",
+      `Unexpected template token: ${tokens[parser.index]!}`,
+      sourcePath,
+      line,
+      column,
+    );
   }
   return pipeline;
 };

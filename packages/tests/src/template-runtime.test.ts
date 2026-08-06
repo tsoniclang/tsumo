@@ -6,6 +6,7 @@ import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import {
   DictValue,
   PageContext,
+  parseShortcodes,
   parseTemplate,
   RenderScope,
   SiteConfig,
@@ -47,6 +48,16 @@ const captureDiagnosticCode = (operation: () => void): string => {
     operation();
   } catch (error) {
     if (error instanceof TsumoError) return error.diagnostic.code;
+    throw error;
+  }
+  throw new Exception("Expected a TsumoError diagnostic");
+};
+
+const captureDiagnostic = (operation: () => void): TsumoError => {
+  try {
+    operation();
+  } catch (error) {
+    if (error instanceof TsumoError) return error;
     throw error;
   }
   throw new Exception("Expected a TsumoError diagnostic");
@@ -94,6 +105,43 @@ export class TemplateRuntimeTests {
         parseTemplate("{{ define \"x\" }}a{{ end }}{{ define \"x\" }}b{{ end }}");
       }),
     );
+
+    const located = captureDiagnostic(() => {
+      parseTemplate("first\n{{ if true", "layouts/single.html");
+    }).diagnostic;
+    Assert.Equal("TSUMO_TEMPLATE_ACTION_UNCLOSED", located.code);
+    Assert.Equal("layouts/single.html", located.file);
+    Assert.Equal(2, located.line);
+    Assert.Equal(1, located.column);
+  }
+
+  shortcode_parser_rejects_ambiguous_input_with_exact_locations(): void {
+    const unclosed = captureDiagnostic(() => {
+      parseShortcodes("first\n{{< figure", "content/post.md");
+    }).diagnostic;
+    Assert.Equal("TSUMO_SHORTCODE_ACTION_UNCLOSED", unclosed.code);
+    Assert.Equal("content/post.md", unclosed.file);
+    Assert.Equal(2, unclosed.line);
+    Assert.Equal(1, unclosed.column);
+
+    Assert.Equal(
+      "TSUMO_SHORTCODE_PARAMETER_DUPLICATE",
+      captureDiagnosticCode(() => {
+        parseShortcodes("{{< figure src='one' src='two' >}}", "content/post.md");
+      }),
+    );
+    Assert.Equal(
+      "TSUMO_SHORTCODE_PARAMETER_STYLE_MIXED",
+      captureDiagnosticCode(() => {
+        parseShortcodes("{{< figure 'one' src='two' >}}", "content/post.md");
+      }),
+    );
+
+    const quoted = parseShortcodes("{{< figure caption=\"\" published=\"true\" count=2 >}}", "content/post.md");
+    Assert.Equal(1, quoted.length);
+    Assert.Equal("", quoted[0]!.params.get("caption")?.stringValue);
+    Assert.Equal("true", quoted[0]!.params.get("published")?.stringValue);
+    Assert.Equal(2, quoted[0]!.params.get("count")?.numberValue);
   }
 
   evaluator_reports_exact_unknown_and_invalid_operations(): void {
@@ -146,5 +194,6 @@ attribute<TemplateRuntimeTests>().method((target) => target.parser_and_evaluator
 attribute<TemplateRuntimeTests>().method((target) => target.collection_functions_preserve_exact_split_segments).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.dictionary_range_order_is_deterministic).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.parser_reports_exact_malformed_input_diagnostics).add(FactAttribute);
+attribute<TemplateRuntimeTests>().method((target) => target.shortcode_parser_rejects_ambiguous_input_with_exact_locations).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.evaluator_reports_exact_unknown_and_invalid_operations).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.dictionary_values_are_resolved_without_name_fallbacks).add(FactAttribute);

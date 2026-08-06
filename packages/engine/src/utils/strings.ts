@@ -1,8 +1,9 @@
 import type { int } from "@tsonic/csharp/types.js";
-import { Exception, String as DotnetString } from "@tsonic/dotnet/System.js";
+import { String as DotnetString } from "@tsonic/dotnet/System.js";
+import { createTsumoError } from "../diagnostics.js";
 
 function substringError(): void {
-  throw new Exception("substring bounds are out of range");
+  throw createTsumoError("TSUMO_INTERNAL_STRING_RANGE_INVALID", "Substring bounds are out of range");
 }
 
 const requireSubstringBounds = (source: string, startIndex: int, length: int): void => {

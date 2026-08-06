@@ -38,7 +38,7 @@ export const loadDocsContent = (routes: DocsMarkdownRoute[], buildDrafts: boolea
 
   for (let index = 0; index < routes.length; index++) {
     const route = routes[index]!;
-    const parsed = parseContent(readTextFile(route.sourcePath));
+    const parsed = parseContent(readTextFile(route.sourcePath), route.sourcePath);
     const content = new DocsContentRoute(route, parsed, statSync(route.sourcePath).mtime);
     if (route.isIndex) {
       indexByDirectory.set(route.dirKey, content);

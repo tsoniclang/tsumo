@@ -88,7 +88,7 @@ export const renderMarkdownWithShortcodes = (
   const recursionGuard = new Map<string, boolean>();
 
   // Step 1: Process markdown-notation shortcodes ({{% ... %}}) BEFORE markdown rendering
-  const calls = parseShortcodes(markdown);
+  const calls = parseShortcodes(markdown, page.File?.Filename);
   let textAfterMarkdownShortcodes = markdown;
 
   // Filter markdown-notation shortcodes and process them first
@@ -111,7 +111,7 @@ export const renderMarkdownWithShortcodes = (
     );
   }
 
-  const parsedStandardCalls = parseShortcodes(textAfterMarkdownShortcodes);
+  const parsedStandardCalls = parseShortcodes(textAfterMarkdownShortcodes, page.File?.Filename);
   const standardCalls: ShortcodeCall[] = [];
   for (let i = 0; i < parsedStandardCalls.length; i++) {
     const call = parsedStandardCalls[i]!;

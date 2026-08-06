@@ -1,4 +1,9 @@
 export { TsumoDiagnostic, TsumoError } from "./diagnostics.js";
+export { parseJsonConfig } from "./config/json.js";
+export { loadSiteConfig } from "./config/loader.js";
+export { parseTomlConfig } from "./config/toml.js";
+export { parseYamlConfig } from "./config/yaml.js";
+export { parseContent } from "./frontmatter/parse.js";
 export { ContentPageSource } from "./build/content-model.js";
 export { discoverContent } from "./build/discover-content.js";
 export { configureSiteMenus } from "./build/menu-resolution.js";
@@ -25,6 +30,7 @@ export { SiteContext } from "./models/site-context.js";
 export { FrontMatterMenu } from "./frontmatter/menu.js";
 export { buildMenuHierarchy } from "./menus.js";
 export { ParamValue } from "./params.js";
+export { parseShortcodes } from "./shortcode.js";
 export { parseImageDimensions } from "./resources/image-dimensions.js";
 export { resourceGlobMatches } from "./resources/glob.js";
 export { ResourceManager } from "./resources/manager.js";
@@ -37,6 +43,17 @@ export { parseTemplate } from "./template/parser/parse-template.js";
 export { RenderScope } from "./template/scope.js";
 export { Template } from "./template/template.js";
 export { HtmlString } from "./utils/html.js";
+export { contentTypeForPath } from "./utils/mime.js";
+export { listDirectoriesTopDirectory, listFilesRecursive, listFilesTopDirectory } from "./fs.js";
+export { createWatchSnapshot, watchSnapshotsEqual } from "./watch-snapshot.js";
+export {
+  JsonArray,
+  JsonBool,
+  JsonNumber,
+  JsonObject,
+  JsonString,
+  parseJson,
+} from "./utils/json.js";
 export {
   DictValue,
   StringValue,

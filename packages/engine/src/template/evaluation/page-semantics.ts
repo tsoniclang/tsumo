@@ -1,4 +1,3 @@
-import { Exception } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { int } from "@tsonic/csharp/types.js";
 import { PageContext } from "../../models.js";
@@ -7,6 +6,7 @@ import { toPlainString } from "../runtime-helpers.js";
 import { AnyArrayValue, DictValue, NumberValue, PageArrayValue, PageValue, StringArrayValue, StringValue, TemplateValue, VersionStringValue } from "../values.js";
 import type { RenderScope } from "../scope.js";
 import { parseDateTime } from "./scalar-semantics.js";
+import { createTsumoError } from "../../diagnostics.js";
 
 export const toTitleCase = (text: string): string => {
   const trimmed = text.trim();
@@ -99,7 +99,7 @@ export const sortPagesByTitle = (pages: PageContext[]): PageContext[] => {
  */
 
 export const sortPagesByWeight = (): PageContext[] => {
-  throw new Exception("Page weight sorting is not supported by the current page model");
+  throw createTsumoError("TSUMO_TEMPLATE_PAGE_WEIGHT_UNAVAILABLE", "Page weight sorting is not supported by the current page model");
 };
 
 /**

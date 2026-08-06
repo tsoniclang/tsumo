@@ -1,8 +1,6 @@
-import { dirname, resolve } from "node:path";
-import { Directory, File } from "@tsonic/dotnet/System.IO.js";
+import { resolve } from "node:path";
 import { createTsumoError } from "../diagnostics.js";
 import { pathContainsOrEquals } from "../utils/paths.js";
-import { DocsAssetRoute } from "./routes.js";
 
 export class DocsOutputClaims {
   sourcesByOutputPath: Map<string, string>;
@@ -42,13 +40,4 @@ export const docsOutputPathForPermalink = (permalink: string): string => {
   const trimmed = normalized.startsWith("/") ? normalized.substring(1) : normalized;
   const withoutTrailingSlash = trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length - 1) : trimmed;
   return withoutTrailingSlash === "" ? "index.html" : withoutTrailingSlash + "/index.html";
-};
-
-export const copyDocsAssets = (outputRoot: string, assets: DocsAssetRoute[]): void => {
-  for (let index = 0; index < assets.length; index++) {
-    const asset = assets[index]!;
-    const destination = resolveDocsOutputPath(outputRoot, asset.outputRelPath);
-    Directory.CreateDirectory(dirname(destination));
-    File.Copy(asset.sourcePath, destination, true);
-  }
 };

@@ -1,11 +1,22 @@
 import { attribute } from "@tsonic/core/lang.js";
 
 import { Assert, FactAttribute } from "@tsonic/dotnet/Xunit.js";
+import { Exception } from "@tsonic/dotnet/System.js";
 
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
 
-import { BuildRequest, buildSite, initSite, newContent } from "@tsumo/engine/index.js";
+import { BuildRequest, TsumoError, buildSite, initSite, newContent } from "@tsumo/engine/index.js";
 import { createTestDirectory, deleteTestDirectory } from "./test-root.js";
+
+const captureScaffoldDiagnostic = (operation: () => void): string => {
+  try {
+    operation();
+  } catch (error) {
+    if (error instanceof TsumoError) return error.diagnostic.code;
+    throw error;
+  }
+  throw new Exception("Expected a scaffold diagnostic");
+};
 
 export class ScaffoldAndBuildTests {
   scaffold_then_build(): void {
@@ -75,8 +86,42 @@ export class ScaffoldAndBuildTests {
       deleteTestDirectory(siteDir);
     }
   }
+
+  scaffold_boundaries_fail_closed_with_exact_diagnostics(): void {
+    const root = createTestDirectory("scaffold-boundaries");
+    try {
+      const occupied = Path.Combine(root, "occupied");
+      Directory.CreateDirectory(occupied);
+      File.WriteAllText(Path.Combine(occupied, "keep.txt"), "keep");
+      Assert.Equal(
+        "TSUMO_SCAFFOLD_DESTINATION_NOT_EMPTY",
+        captureScaffoldDiagnostic(() => {
+          initSite(occupied);
+        }),
+      );
+
+      const site = Path.Combine(root, "site");
+      initSite(site);
+      Assert.Equal(
+        "TSUMO_SCAFFOLD_CONTENT_PATH_ESCAPES_ROOT",
+        captureScaffoldDiagnostic(() => {
+          newContent(site, "../outside.md");
+        }),
+      );
+      newContent(site, "posts/exact.md");
+      Assert.Equal(
+        "TSUMO_SCAFFOLD_CONTENT_EXISTS",
+        captureScaffoldDiagnostic(() => {
+          newContent(site, "posts/exact.md");
+        }),
+      );
+    } finally {
+      deleteTestDirectory(root);
+    }
+  }
 }
 
 attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_then_build).add(FactAttribute);
 attribute<ScaffoldAndBuildTests>().method((target) => target.drafts_skipped_by_default).add(FactAttribute);
 attribute<ScaffoldAndBuildTests>().method((target) => target.new_content_then_build).add(FactAttribute);
+attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_boundaries_fail_closed_with_exact_diagnostics).add(FactAttribute);

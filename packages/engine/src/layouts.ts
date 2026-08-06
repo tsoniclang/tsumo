@@ -108,14 +108,9 @@ export class LayoutEnvironment extends TemplateEnvironment {
     if (cached !== undefined) return cached;
 
     const text = readTextFile(resolved);
-    try {
-      const tpl = parseTemplate(text);
-      this.cache.set(resolved, tpl);
-      return tpl;
-    } catch (e) {
-      console.error(`Error parsing template: ${resolved}`);
-      throw e;
-    }
+    const tpl = parseTemplate(text, resolved);
+    this.cache.set(resolved, tpl);
+    return tpl;
   }
 
   getShortcodeTemplate(name: string): Template | undefined {
@@ -147,7 +142,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
     if (resolved === undefined) return undefined;
 
-    const tpl = parseTemplate(readTextFile(resolved));
+    const tpl = parseTemplate(readTextFile(resolved), resolved);
     this.shortcodeCache.set(name, tpl);
     return tpl;
   }
@@ -181,7 +176,7 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
     if (resolved === undefined) return undefined;
 
-    const tpl = parseTemplate(readTextFile(resolved));
+    const tpl = parseTemplate(readTextFile(resolved), resolved);
     this.renderHookCache.set(hookName, tpl);
     return tpl;
   }

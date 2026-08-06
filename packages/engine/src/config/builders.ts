@@ -53,12 +53,12 @@ export class LanguageConfigBuilder {
   contentDir: string;
   weight: int;
 
-  constructor(lang: string) {
+  constructor(lang: string, source?: LanguageConfig) {
     this.lang = lang;
-    this.languageName = lang;
-    this.languageDirection = "ltr";
-    this.contentDir = `content.${lang}`;
-    this.weight = 0;
+    this.languageName = source?.languageName ?? lang;
+    this.languageDirection = source?.languageDirection ?? "ltr";
+    this.contentDir = source?.contentDir ?? `content.${lang}`;
+    this.weight = source?.weight ?? 0;
   }
 
   toConfig(): LanguageConfig {

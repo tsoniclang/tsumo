@@ -3,8 +3,8 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileExists, readTextFile, writeTextFile } from "../fs.js";
 import { replaceText, substringCount } from "../utils/strings.js";
 import { humanizeSlug, slugify } from "../utils/text.js";
-import { Exception } from "@tsonic/dotnet/System.js";
 import { pathContainsOrEquals } from "../utils/paths.js";
+import { createTsumoError } from "../diagnostics.js";
 
 const defaultArchetype = (): string => `---
 title: "{{ .Title }}"
@@ -24,15 +24,15 @@ export const newContent = (siteDir: string, contentPathRaw: string, creationTime
 
   const rel = replaceText(contentPathRaw.trim(), "\\", "/");
   if (rel === "" || isAbsolute(rel)) {
-    throw new Exception(`Content path must be relative to the site's content directory: ${contentPathRaw}`);
+    throw createTsumoError("TSUMO_SCAFFOLD_CONTENT_PATH_INVALID", `Content path must be relative to the site's content directory: ${contentPathRaw}`);
   }
   const withExt = rel.toLowerCase().endsWith(".md") ? rel : rel + ".md";
   const dest = resolve(contentDir, withExt);
   if (!pathContainsOrEquals(contentDir, dest) || dest === contentDir) {
-    throw new Exception(`Content path escapes the site's content directory: ${contentPathRaw}`);
+    throw createTsumoError("TSUMO_SCAFFOLD_CONTENT_PATH_ESCAPES_ROOT", `Content path escapes the site's content directory: ${contentPathRaw}`, dest);
   }
 
-  if (fileExists(dest)) throw new Exception(`File already exists: ${dest}`);
+  if (fileExists(dest)) throw createTsumoError("TSUMO_SCAFFOLD_CONTENT_EXISTS", `File already exists: ${dest}`, dest);
 
   const archetypePath = join(dir, "archetypes", "default.md");
   const template = fileExists(archetypePath) ? readTextFile(archetypePath) : defaultArchetype();

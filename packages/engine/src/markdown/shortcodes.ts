@@ -1,5 +1,5 @@
 import type { int } from "@tsonic/csharp/types.js";
-import { Exception } from "@tsonic/dotnet/System.js";
+import { createTsumoError } from "../diagnostics.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
 import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
 import type { TemplateEnvironment } from "../template/environment.js";
@@ -34,14 +34,14 @@ export const renderShortcode = (
 ): string => {
   const template = env.getShortcodeTemplate(call.name);
   if (template === undefined) {
-    throw new Exception(`Shortcode template not found: ${call.name}`);
+    throw createTsumoError("TSUMO_SHORTCODE_TEMPLATE_MISSING", `Shortcode template not found: ${call.name}`, call.sourcePath ?? page.File?.Filename, call.line, call.column);
   }
 
   // Check recursion guard
   const guardKey = call.name;
   const isRecursing = recursionGuard.get(guardKey);
   if (isRecursing !== undefined && isRecursing) {
-    throw new Exception(`Shortcode recursion detected: ${call.name}`);
+    throw createTsumoError("TSUMO_SHORTCODE_RECURSION", `Shortcode recursion detected: ${call.name}`, call.sourcePath ?? page.File?.Filename, call.line, call.column);
   }
 
   recursionGuard.set(guardKey, true);
@@ -84,7 +84,7 @@ export const processShortcodes = (
   parent: ShortcodeContext | undefined,
   recursionGuard: Map<string, boolean>,
 ): string => {
-  const calls = parseShortcodes(text);
+  const calls = parseShortcodes(text, page.File?.Filename);
   if (calls.length === 0) return text;
 
   return processShortcodeCalls(text, calls, page, site, env, ordinalTracker, parent, recursionGuard);

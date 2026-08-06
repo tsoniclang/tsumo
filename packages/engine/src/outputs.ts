@@ -16,8 +16,8 @@ const escapeXml = (value: string): string => escapeHtml(value);
 const wrapCdata = (raw: string): string => "<![CDATA[" + replaceText(raw, "]]>", "]]]]><![CDATA[>") + "]]>";
 
 const parsePageDate = (value: string, fallback: Date): Date => {
-  const parsed = new Date(Date.parse(value));
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  const milliseconds = Date.parse(value);
+  return Number.isNaN(milliseconds) ? fallback : new Date(milliseconds);
 };
 
 export const renderRss = (config: SiteConfig, pages: PageContext[], buildTime: Date): string => {

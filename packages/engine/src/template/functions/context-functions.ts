@@ -1,9 +1,9 @@
 import { Buffer } from "node:buffer";
-import { readFileSync } from "node:fs";
-import { Environment, Exception } from "@tsonic/dotnet/System.js";
-import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { Environment } from "@tsonic/dotnet/System.js";
+import { File, Path } from "@tsonic/dotnet/System.IO.js";
 import type { int } from "@tsonic/csharp/types.js";
 import { HtmlString } from "../../utils/html.js";
+import { listFilesRecursive, readBinaryFile } from "../../fs.js";
 import { replaceText, substringCount, substringFrom } from "../../utils/strings.js";
 import { renderMarkdownWithShortcodes } from "../../markdown.js";
 import { ParamKind } from "../../params.js";
@@ -56,11 +56,7 @@ export const callContextFunction = (
     const mapName = toPlainString(args[0]!);
     const key = toPlainString(args[1]!);
     const value = args[2]!;
-    try {
-      store.setInMap(mapName, key, value);
-    } catch (e) {
-      throw new Exception(`site.Store.SetInMap failed (map=${mapName}, key=${key}): ${e}`);
-    }
+    store.setInMap(mapName, key, value);
     return nil;
   }
   if (name === "site.store.deleteinmap" && args.length >= 2) {
@@ -145,7 +141,7 @@ export const callContextFunction = (
         const candidate = Path.GetFullPath(Path.Combine(pageDirFull, osRel));
         if (!candidate.startsWith(pagePrefix) || !File.Exists(candidate)) return nil;
 
-        const bytes = readFileSync(candidate);
+        const bytes = readBinaryFile(candidate);
         const ext = (Path.GetExtension(candidate) ?? "").toLowerCase();
         const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".svg" || ext === ".html" || ext === ".txt";
         const text = isText ? bytes.toString("utf8") : undefined;
@@ -166,13 +162,13 @@ export const callContextFunction = (
         const pageDir = Path.GetDirectoryName(pageFile.Filename);
         if (pageDir === undefined || pageDir.trim() === "") return nil;
 
-        const files = Directory.GetFiles(pageDir, "*", SearchOption.AllDirectories);
+        const files = listFilesRecursive(pageDir, "*");
         for (let i = 0; i < files.length; i++) {
           const filePath = files[i]!;
           const rel = filePath.length > 0 ? replaceText(Path.GetRelativePath(pageDir, filePath), "\\", "/") : "";
           if (rel === "" || !globMatch(pattern, rel)) continue;
 
-          const bytes = readFileSync(filePath);
+          const bytes = readBinaryFile(filePath);
           const ext = (Path.GetExtension(filePath) ?? "").toLowerCase();
           const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".svg" || ext === ".html" || ext === ".txt";
           const text = isText ? bytes.toString("utf8") : undefined;

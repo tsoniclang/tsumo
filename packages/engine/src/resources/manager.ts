@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { writeFileSync } from "node:fs";
+import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
 import type { int } from "@tsonic/csharp/types.js";
 import { createTsumoError } from "../diagnostics.js";
+import { listFilesRecursive, readBinaryFile } from "../fs.js";
 import { compareText } from "../utils/strings.js";
 import { parseImageDimensions } from "./image-dimensions.js";
 import { resizeImageResource } from "./image-provider.js";
@@ -74,14 +75,10 @@ export class ResourceManager {
     this.siteAssetsDir = Path.Combine(siteDir, "assets");
     this.themeAssetsDir = themeDir === undefined ? undefined : Path.Combine(themeDir, "assets");
     this.cache = new Map<string, Resource>();
-    this.siteAssetFiles = Directory.Exists(this.siteAssetsDir)
-      ? Array.from(Directory.GetFiles(this.siteAssetsDir, "*", SearchOption.AllDirectories))
-      : [];
+    this.siteAssetFiles = listFilesRecursive(this.siteAssetsDir, "*");
     sortResourcePaths(this.siteAssetFiles);
     const themeAssetsDir = this.themeAssetsDir;
-    this.themeAssetFiles = themeAssetsDir !== undefined && Directory.Exists(themeAssetsDir)
-      ? Array.from(Directory.GetFiles(themeAssetsDir, "*", SearchOption.AllDirectories))
-      : [];
+    this.themeAssetFiles = themeAssetsDir === undefined ? [] : listFilesRecursive(themeAssetsDir, "*");
     sortResourcePaths(this.themeAssetFiles);
   }
 
@@ -106,7 +103,7 @@ export class ResourceManager {
 
     const fullPath = this.resolveAssetFullPath(normalized);
     if (fullPath === undefined) return undefined;
-    const bytes = readFileSync(fullPath);
+    const bytes = readBinaryFile(fullPath);
     const extension = (Path.GetExtension(fullPath) ?? "").toLowerCase();
     const mediaType = resourceMediaTypeForExtension(extension);
     const text = isTextResourceMediaType(mediaType) ? bytes.toString("utf8") : undefined;

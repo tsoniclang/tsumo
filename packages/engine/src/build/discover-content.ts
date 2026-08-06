@@ -1,8 +1,8 @@
 import { statSync } from "node:fs";
-import { Directory, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { Path } from "@tsonic/dotnet/System.IO.js";
 import { createTsumoError } from "../diagnostics.js";
 import { parseContent } from "../frontmatter.js";
-import { readTextFile } from "../fs.js";
+import { listFilesRecursive, readTextFile } from "../fs.js";
 import { PageFile } from "../models.js";
 import { humanizeSlug, slugify } from "../utils/text.js";
 import { compareText } from "../utils/strings.js";
@@ -50,8 +50,7 @@ export const discoverContent = (
   contentDir: string,
   buildDrafts: boolean,
 ): ContentInventory => {
-  if (!Directory.Exists(contentDir)) return new ContentInventory([], new Map<string, ListPageSource>());
-  const files = Array.from(Directory.GetFiles(contentDir, "*.md", SearchOption.AllDirectories));
+  const files = listFilesRecursive(contentDir, "*.md");
   files.sort((left: string, right: string) => compareSitePaths(left, right));
 
   const pages: ContentPageSource[] = [];
@@ -77,7 +76,7 @@ export const discoverContent = (
     for (let index = 0; index < pathSegments.length - 1; index++) directorySegments.push(pathSegments[index]!);
     const directory = joinSitePath(directorySegments);
 
-    const parsed = parseContent(readTextFile(filePath));
+    const parsed = parseContent(readTextFile(filePath), filePath);
     const frontMatter = parsed.frontMatter;
     const modifiedAt = new Date(statSync(filePath).mtimeMs);
     const file = createPageFile(directory, fileName, filePath);

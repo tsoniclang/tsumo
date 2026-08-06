@@ -1,17 +1,18 @@
 import { readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { ensureDir, dirExists, writeTextFile } from "../fs.js";
+import { ensureDir, dirExists, rejectFilesystemLink, writeTextFile } from "../fs.js";
 import { humanizeSlug } from "../utils/text.js";
-import { Exception } from "@tsonic/dotnet/System.js";
+import { createTsumoError } from "../diagnostics.js";
 
 const ensureEmptyDir = (path: string): void => {
   if (!dirExists(path)) {
     ensureDir(path);
     return;
   }
+  rejectFilesystemLink(path);
 
   if (readdirSync(path).length > 0) {
-    throw new Exception(`Directory not empty: ${path}`);
+    throw createTsumoError("TSUMO_SCAFFOLD_DESTINATION_NOT_EMPTY", `Directory not empty: ${path}`, path);
   }
 };
 

@@ -1,5 +1,5 @@
-import { Directory, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
-import { fileExists, readTextFile } from "./fs.js";
+import { Path } from "@tsonic/dotnet/System.IO.js";
+import { listFilesTopDirectory, readTextFile } from "./fs.js";
 import { indexOfText, replaceLineEndings, substringCount, substringFrom } from "./utils/strings.js";
 
 export class I18nStore {
@@ -10,9 +10,7 @@ export class I18nStore {
   }
 
   loadFromDir(dir: string): void {
-    if (!Directory.Exists(dir)) return;
-
-    const files = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly);
+    const files = listFilesTopDirectory(dir, "*");
     for (let i = 0; i < files.length; i++) {
       const file = files[i]!;
       const ext = (Path.GetExtension(file) ?? "").toLowerCase();
