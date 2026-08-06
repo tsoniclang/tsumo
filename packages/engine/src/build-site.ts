@@ -1,333 +1,24 @@
-import { statSync } from "node:fs";
-import { DateTime } from "@tsonic/dotnet/System.js";
-import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
-import type { char, int } from "@tsonic/csharp/types.js";
-import { BuildRequest, BuildResult, LanguageContext, MenuEntry, PageContext, PageFile, SiteContext, SiteConfig } from "./models.js";
+import { File, Path } from "@tsonic/dotnet/System.IO.js";
+import type { int } from "@tsonic/csharp/types.js";
+import { BuildRequest, BuildResult, LanguageContext, PageContext, PageFile, SiteContext } from "./models.js";
 import { ParamValue } from "./params.js";
 import { renderRobotsTxt, renderRss, renderSitemap } from "./outputs.js";
 import { loadSiteConfig } from "./config.js";
 import { loadDocsConfig } from "./docs/config.js";
-import { parseContent, FrontMatterMenu } from "./frontmatter.js";
-import { copyDirRecursive, ensureDir, fileExists, readTextFile, writeTextFile } from "./fs.js";
+import { copyDirRecursive, ensureDir, writeTextFile } from "./fs.js";
 import { BuildEnvironment } from "./env.js";
 import { renderMarkdownWithShortcodes } from "./markdown.js";
 import { HtmlString } from "./utils/html.js";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.js";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.js";
 import { buildDocsSite } from "./docs/builder.js";
-import { buildMenuHierarchy, flattenMenuEntries } from "./menus.js";
-import { replaceText, substringCount, trimEndChar, trimStartChar } from "./utils/strings.js";
+import { replaceText } from "./utils/strings.js";
 import { beginOutputPublication } from "./output-publication.js";
-
-class ContentPageBuild {
-  sourcePath: string;
-  section: string;
-  type: string;
-  slug: string;
-  title: string;
-  dateUtc: Date;
-  dateString: string;
-  lastmodString: string;
-  draft: boolean;
-  description: string;
-  tags: string[];
-  categories: string[];
-  Params: Map<string, ParamValue>;
-  rawBody: string;
-  relPermalink: string;
-  outputRelPath: string;
-  layout: string | undefined;
-  file: PageFile;
-  menus: FrontMatterMenu[];
-
-  constructor(
-    sourcePath: string,
-    section: string,
-    type: string,
-    slug: string,
-    title: string,
-    dateUtc: Date,
-    dateString: string,
-    lastmodString: string,
-    draft: boolean,
-    description: string,
-    tags: string[],
-    categories: string[],
-    parameters: Map<string, ParamValue>,
-    rawBody: string,
-    relPermalink: string,
-    outputRelPath: string,
-    layout: string | undefined,
-    file: PageFile,
-    menus: FrontMatterMenu[],
-  ) {
-    this.sourcePath = sourcePath;
-    this.section = section;
-    this.type = type;
-    this.slug = slug;
-    this.title = title;
-    this.dateUtc = dateUtc;
-    this.dateString = dateString;
-    this.lastmodString = lastmodString;
-    this.draft = draft;
-    this.description = description;
-    this.tags = tags;
-    this.categories = categories;
-    this.Params = parameters;
-    this.rawBody = rawBody;
-    this.relPermalink = relPermalink;
-    this.outputRelPath = outputRelPath;
-    this.layout = layout;
-    this.file = file;
-    this.menus = menus;
-  }
-}
-
-class ListPageContent {
-  title: string | undefined;
-  rawBody: string;
-  description: string;
-  type: string | undefined;
-  layout: string | undefined;
-  Params: Map<string, ParamValue>;
-  sourceDir: string;
-  file: PageFile | undefined;
-
-  constructor(
-    title: string | undefined,
-    rawBody: string,
-    description: string,
-    type: string | undefined,
-    layout: string | undefined,
-    parameters: Map<string, ParamValue>,
-    sourceDir: string,
-    file?: PageFile,
-  ) {
-    this.title = title;
-    this.rawBody = rawBody;
-    this.description = description;
-    this.type = type;
-    this.layout = layout;
-    this.Params = parameters;
-    this.sourceDir = sourceDir;
-    this.file = file;
-  }
-}
-
-const normalizeSlashes = (path: string): string => path.replaceAll("\\", "/");
-
-const splitPath = (relativePath: string): string[] => normalizeSlashes(relativePath).split("/");
-
-const isBranchIndexFile = (name: string): boolean => name.toLowerCase() === "_index.md";
-
-const isLeafBundleIndexFile = (name: string): boolean => name.toLowerCase() === "index.md";
-
-const withoutMdExtension = (fileName: string): string => {
-  const lower = fileName.toLowerCase();
-  return lower.endsWith(".md") ? substringCount(fileName, 0, fileName.length - 3) : fileName;
-};
-
-const buildPageFile = (dirKey: string, fileName: string, filePath: string): PageFile => {
-  const slash = "/";
-  const dir = dirKey === "" ? "" : trimEndChar(dirKey, slash) + "/";
-  return new PageFile(Path.GetFullPath(filePath), dir, withoutMdExtension(fileName));
-};
-
-const joinUrlPath = (parts: string[]): string => {
-  if (parts.length === 0) return "";
-  let out = parts[0]!;
-  for (let i = 1; i < parts.length; i++) out += "/" + parts[i]!;
-  return out;
-};
-
-const containsSlash = (s: string): boolean => {
-  const idx = s.indexOf("/");
-  return idx >= 0;
-};
-
-const compareDatesDescending = (left: Date, right: Date): int => {
-  const leftMs = left.getTime();
-  const rightMs = right.getTime();
-  if (rightMs > leftMs) return 1 as int;
-  if (rightMs < leftMs) return -1 as int;
-  return 0 as int;
-};
-
-const combineOutputRelPath = (urlParts: string[]): string => {
-  if (urlParts.length === 0) return "index.html";
-  let p = urlParts[0]!;
-  for (let i = 1; i < urlParts.length; i++) {
-    p = Path.Combine(p, urlParts[i]!);
-  }
-  return Path.Combine(p, "index.html");
-};
-
-const isBundleDir = (dir: string): boolean => File.Exists(Path.Combine(dir, "index.md")) || File.Exists(Path.Combine(dir, "_index.md"));
-
-const copyBundleResources = (srcDir: string, destDir: string): void => {
-  if (!Directory.Exists(srcDir)) return;
-  Directory.CreateDirectory(destDir);
-
-  const files = Directory.GetFiles(srcDir, "*", SearchOption.TopDirectoryOnly);
-  for (let i = 0; i < files.length; i++) {
-    const srcFile = files[i]!;
-    if (srcFile.toLowerCase().endsWith(".md")) continue;
-    const destFile = Path.Combine(destDir, Path.GetFileName(srcFile) ?? "");
-    File.Copy(srcFile, destFile, true);
-  }
-
-  const dirs = Directory.GetDirectories(srcDir, "*", SearchOption.TopDirectoryOnly);
-  for (let i = 0; i < dirs.length; i++) {
-    const child = dirs[i]!;
-    if (isBundleDir(child)) continue;
-    if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).length > 0) continue;
-    const childName = Path.GetFileName(child);
-    if (childName === undefined || childName === "") continue;
-    copyBundleResources(child, Path.Combine(destDir, childName));
-  }
-};
-
-// Find a page by its path reference
-const findPageByRef = (pages: PageContext[], pageRef: string): PageContext | undefined => {
-  const slash = "/";
-  const normalizedRef = trimEndChar(trimStartChar(pageRef.trim(), slash), slash).toLowerCase();
-  if (normalizedRef === "") return undefined;
-
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i]!;
-    const normalizedPermalink = trimEndChar(trimStartChar(page.relPermalink, slash), slash).toLowerCase();
-    if (normalizedPermalink === normalizedRef) return page;
-  }
-
-  // Also try matching by section/slug pattern
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i]!;
-    // Check if pageRef matches the slug
-    if (page.slug.toLowerCase() === normalizedRef) return page;
-    // Check section/slug pattern
-    const sectionSlug = (page.section + "/" + page.slug).toLowerCase();
-    if (sectionSlug === normalizedRef) return page;
-  }
-
-  return undefined;
-};
-
-// Resolve pageRef for a menu entry and its children recursively
-const resolveMenuEntryPageRef = (entry: MenuEntry, pages: PageContext[]): void => {
-  if (entry.pageRef !== "" && entry.page === undefined) {
-    const resolved = findPageByRef(pages, entry.pageRef);
-    if (resolved !== undefined) {
-      entry.page = resolved;
-    }
-  }
-  // Resolve children recursively
-  for (let i = 0; i < entry.children.length; i++) {
-    resolveMenuEntryPageRef(entry.children[i]!, pages);
-  }
-};
-
-// Resolve pageRefs for all menu entries in a site
-const resolveMenuPageRefs = (site: SiteContext): void => {
-  const pages = site.pages;
-  const menus = site.Menus;
-  for (const entries of menus.values()) {
-    for (let i = 0; i < entries.length; i++) {
-      resolveMenuEntryPageRef(entries[i]!, pages);
-    }
-  }
-};
-
-// Menu helpers imported from menus.ts
-
-const integrateFrontmatterMenus = (
-  pageBuilds: ContentPageBuild[],
-  site: SiteContext,
-): void => {
-  // Build a dictionary of pages keyed by lowercase filename for safe lookup
-  const pagesByFilename = new Map<string, PageContext>();
-  const allPages = site.pages;
-  for (let i = 0; i < allPages.length; i++) {
-    const page = allPages[i]!;
-    const pageFile = page.File;
-    if (pageFile !== undefined) {
-      const key = pageFile.Filename.toLowerCase();
-      pagesByFilename.set(key, page);
-    }
-  }
-
-  // Collect all frontmatter menu entries per menu name
-  const frontmatterEntriesPerMenu = new Map<string, MenuEntry[]>();
-
-  for (let i = 0; i < pageBuilds.length; i++) {
-    const pageBuild = pageBuilds[i]!;
-    if (pageBuild.menus.length === 0) continue;
-
-    // Look up the page context by filename
-    const filenameKey = pageBuild.file.Filename.toLowerCase();
-    const pageContext = pagesByFilename.get(filenameKey);
-    if (pageContext === undefined) continue;
-
-    for (let j = 0; j < pageBuild.menus.length; j++) {
-      const fmMenu = pageBuild.menus[j]!;
-      const menuName = fmMenu.menu;
-
-      // Create MenuEntry from frontmatter menu with page reference
-      const entry = new MenuEntry(
-        fmMenu.name !== "" ? fmMenu.name : pageContext.title,
-        "", // url is empty - will use page's relPermalink
-        "", // pageRef is empty - we have the page directly
-        fmMenu.title,
-        fmMenu.weight,
-        fmMenu.parent,
-        fmMenu.identifier !== "" ? fmMenu.identifier : pageContext.relPermalink,
-        fmMenu.pre,
-        fmMenu.post,
-        menuName,
-      );
-      entry.page = pageContext;
-
-      // Add to collection for this menu
-      const entryList = frontmatterEntriesPerMenu.get(menuName) ?? [];
-      entryList.push(entry);
-      frontmatterEntriesPerMenu.set(menuName, entryList);
-    }
-  }
-
-  // For each menu with frontmatter entries, merge with existing config entries and rebuild hierarchy
-  const menuNames = Array.from(frontmatterEntriesPerMenu.keys());
-  for (let i = 0; i < menuNames.length; i++) {
-    const menuName = menuNames[i]!;
-
-    // Get existing menu entries (may already have hierarchy from config)
-    const existingEntries = site.Menus.get(menuName);
-
-    // Flatten existing entries to break apart any hierarchy
-    let flatExisting: MenuEntry[] = [];
-    if (existingEntries !== undefined) {
-      flatExisting = flattenMenuEntries(existingEntries);
-    }
-
-    // Get frontmatter entries for this menu
-    const fmEntries = frontmatterEntriesPerMenu.get(menuName) ?? [];
-
-    // Combine all entries into a flat list
-    const combined: MenuEntry[] = [];
-    for (let j = 0; j < flatExisting.length; j++) {
-      const entry = flatExisting[j]!;
-      combined.push(entry);
-    }
-    for (let j = 0; j < fmEntries.length; j++) {
-      const entry = fmEntries[j]!;
-      combined.push(entry);
-    }
-
-    // Rebuild hierarchy from combined flat list (order-independent)
-    const hierarchical = buildMenuHierarchy(combined);
-
-    // Update the site's menu
-    site.Menus.set(menuName, hierarchical);
-  }
-};
+import { copyBundleResources } from "./build/bundle-resources.js";
+import { ContentPageSource } from "./build/content-model.js";
+import { discoverContent } from "./build/discover-content.js";
+import { configureSiteMenus } from "./build/menu-resolution.js";
+import { siteOutputPath, sitePathIsNested, splitSitePath } from "./build/site-routes.js";
 
 const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: string): int => {
   const loaded = loadSiteConfig(siteDir);
@@ -350,90 +41,9 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
   copyDirRecursive(staticDir, outDir);
 
   const contentDir = Path.Combine(siteDir, config.contentDir);
-  const emptyFiles: string[] = [];
-  const mdFiles: string[] = Directory.Exists(contentDir)
-    ? Array.from(Directory.GetFiles(contentDir, "*.md", SearchOption.AllDirectories))
-    : emptyFiles;
-
-  const pages: ContentPageBuild[] = [];
-  const listIndex = new Map<string, ListPageContent>();
-
-  for (let i = 0; i < mdFiles.length; i++) {
-    const filePath = mdFiles[i]!;
-    const rel = normalizeSlashes(Path.GetRelativePath(contentDir, filePath));
-    const parts = splitPath(rel);
-    const fileName = parts.length > 0 ? parts[parts.length - 1]! : rel;
-
-    const dirParts: string[] = [];
-    for (let j = 0; j < parts.length - 1; j++) dirParts.push(parts[j]!);
-    const dirRel = joinUrlPath(dirParts);
-
-    const parsed = parseContent(readTextFile(filePath));
-    const fm = parsed.frontMatter;
-
-    const lastModifiedAt = new Date(statSync(filePath).mtimeMs);
-    const dateUtc = fm.date ?? lastModifiedAt;
-    const dateString = dateUtc.toISOString();
-    const lastmodString = lastModifiedAt.toISOString();
-
-    const pageParams = fm.Params;
-    const file = buildPageFile(dirRel, fileName, filePath);
-
-    if (isBranchIndexFile(fileName)) {
-      const srcDir = Path.GetDirectoryName(filePath) ?? contentDir;
-      listIndex.set(dirRel, new ListPageContent(fm.title, parsed.body, fm.description ?? "", fm.type, fm.layout, pageParams, srcDir, file));
-      continue;
-    }
-
-    const section = dirParts.length > 0 ? dirParts[0]! : "";
-    let pageType = fm.type;
-    if (pageType === undefined || pageType.trim() === "") {
-      pageType = section !== "" ? section : "page";
-    }
-
-    const isLeafBundle = isLeafBundleIndexFile(fileName) && dirParts.length > 0;
-    const defaultLeafName = isLeafBundle ? dirParts[dirParts.length - 1]! : withoutMdExtension(fileName);
-    const title = fm.title ?? humanizeSlug(defaultLeafName);
-
-    const slug = fm.slug ?? slugify(defaultLeafName);
-    const urlParts: string[] = [];
-    if (isLeafBundle === true) {
-      for (let j = 0; j < dirParts.length - 1; j++) urlParts.push(dirParts[j]!);
-      urlParts.push(slug);
-    } else {
-      for (let j = 0; j < dirParts.length; j++) urlParts.push(dirParts[j]!);
-      urlParts.push(slug);
-    }
-
-    const relPermalink = combineUrl(urlParts);
-    const outputRelPath = combineOutputRelPath(urlParts);
-
-    const page = new ContentPageBuild(
-      filePath,
-      section,
-      pageType,
-      slug,
-      title,
-      dateUtc,
-      dateString,
-      lastmodString,
-      fm.draft,
-      fm.description ?? "",
-      fm.tags,
-      fm.categories,
-      pageParams,
-      parsed.body,
-      relPermalink,
-      outputRelPath,
-      fm.layout,
-      file,
-      fm.menus,
-    );
-
-    if (!page.draft || request.buildDrafts) pages.push(page);
-  }
-
-  pages.sort((a: ContentPageBuild, b: ContentPageBuild) => compareDatesDescending(a.dateUtc, b.dateUtc));
+  const content = discoverContent(contentDir, request.buildDrafts);
+  const pages = content.pages;
+  const listIndex = content.listPagesByRoute;
 
   const emptyPages: PageContext[] = [];
   const emptyTranslations: PageContext[] = [];
@@ -481,7 +91,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       p.description,
       p.tags,
       p.categories,
-      p.Params,
+      p.parameters,
       p.file,
       site.Language,
       emptyTranslations,
@@ -506,11 +116,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
   const pageContextArr = pageContexts;
   site.pages = pageContextArr;
 
-  // Integrate frontmatter menus into site.Menus
-  integrateFrontmatterMenus(pageBuilds, site);
-
-  // Resolve pageRef for menu entries
-  resolveMenuPageRefs(site);
+  configureSiteMenus(pageBuilds, pageContextArr, site);
 
   const baseCandidates = ["_default/baseof.html", "baseof.html"];
 
@@ -543,7 +149,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
     homeDescription = homeIdxValue.description;
     homeType = homeIdxValue.type ?? "home";
     homeLayout = homeIdxValue.layout;
-    homeParams = homeIdxValue.Params;
+    homeParams = homeIdxValue.parameters;
     homeFile = homeIdxValue.file;
     homeSourceDir = homeIdxValue.sourceDir;
   }
@@ -600,7 +206,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
     }
   }
   for (const listKey of listIndex.keys()) {
-    const hasSlash = containsSlash(listKey);
+    const hasSlash = sitePathIsNested(listKey);
     if (listKey === "" || hasSlash) continue;
     sectionKeySet.set(listKey, true);
   }
@@ -632,7 +238,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       description = idxValue.description;
       listType = idxValue.type ?? section;
       layout = idxValue.layout;
-      listParams = idxValue.Params;
+      listParams = idxValue.parameters;
       file = idxValue.file;
       listSourceDir = idxValue.sourceDir;
     }
@@ -687,13 +293,13 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
 
   const nestedListDirs: string[] = [];
   for (const nestedDirKey of listIndex.keys()) {
-    const hasSlash = containsSlash(nestedDirKey);
+    const hasSlash = sitePathIsNested(nestedDirKey);
     if (nestedDirKey === "" || !hasSlash) continue;
     nestedListDirs.push(nestedDirKey);
   }
   for (let i = 0; i < nestedListDirs.length; i++) {
     const dirKey = nestedListDirs[i]!;
-    const urlPrefix = combineUrl(splitPath(dirKey));
+    const urlPrefix = combineUrl(splitSitePath(dirKey));
 
     const listPages: PageContext[] = [];
     for (let j = 0; j < pageContextArr.length; j++) {
@@ -701,7 +307,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       if (p.relPermalink.startsWith(urlPrefix)) listPages.push(p);
     }
 
-    const dirParts = splitPath(dirKey);
+    const dirParts = splitSitePath(dirKey);
     const leaf = dirParts.length > 0 ? dirParts[dirParts.length - 1]! : dirKey;
     const section = dirParts.length > 0 ? dirParts[0]! : "";
 
@@ -722,7 +328,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       description = idxValue.description;
       listType = idxValue.type ?? listType;
       layout = idxValue.layout;
-      listParams = idxValue.Params;
+      listParams = idxValue.parameters;
       file = idxValue.file;
       listSourceDir = idxValue.sourceDir;
     }
@@ -765,7 +371,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       ctx.plain = md.plainText;
     }
 
-    const outRel = combineOutputRelPath(dirParts);
+    const outRel = siteOutputPath(dirParts);
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
     const basePath = selectTemplate(env, [`${listType}/baseof.html`, `${section}/baseof.html`, "_default/baseof.html"]) ?? baseTpl;
     const html = renderWithBase(env, basePath, mainPath, ctx);
@@ -954,7 +560,7 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
     sitemapUrlSet.set(ctx.relPermalink, true);
 
     const sourceDir = Path.GetDirectoryName(p.sourcePath);
-    if (isLeafBundleIndexFile(Path.GetFileName(p.sourcePath) ?? "") && sourceDir !== undefined && sourceDir !== "") {
+    if (p.leafBundle && sourceDir !== undefined && sourceDir !== "") {
       const destDir = Path.GetDirectoryName(Path.Combine(outDir, p.outputRelPath));
       if (destDir !== undefined && destDir !== "") {
         copyBundleResources(sourceDir, destDir);
