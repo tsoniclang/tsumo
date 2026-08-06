@@ -1,12 +1,15 @@
-import { Dictionary } from "@tsonic/dotnet/System.Collections.Generic.js";
-import type { char } from "@tsonic/core/types.js";
-import { isAbsolute, join, sep } from "@tsonic/nodejs/path.js";
-import { dirExists, fileExists, readTextFile } from "./fs.ts";
-import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.ts";
-import type { ResourceManager } from "./resources.ts";
-import { I18nStore } from "./i18n.ts";
-import { ModuleMount } from "./models.ts";
-import { replaceText, trimStartChar } from "./utils/strings.ts";
+import type { char } from "@tsonic/csharp/types.js";
+import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
+import { isAbsolute, join, sep } from "node:path";
+import { dirExists, fileExists, readTextFile } from "./fs.js";
+import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.js";
+import type { ResourceManager } from "./resources.js";
+import { I18nStore } from "./i18n.js";
+import { ModuleMount } from "./models.js";
+import type { SiteContext } from "./models.js";
+import { replaceText, trimStartChar } from "./utils/strings.js";
+import { RenderScope } from "./template/scope.js";
+import type { TemplateValue } from "./template/values.js";
 
 export class LayoutEnvironment extends TemplateEnvironment {
   siteLayoutsDir: string;
@@ -17,8 +20,10 @@ export class LayoutEnvironment extends TemplateEnvironment {
   renderHookCache: Map<string, Template>;
   i18nStore: I18nStore;
 
-  constructor(siteDir: string, themeDir: string | undefined, mounts?: ModuleMount[]) {
+  constructor(siteDir: string, themeDirRaw: string | undefined, mountsRaw?: ModuleMount[]) {
     super();
+    const themeDir = themeDirRaw;
+    const mounts = mountsRaw;
     this.siteLayoutsDir = join(siteDir, "layouts");
     this.themeLayoutsDir = themeDir !== undefined ? join(themeDir, "layouts") : undefined;
     this.mountedLayoutDirs = [];
@@ -49,19 +54,41 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
   }
 
-  override getResourceManager(): ResourceManager | undefined {
+  getResourceManager(): ResourceManager | undefined {
     return undefined;
   }
 
-  override getTemplate(relPathRaw: string): Template | undefined {
+  renderTemplateSource(
+    source: string,
+    context: TemplateValue,
+    site: SiteContext,
+    overrides: Map<string, TemplateNode[]>,
+  ): string {
+    return this.renderTemplate(parseTemplate(source), context, site, overrides);
+  }
+
+  renderTemplate(
+    template: Template,
+    context: TemplateValue,
+    site: SiteContext,
+    overrides: Map<string, TemplateNode[]>,
+  ): string {
+    const output = new StringBuilder();
+    const scope = new RenderScope(context, context, site, this, undefined);
+    template.renderInto(output, scope, this, overrides);
+    return output.ToString();
+  }
+
+  getTemplate(relPathRaw: string): Template | undefined {
     const slash = "/";
     const relPath = trimStartChar(relPathRaw, slash).trim();
     const withExt = relPath.endsWith(".html") ? relPath : relPath + ".html";
     const relOs = replaceText(withExt, slash, `${sep}`);
 
     const candidates: string[] = [join(this.siteLayoutsDir, relOs)];
-    if (this.themeLayoutsDir !== undefined) {
-      candidates.push(join(this.themeLayoutsDir, relOs));
+    const themeLayoutsDir = this.themeLayoutsDir;
+    if (themeLayoutsDir !== undefined) {
+      candidates.push(join(themeLayoutsDir, relOs));
     }
     for (let i = 0; i < this.mountedLayoutDirs.length; i++) {
       candidates.push(join(this.mountedLayoutDirs[i]!, relOs));
@@ -81,17 +108,12 @@ export class LayoutEnvironment extends TemplateEnvironment {
     if (cached !== undefined) return cached;
 
     const text = readTextFile(resolved);
-    try {
-      const tpl = parseTemplate(text);
-      this.cache.set(resolved, tpl);
-      return tpl;
-    } catch (e) {
-      console.error(`Error parsing template: ${resolved}`);
-      throw e;
-    }
+    const tpl = parseTemplate(text, resolved);
+    this.cache.set(resolved, tpl);
+    return tpl;
   }
 
-  override getShortcodeTemplate(name: string): Template | undefined {
+  getShortcodeTemplate(name: string): Template | undefined {
     const cached = this.shortcodeCache.get(name);
     if (cached !== undefined) return cached;
 
@@ -99,9 +121,10 @@ export class LayoutEnvironment extends TemplateEnvironment {
       join(this.siteLayoutsDir, "shortcodes", name + ".html"),
       join(this.siteLayoutsDir, "_shortcodes", name + ".html"),
     ];
-    if (this.themeLayoutsDir !== undefined) {
-      candidates.push(join(this.themeLayoutsDir, "shortcodes", name + ".html"));
-      candidates.push(join(this.themeLayoutsDir, "_shortcodes", name + ".html"));
+    const themeLayoutsDir = this.themeLayoutsDir;
+    if (themeLayoutsDir !== undefined) {
+      candidates.push(join(themeLayoutsDir, "shortcodes", name + ".html"));
+      candidates.push(join(themeLayoutsDir, "_shortcodes", name + ".html"));
     }
     for (let i = 0; i < this.mountedLayoutDirs.length; i++) {
       const dir = this.mountedLayoutDirs[i]!;
@@ -119,12 +142,12 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
     if (resolved === undefined) return undefined;
 
-    const tpl = parseTemplate(readTextFile(resolved));
+    const tpl = parseTemplate(readTextFile(resolved), resolved);
     this.shortcodeCache.set(name, tpl);
     return tpl;
   }
 
-  override getRenderHookTemplate(hookName: string): Template | undefined {
+  getRenderHookTemplate(hookName: string): Template | undefined {
     const cached = this.renderHookCache.get(hookName);
     if (cached !== undefined) return cached;
 
@@ -132,9 +155,10 @@ export class LayoutEnvironment extends TemplateEnvironment {
       join(this.siteLayoutsDir, "_markup", hookName + ".html"),
       join(this.siteLayoutsDir, "_default", "_markup", hookName + ".html"),
     ];
-    if (this.themeLayoutsDir !== undefined) {
-      candidates.push(join(this.themeLayoutsDir, "_markup", hookName + ".html"));
-      candidates.push(join(this.themeLayoutsDir, "_default", "_markup", hookName + ".html"));
+    const themeLayoutsDir = this.themeLayoutsDir;
+    if (themeLayoutsDir !== undefined) {
+      candidates.push(join(themeLayoutsDir, "_markup", hookName + ".html"));
+      candidates.push(join(themeLayoutsDir, "_default", "_markup", hookName + ".html"));
     }
     for (let i = 0; i < this.mountedLayoutDirs.length; i++) {
       const dir = this.mountedLayoutDirs[i]!;
@@ -152,12 +176,12 @@ export class LayoutEnvironment extends TemplateEnvironment {
     }
     if (resolved === undefined) return undefined;
 
-    const tpl = parseTemplate(readTextFile(resolved));
+    const tpl = parseTemplate(readTextFile(resolved), resolved);
     this.renderHookCache.set(hookName, tpl);
     return tpl;
   }
 
-  override getI18n(lang: string, key: string): string {
+  getI18n(lang: string, key: string): string {
     return this.i18nStore.translate(lang, key);
   }
 }

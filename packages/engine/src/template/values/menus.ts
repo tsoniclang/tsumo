@@ -1,5 +1,5 @@
-import { MenuEntry, SiteContext } from "../../models.ts";
-import { TemplateValue } from "./base.ts";
+import { MenuEntry, SiteContext } from "../../models.js";
+import { TemplateValue } from "./base.js";
 
 export class MenuEntryValue extends TemplateValue {
   value: MenuEntry;

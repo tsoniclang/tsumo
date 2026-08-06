@@ -1,6 +1,6 @@
-import { MarkdownExtensions, MarkdownPipeline, MarkdownPipelineBuilder } from "markdig-types/Markdig.js";
-import type { IMarkdownRenderer } from "markdig-types/Markdig.Renderers.js";
-import { AutoIdentifierOptions } from "markdig-types/Markdig.Extensions.AutoIdentifiers.js";
+import { MarkdownExtensions, MarkdownPipeline, MarkdownPipelineBuilder } from "@tsonic/dotnet/Markdig.js";
+import type { IMarkdownRenderer } from "@tsonic/dotnet/Markdig.Renderers.js";
+import { AutoIdentifierOptions } from "@tsonic/dotnet/Markdig.Extensions.AutoIdentifiers.js";
 
 const createPipeline = (): MarkdownPipeline => {
   const builder = new MarkdownPipelineBuilder();

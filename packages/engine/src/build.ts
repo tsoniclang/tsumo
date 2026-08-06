@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/csharp/types.js";
 
 export class BuildRequest {
   siteDir: string;
@@ -7,6 +7,7 @@ export class BuildRequest {
   themesDir: string | undefined;
   buildDrafts: boolean;
   cleanDestinationDir: boolean;
+  buildTime: Date;
 
   constructor(siteDir: string) {
     this.siteDir = siteDir;
@@ -15,6 +16,7 @@ export class BuildRequest {
     this.themesDir = undefined;
     this.buildDrafts = false;
     this.cleanDestinationDir = true;
+    this.buildTime = new Date();
   }
 }
 

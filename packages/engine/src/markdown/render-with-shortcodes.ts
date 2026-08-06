@@ -1,16 +1,81 @@
-import { Markdown } from "markdig-types/Markdig.js";
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import { parseShortcodes, ShortcodeCall } from "../shortcode.ts";
-import { ShortcodeContext, ShortcodeValue, RenderScope, TemplateEnvironment, TemplateNode } from "../template/index.ts";
-import { PageContext, SiteContext } from "../models.ts";
-import { MarkdownResult } from "./result.ts";
-import { markdownPipeline } from "./pipeline.ts";
-import { generateTableOfContents } from "./toc.ts";
-import { RenderHookContext, renderMarkdownWithHooks } from "./render-hooks.ts";
-import { processShortcodes, createOrdinalTracker } from "./shortcodes.ts";
-import { normalizeNewlines, findSummaryDividerIndex, summaryMarkerLength, firstBlock } from "./render-basic.ts";
-import { substringCount, substringFrom } from "../utils/strings.ts";
+import { Markdown } from "@tsonic/dotnet/Markdig.js";
+import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
+import { TemplateEnvironment } from "../template/environment.js";
+import { PageContext, SiteContext } from "../models.js";
+import { MarkdownResult } from "./result.js";
+import { markdownPipeline } from "./pipeline.js";
+import { generateTableOfContents } from "./toc.js";
+import { RenderHookContext, renderMarkdownWithHooks } from "./render-hooks.js";
+import { createOrdinalTracker, processShortcodeCalls, renderShortcode } from "./shortcodes.js";
+import { normalizeNewlines, findSummaryDividerIndex, summaryMarkerLength, firstBlock } from "./render-basic.js";
+import { substringCount, substringFrom } from "../utils/strings.js";
+
+class ProtectedShortcode {
+  marker: string;
+  output: string;
+
+  constructor(marker: string, output: string) {
+    this.marker = marker;
+    this.output = output;
+  }
+}
+
+class ProtectedShortcodeSource {
+  source: string;
+  replacements: ProtectedShortcode[];
+
+  constructor(source: string, replacements: ProtectedShortcode[]) {
+    this.source = source;
+    this.replacements = replacements;
+  }
+}
+
+const protectStandardShortcodes = (
+  text: string,
+  calls: readonly ShortcodeCall[],
+  page: PageContext,
+  site: SiteContext,
+  env: TemplateEnvironment,
+  ordinalTracker: ReturnType<typeof createOrdinalTracker>,
+  recursionGuard: Map<string, boolean>,
+): ProtectedShortcodeSource => {
+  const outputs: string[] = [];
+  for (let i = 0; i < calls.length; i++) {
+    outputs.push(renderShortcode(calls[i]!, page, site, env, ordinalTracker, undefined, recursionGuard));
+  }
+
+  let markerPrefix = "tsumo-shortcode-output";
+  let markerPrefixTaken = true;
+  while (markerPrefixTaken) {
+    markerPrefixTaken = text.includes(`<!--${markerPrefix}-`);
+    for (let i = 0; i < outputs.length && !markerPrefixTaken; i++) {
+      markerPrefixTaken = outputs[i]!.includes(`<!--${markerPrefix}-`);
+    }
+    if (markerPrefixTaken) markerPrefix += "-x";
+  }
+
+  const replacements: ProtectedShortcode[] = [];
+  for (let i = 0; i < calls.length; i++) {
+    replacements.push(new ProtectedShortcode(`<!--${markerPrefix}-${i}-->`, outputs[i]!));
+  }
+
+  let source = text;
+  for (let i = calls.length - 1; i >= 0; i--) {
+    const call = calls[i]!;
+    source = substringCount(source, 0, call.startIndex) + replacements[i]!.marker + substringFrom(source, call.endIndex);
+  }
+
+  return new ProtectedShortcodeSource(source, replacements);
+};
+
+const restoreStandardShortcodes = (html: string, replacements: readonly ProtectedShortcode[]): string => {
+  let result = html;
+  for (let i = 0; i < replacements.length; i++) {
+    const replacement = replacements[i]!;
+    result = result.replace(replacement.marker, replacement.output);
+  }
+  return result;
+};
 
 export const renderMarkdownWithShortcodes = (
   markdownRaw: string,
@@ -20,83 +85,64 @@ export const renderMarkdownWithShortcodes = (
 ): MarkdownResult => {
   const markdown = normalizeNewlines(markdownRaw);
   const ordinalTracker = createOrdinalTracker();
-  const recursionGuard = new Dictionary<string, boolean>();
+  const recursionGuard = new Map<string, boolean>();
 
   // Step 1: Process markdown-notation shortcodes ({{% ... %}}) BEFORE markdown rendering
-  const calls = parseShortcodes(markdown);
+  const calls = parseShortcodes(markdown, page.File?.Filename);
   let textAfterMarkdownShortcodes = markdown;
 
   // Filter markdown-notation shortcodes and process them first
-  const mdCalls = new List<ShortcodeCall>();
+  const mdCalls: ShortcodeCall[] = [];
   for (let i = 0; i < calls.length; i++) {
     const call = calls[i]!;
-    if (call.isMarkdown) mdCalls.Add(call);
+    if (call.isMarkdown) mdCalls.push(call);
   }
 
-  if (mdCalls.Count > 0) {
-    // Sort descending by startIndex
-    const mdArr = mdCalls.ToArray();
-    for (let i = 0; i < mdArr.length; i++) {
-      for (let j = i + 1; j < mdArr.length; j++) {
-        if (mdArr[j]!.startIndex > mdArr[i]!.startIndex) {
-          const tmp = mdArr[i]!;
-          mdArr[i] = mdArr[j]!;
-          mdArr[j] = tmp;
-        }
-      }
-    }
-
-    for (let i = 0; i < mdArr.length; i++) {
-      const call = mdArr[i]!;
-      const replacement = processShortcodes(
-        call.inner !== "" ? call.inner : "",
-        page,
-        site,
-        env,
-        ordinalTracker,
-        undefined,
-        recursionGuard,
-      );
-      // For markdown shortcodes, we need to execute them directly, not just their inner content
-      const template = env.getShortcodeTemplate(call.name);
-      if (template !== undefined) {
-        const sb = new StringBuilder();
-        const ctx = new ShortcodeContext(
-          call.name,
-          page,
-          site,
-          call.params,
-          call.positionalParams,
-          call.isNamedParams,
-          replacement,
-          0,
-          undefined,
-        );
-        const shortcodeValue = new ShortcodeValue(ctx);
-        const scope = new RenderScope(shortcodeValue, shortcodeValue, site, env, undefined);
-        const emptyOverrides = new Dictionary<string, TemplateNode[]>();
-        template.renderInto(sb, scope, env, emptyOverrides);
-        const output = sb.ToString();
-        textAfterMarkdownShortcodes = substringCount(textAfterMarkdownShortcodes, 0, call.startIndex) + output + substringFrom(textAfterMarkdownShortcodes, call.endIndex);
-      }
-    }
+  if (mdCalls.length > 0) {
+    textAfterMarkdownShortcodes = processShortcodeCalls(
+      markdown,
+      mdCalls,
+      page,
+      site,
+      env,
+      ordinalTracker,
+      undefined,
+      recursionGuard,
+    );
   }
+
+  const parsedStandardCalls = parseShortcodes(textAfterMarkdownShortcodes, page.File?.Filename);
+  const standardCalls: ShortcodeCall[] = [];
+  for (let i = 0; i < parsedStandardCalls.length; i++) {
+    const call = parsedStandardCalls[i]!;
+    if (!call.isMarkdown) standardCalls.push(call);
+  }
+  const protectedStandard = protectStandardShortcodes(
+    textAfterMarkdownShortcodes,
+    standardCalls,
+    page,
+    site,
+    env,
+    ordinalTracker,
+    recursionGuard,
+  );
+  const markdownSource = protectedStandard.source;
 
   // Step 2: Generate TOC from text after markdown shortcodes (but before standard shortcodes)
-  const toc = generateTableOfContents(textAfterMarkdownShortcodes);
+  const toc = generateTableOfContents(markdownSource);
 
   // Step 3: Create render hook context
   const hookCtx = new RenderHookContext(page, site, env);
 
   // Step 4: Render markdown with hooks (proper Markdig renderer extension approach)
-  const moreIndex = findSummaryDividerIndex(textAfterMarkdownShortcodes);
+  const moreIndex = findSummaryDividerIndex(markdownSource);
   let html: string;
   let summaryHtml: string;
   let plainText: string;
 
   if (moreIndex >= 0) {
-    const before = substringCount(textAfterMarkdownShortcodes, 0, moreIndex);
-    const after = substringFrom(textAfterMarkdownShortcodes, moreIndex + summaryMarkerLength);
+    const before = substringCount(markdownSource, 0, moreIndex);
+    const after = substringFrom(markdownSource, moreIndex + summaryMarkerLength);
     const full = before + after;
     // Use hook-aware rendering if hooks are present, otherwise use standard rendering
     if (hookCtx.hasAnyHooks()) {
@@ -109,12 +155,12 @@ export const renderMarkdownWithShortcodes = (
     plainText = Markdown.ToPlainText(full, markdownPipeline);
   } else {
     if (hookCtx.hasAnyHooks()) {
-      html = renderMarkdownWithHooks(textAfterMarkdownShortcodes, hookCtx);
+      html = renderMarkdownWithHooks(markdownSource, hookCtx);
     } else {
-      html = Markdown.ToHtml(textAfterMarkdownShortcodes, markdownPipeline);
+      html = Markdown.ToHtml(markdownSource, markdownPipeline);
     }
-    plainText = Markdown.ToPlainText(textAfterMarkdownShortcodes, markdownPipeline);
-    const summarySource = firstBlock(textAfterMarkdownShortcodes);
+    plainText = Markdown.ToPlainText(markdownSource, markdownPipeline);
+    const summarySource = firstBlock(markdownSource);
     if (summarySource === "") {
       summaryHtml = "";
     } else if (hookCtx.hasAnyHooks()) {
@@ -124,11 +170,9 @@ export const renderMarkdownWithShortcodes = (
     }
   }
 
-  // Step 5: Process standard-notation shortcodes ({{< ... >}}) AFTER markdown rendering
-  const htmlCalls = parseShortcodes(html);
-  if (htmlCalls.length > 0) {
-    html = processShortcodes(html, page, site, env, ordinalTracker, undefined, recursionGuard);
-  }
+  // Step 5: Restore standard-notation shortcode output without Markdown processing.
+  html = restoreStandardShortcodes(html, protectedStandard.replacements);
+  summaryHtml = restoreStandardShortcodes(summaryHtml, protectedStandard.replacements);
 
   return new MarkdownResult(html, summaryHtml, plainText, toc);
 };

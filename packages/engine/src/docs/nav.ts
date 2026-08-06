@@ -1,11 +1,10 @@
-import { Exception } from "@tsonic/dotnet/System.js";
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { File, Path } from "@tsonic/dotnet/System.IO.js";
 import { JsonDocument, JsonElement, JsonValueKind } from "@tsonic/dotnet/System.Text.Json.js";
-import type { char, int } from "@tsonic/core/types.js";
-import { DocsMountConfig, NavItem } from "./models.ts";
-import { splitUrlSuffix } from "./url.ts";
-import { replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.ts";
+import type { char, int } from "@tsonic/csharp/types.js";
+import { DocsMountConfig, NavItem } from "./models.js";
+import { createTsumoError } from "../diagnostics.js";
+import { splitUrlSuffix } from "./url.js";
+import { replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.js";
 
 const normalizeSlashes = (path: string): string => path.replaceAll("\\", "/");
 
@@ -21,12 +20,12 @@ const isMarkdownPath = (path: string): boolean => {
 
 const normalizeRelativePath = (baseDirKey: string, targetPath: string): string | undefined => {
   const base = baseDirKey.trim();
-  const start = new List<string>();
+  const start: string[] = [];
   if (base !== "") {
     const baseParts = base.split("/");
     for (let i = 0; i < baseParts.length; i++) {
       const seg = baseParts[i]!.trim();
-      if (seg !== "") start.Add(seg);
+      if (seg !== "") start.push(seg);
     }
   }
 
@@ -38,14 +37,14 @@ const normalizeRelativePath = (baseDirKey: string, targetPath: string): string |
     const seg = raw.trim();
     if (seg === "" || seg === ".") continue;
     if (seg === "..") {
-      if (start.Count === 0) return undefined;
-      start.RemoveAt(start.Count - 1);
+      if (start.length === 0) return undefined;
+      start.pop();
       continue;
     }
-    start.Add(seg);
+    start.push(seg);
   }
 
-  const arr = start.ToArray();
+  const arr = start;
   if (arr.length === 0) return "";
   let out = arr[0]!;
   for (let i = 1; i < arr.length; i++) out += "/" + arr[i]!;
@@ -53,9 +52,10 @@ const normalizeRelativePath = (baseDirKey: string, targetPath: string): string |
 };
 
 const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): string | undefined => {
-  if (mount.repoUrl === undefined) return undefined;
+  const repoUrl = mount.repoUrl;
+  if (repoUrl === undefined) return undefined;
   const slash = "/";
-  const repo = trimEndChar(mount.repoUrl.trim(), slash);
+  const repo = trimEndChar(repoUrl.trim(), slash);
   if (repo === "") return undefined;
   const branch = mount.repoBranch.trim() === "" ? "main" : mount.repoBranch.trim();
   const rel = trimStartChar(repoRelPath.trim(), slash);
@@ -63,17 +63,15 @@ const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): stri
   return `${repo}/blob/${branch}/${rel}`;
 };
 
-const tryGetRouteUrl = (routesByRelPathLower: Dictionary<string, string>, key: string): string | undefined => {
-  let v = "";
-  const ok = routesByRelPathLower.TryGetValue(key, v);
-  return ok ? v : undefined;
+const tryGetRouteUrl = (routesByRelPathLower: Map<string, string>, key: string): string | undefined => {
+  return routesByRelPathLower.get(key);
 };
 
 const resolveMarkdownNavLink = (
   mount: DocsMountConfig,
   navDirKey: string,
   linkTarget: string,
-  routesByRelPathLower: Dictionary<string, string>,
+  routesByRelPathLower: Map<string, string>,
 ): string | undefined => {
   const targetRaw = linkTarget.trim();
   if (targetRaw === "") return undefined;
@@ -151,12 +149,13 @@ const parseInlineMarkdownLink = (line: string): InlineLink | undefined => {
 class NavGroupBuild {
   title: string;
   order: int;
-  children: List<NavItem>;
+  children: NavItem[];
 
   constructor(title: string, order: int) {
     this.title = title;
     this.order = order;
-    this.children = new List<NavItem>();
+    const empty: NavItem[] = [];
+    this.children = empty;
   }
 }
 
@@ -164,13 +163,13 @@ const parseTocMarkdown = (
   mount: DocsMountConfig,
   markdown: string,
   navDirKey: string,
-  routesByRelPathLower: Dictionary<string, string>,
+  routesByRelPathLower: Map<string, string>,
 ): NavItem[] => {
   const lines = replaceLineEndings(markdown, "\n").split("\n");
 
   let inToc = false;
-  const groups = new List<NavGroupBuild>();
-  const rootItems = new List<NavItem>();
+  const groups: NavGroupBuild[] = [];
+  const rootItems: NavItem[] = [];
   let currentGroup: NavGroupBuild | undefined = undefined;
   let order: int = 1;
 
@@ -192,7 +191,7 @@ const parseTocMarkdown = (
       const title = substringFrom(line, 4).trim();
       if (title !== "") {
         currentGroup = new NavGroupBuild(title, order);
-        groups.Add(currentGroup);
+        groups.push(currentGroup);
         order++;
       }
       continue;
@@ -208,30 +207,30 @@ const parseTocMarkdown = (
     const item = new NavItem(parsed.title, resolved, empty, false, false, order);
     order++;
 
-    if (currentGroup !== undefined) currentGroup.children.Add(item);
-    else rootItems.Add(item);
+    if (currentGroup !== undefined) currentGroup.children.push(item);
+    else rootItems.push(item);
   }
 
-  const out = new List<NavItem>();
+  const out: NavItem[] = [];
 
-  const groupArr = groups.ToArray();
+  const groupArr = groups;
   for (let i = 0; i < groupArr.length; i++) {
     const g = groupArr[i]!;
-    const groupItem = new NavItem(g.title, "", g.children.ToArray(), true, false, g.order);
-    out.Add(groupItem);
+    const groupItem = new NavItem(g.title, "", g.children, true, false, g.order);
+    out.push(groupItem);
   }
 
-  const rootArr = rootItems.ToArray();
-  for (let i = 0; i < rootArr.length; i++) out.Add(rootArr[i]!);
+  const rootArr = rootItems;
+  for (let i = 0; i < rootArr.length; i++) out.push(rootArr[i]!);
 
-  return out.ToArray();
+  return out;
 };
 
 const parseNavJson = (
   mount: DocsMountConfig,
   navDirKey: string,
   jsonText: string,
-  routesByRelPathLower: Dictionary<string, string>,
+  routesByRelPathLower: Map<string, string>,
 ): NavItem[] => {
   const doc = JsonDocument.Parse(jsonText);
   try {
@@ -268,7 +267,7 @@ const parseNavJson = (
 function parseNavJsonItems(
   mount: DocsMountConfig,
   navDirKey: string,
-  routesByRelPathLower: Dictionary<string, string>,
+  routesByRelPathLower: Map<string, string>,
   el: JsonElement,
 ): NavItem[] {
   if (el.ValueKind !== JsonValueKind.Array) {
@@ -276,7 +275,7 @@ function parseNavJsonItems(
     return empty;
   }
 
-  const items = new List<NavItem>();
+  const items: NavItem[] = [];
   const it = el.EnumerateArray().GetEnumerator();
   let order: int = 1;
   while (it.MoveNext()) {
@@ -322,11 +321,11 @@ function parseNavJsonItems(
 
     if (title === undefined || finalUrl === undefined) continue;
 
-    items.Add(new NavItem(title, finalUrl, children, children.length > 0, false, order));
+    items.push(new NavItem(title, finalUrl, children, children.length > 0, false, order));
     order++;
   }
 
-  return items.ToArray();
+  return items;
 }
 
 const joinUrlPath = (parts: string[]): string => {
@@ -336,8 +335,9 @@ const joinUrlPath = (parts: string[]): string => {
   return out;
 };
 
-export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Dictionary<string, string>): NavItem[] => {
-  const navRaw = mount.navPath !== undefined && mount.navPath.trim() !== "" ? mount.navPath.trim() : "README.md";
+export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Map<string, string>): NavItem[] => {
+  const navPath = mount.navPath;
+  const navRaw = navPath !== undefined && navPath.trim() !== "" ? navPath.trim() : "README.md";
   const navFile = Path.IsPathRooted(navRaw) ? navRaw : Path.Combine(mount.sourceDir, navRaw);
   if (!File.Exists(navFile)) {
     const empty: NavItem[] = [];
@@ -346,13 +346,13 @@ export const loadMountNav = (mount: DocsMountConfig, routesByRelPathLower: Dicti
 
   const rel = normalizeSlashes(Path.GetRelativePath(mount.sourceDir, navFile));
   if (rel === "" || rel.startsWith("..")) {
-    throw new Exception(`Mount nav must be inside sourceDir: ${navFile}`);
+    throw createTsumoError("TSUMO_DOCS_NAV_OUTSIDE_MOUNT", `Mount nav must be inside sourceDir: ${navFile}`, navFile);
   }
 
   const parts = rel.split("/");
-  const dirParts = new List<string>();
-  for (let i = 0; i < parts.length - 1; i++) dirParts.Add(parts[i]!);
-  const navDirKey = joinUrlPath(dirParts.ToArray());
+  const dirParts: string[] = [];
+  for (let i = 0; i < parts.length - 1; i++) dirParts.push(parts[i]!);
+  const navDirKey = joinUrlPath(dirParts);
 
   const text = File.ReadAllText(navFile);
 

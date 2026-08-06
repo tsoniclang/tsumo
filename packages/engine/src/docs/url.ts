@@ -1,5 +1,5 @@
-import type { int } from "@tsonic/core/types.js";
-import { substringCount, substringFrom } from "../utils/strings.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { substringCount, substringFrom } from "../utils/strings.js";
 
 export class UrlSuffixSplit {
   path: string;

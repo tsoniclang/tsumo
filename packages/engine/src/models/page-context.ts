@@ -1,8 +1,9 @@
-import { HtmlString } from "../utils/html.ts";
-import { ParamValue } from "../params.ts";
-import { LanguageContext } from "./language.ts";
-import { PageFile } from "./page-file.ts";
-import type { SiteContext } from "./site-context.ts";
+import { HtmlString } from "../utils/html.js";
+import { ParamValue } from "../params.js";
+import { LanguageContext } from "./language.js";
+import { PageFile } from "./page-file.js";
+import type { SiteContext } from "./site-context.js";
+import type { ScratchStore } from "../template/values/scratch.js";
 
 export class PageContext {
   title: string;
@@ -25,7 +26,7 @@ export class PageContext {
   File: PageFile | undefined;
   Language: LanguageContext;
   Translations: PageContext[];
-  store: object | undefined;
+  store: ScratchStore | undefined;
   site: SiteContext;
   pages: PageContext[];
   layout: string | undefined;
@@ -53,12 +54,12 @@ export class PageContext {
     file: PageFile | undefined,
     language: LanguageContext,
     translations: PageContext[],
-    store: object | undefined,
+    store: ScratchStore | undefined,
     site: SiteContext,
     pages: PageContext[],
     parent: PageContext | undefined,
     ancestors: PageContext[],
-    layout?: string,
+    layout: string | undefined,
   ) {
     this.title = title;
     this.date = date;

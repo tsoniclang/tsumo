@@ -1,10 +1,10 @@
-import { asinterface } from "@tsonic/core/lang.js";
-import type { char, int } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/csharp/types.js";
 import { String as DotnetString } from "@tsonic/dotnet/System.js";
+import { createTsumoError } from "../diagnostics.js";
 
-const substringError = (): never => {
-  throw new Error("substring bounds are out of range");
-};
+function substringError(): void {
+  throw createTsumoError("TSUMO_INTERNAL_STRING_RANGE_INVALID", "Substring bounds are out of range");
+}
 
 const requireSubstringBounds = (source: string, startIndex: int, length: int): void => {
   if (startIndex < 0 || length < 0 || startIndex > source.length || startIndex + length > source.length) {
@@ -31,7 +31,7 @@ export const lastIndexOfText = (source: string, value: string): int => source.la
 export const containsText = (source: string, value: string): boolean => source.includes(value);
 
 export const compareText = (left: string, right: string): int => {
-  return (left === right ? 0 : left < right ? -1 : 1) as int;
+  return DotnetString.CompareOrdinal(left, right);
 };
 
 export const substringFrom = (source: string, startIndex: int): string => {
@@ -73,6 +73,3 @@ export const replaceLineEndings = (source: string, replacement: string): string 
 };
 
 export const splitLines = (source: string): string[] => replaceLineEndings(source, "\n").split("\n");
-
-export const toChars = (source: string): char[] =>
-  asinterface<DotnetString>(source).ToCharArray();

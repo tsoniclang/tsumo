@@ -1,9 +1,9 @@
-import type { int } from "@tsonic/core/types.js";
-import { PageContext, SiteContext } from "../models.ts";
-import { ParamValue } from "../params.ts";
-import { innerDeindent } from "../shortcode.ts";
-import { parseInt32 } from "../utils/int32.ts";
-import { TemplateValue } from "./values.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { PageContext, SiteContext } from "../models.js";
+import { ParamValue } from "../params.js";
+import { innerDeindent } from "../shortcode.js";
+import { parseInt32 } from "../utils/int32.js";
+import { TemplateValue } from "./values.js";
 
 export class ShortcodeContext {
   name: string;

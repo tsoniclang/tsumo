@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "BouncyCastle.Cryptography": {
+        "type": "Direct",
+        "requested": "[2.4.0, )",
+        "resolved": "2.4.0",
+        "contentHash": "SwXsAV3sMvAU/Nn31pbjhWurYSjJ+/giI/0n6tCrYoupEK34iIHCuk3STAd9fx8yudM85KkLSVdn951vTng/vQ=="
+      },
+      "Microsoft.DotNet.ILCompiler": {
+        "type": "Direct",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "tnG8ntt/Bk6odvHREnGLMo3PEiihy5iSlIFVp0JbIo00GKtNRt2k73eKZbPqR5yaJNIa3z8R86YLwbxfqpb17g=="
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "f5VCIE7AJpd5YvzNTeMGVzQIgyE9tX+AreTYwQF+REbu+DZo/2Ae+jNSwhPEYrVz6RRkd7y8ubXjk6Nn6Ka+Cg=="
+      },
+      "PhotoSauce.MagicScaler": {
+        "type": "Direct",
+        "requested": "[0.14.2, )",
+        "resolved": "0.14.2",
+        "contentHash": "rVz7Fb3/hyTLIP6NikCnnAiIz3vl5yfOooyehVz0FFsZCSd+UFgNTOjTvI+4xhpoQs08/RjU6DQz181qxzzRVA=="
+      },
+      "PhotoSauce.NativeCodecs.Giflib": {
+        "type": "Direct",
+        "requested": "[5.2.2-preview2, )",
+        "resolved": "5.2.2-preview2",
+        "contentHash": "IYTxf0EKrUckj6YAIWJdRd0jimqHF2qNPEAe5DwbKa/YLPe1/3mOnNSv/Ycf0Lye6hk4wpS6VQlutPwOVLzt+A==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Libjpeg": {
+        "type": "Direct",
+        "requested": "[3.0.2-preview2, )",
+        "resolved": "3.0.2-preview2",
+        "contentHash": "YpdUnQIbrNEn4aP2QsGPW2xT/gQ/k5FlsYsbuqvhfMOSxniUDSZGPctwy45WczXx+EM3jfisisOdMZITGKn9GQ==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Libpng": {
+        "type": "Direct",
+        "requested": "[1.6.43-preview2, )",
+        "resolved": "1.6.43-preview2",
+        "contentHash": "+KFZmR+SWNTypawOL06j+I9BE3QY7uorHezaRYjhvIR1bLKLNVmBktvLw2F3QSoJtVt/7pjV/ROXtvFmtCGiUQ==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Libwebp": {
+        "type": "Direct",
+        "requested": "[1.3.2-preview3, )",
+        "resolved": "1.3.2-preview3",
+        "contentHash": "kPBYxzIOx2XW/vvt/AGWSbeOInLVnM/teCXN+ABwDXSAC2kQYAF0pKoPxyg+YQimgmAORgAnV7817X8jYHT/Ew==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      }
+    },
+    "net10.0/linux-x64": {
+      "Microsoft.DotNet.ILCompiler": {
+        "type": "Direct",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "tnG8ntt/Bk6odvHREnGLMo3PEiihy5iSlIFVp0JbIo00GKtNRt2k73eKZbPqR5yaJNIa3z8R86YLwbxfqpb17g==",
+        "dependencies": {
+          "runtime.linux-x64.Microsoft.DotNet.ILCompiler": "10.0.10"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Giflib": {
+        "type": "Direct",
+        "requested": "[5.2.2-preview2, )",
+        "resolved": "5.2.2-preview2",
+        "contentHash": "IYTxf0EKrUckj6YAIWJdRd0jimqHF2qNPEAe5DwbKa/YLPe1/3mOnNSv/Ycf0Lye6hk4wpS6VQlutPwOVLzt+A==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Libjpeg": {
+        "type": "Direct",
+        "requested": "[3.0.2-preview2, )",
+        "resolved": "3.0.2-preview2",
+        "contentHash": "YpdUnQIbrNEn4aP2QsGPW2xT/gQ/k5FlsYsbuqvhfMOSxniUDSZGPctwy45WczXx+EM3jfisisOdMZITGKn9GQ==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Libpng": {
+        "type": "Direct",
+        "requested": "[1.6.43-preview2, )",
+        "resolved": "1.6.43-preview2",
+        "contentHash": "+KFZmR+SWNTypawOL06j+I9BE3QY7uorHezaRYjhvIR1bLKLNVmBktvLw2F3QSoJtVt/7pjV/ROXtvFmtCGiUQ==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "PhotoSauce.NativeCodecs.Libwebp": {
+        "type": "Direct",
+        "requested": "[1.3.2-preview3, )",
+        "resolved": "1.3.2-preview3",
+        "contentHash": "kPBYxzIOx2XW/vvt/AGWSbeOInLVnM/teCXN+ABwDXSAC2kQYAF0pKoPxyg+YQimgmAORgAnV7817X8jYHT/Ew==",
+        "dependencies": {
+          "PhotoSauce.MagicScaler": "[0.14.2]"
+        }
+      },
+      "runtime.linux-x64.Microsoft.DotNet.ILCompiler": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "WRjSRBfv6A6UjgjO8EQuLe9xqdICpkQx1hACUziCw4B2uGL+2jVhkFLq/G7rxRr3MGvqLo9B+nNdfIJ/5CYN7A=="
+      }
+    }
+  }
+}

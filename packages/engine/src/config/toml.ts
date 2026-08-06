@@ -1,390 +1,342 @@
-import type { int } from "@tsonic/core/types.js";
-import { LanguageConfig, MenuEntry, ModuleMount, SiteConfig } from "../models.ts";
-import { ensureTrailingSlash } from "../utils/text.ts";
-import { parseInt32 } from "../utils/int32.ts";
-import { ParamValue } from "../params.ts";
-import { buildMenuHierarchy } from "../menus.ts";
-import { LanguageConfigBuilder, MenuEntryBuilder } from "./builders.ts";
-import { unquote, sortLanguages } from "./helpers.ts";
-import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.ts";
+import type { int } from "@tsonic/csharp/types.js";
 
-const tryParseInt = (value: string): int | undefined => parseInt32(value);
+import { createTsumoError } from "../diagnostics.js";
+import { LanguageConfig, MenuEntry, ModuleMount, SiteConfig } from "../models.js";
+import { buildMenuHierarchy } from "../menus.js";
+import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
+import { stripStructuredComment } from "../utils/structured-scalars.js";
+import { ensureTrailingSlash } from "../utils/text.js";
+import { LanguageConfigBuilder, MenuEntryBuilder } from "./builders.js";
+import { sortLanguages } from "./helpers.js";
+import { parseConfigInt, parseConfigParam, parseConfigString } from "./scalars.js";
 
-const parseTomlValue = (value: string): ParamValue => {
-  const trimmed = value.trim();
-  if (trimmed === "true") return ParamValue.bool(true);
-  if (trimmed === "false") return ParamValue.bool(false);
-
-  const parsed = tryParseInt(trimmed);
-  return parsed !== undefined ? ParamValue.number(parsed) : ParamValue.string(unquote(trimmed));
+const splitAssignment = (line: string, sourcePath: string | undefined, lineNumber: int): string[] => {
+  const separator = line.indexOf("=");
+  if (separator <= 0) {
+    throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "TOML configuration entries require 'key = value' syntax", sourcePath, lineNumber, 1);
+  }
+  const key = substringCount(line, 0, separator).trim();
+  const value = substringFrom(line, separator + 1).trim();
+  if (value === "") throw createTsumoError("TSUMO_CONFIG_INVALID_FIELD", `Configuration field '${key}' requires a value`, sourcePath, lineNumber, 1);
+  return [key, value];
 };
 
-export const parseModuleToml = (text: string): ModuleMount[] => {
+const recordField = (
+  fields: Set<string>,
+  field: string,
+  context: string,
+  sourcePath: string | undefined,
+  line: int,
+): void => {
+  const normalized = field.toLowerCase();
+  if (fields.has(normalized)) {
+    throw createTsumoError("TSUMO_CONFIG_DUPLICATE_FIELD", `${context} field '${field}' is declared more than once`, sourcePath, line, 1);
+  }
+  fields.add(normalized);
+};
+
+const applyMenuField = (
+  builder: MenuEntryBuilder,
+  keyRaw: string,
+  value: string,
+  sourcePath: string | undefined,
+  line: int,
+): void => {
+  const key = keyRaw.toLowerCase();
+  if (key === "name") builder.name = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "url") builder.url = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "pageref") builder.pageRef = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "title") builder.title = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "parent") builder.parent = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "identifier") builder.identifier = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "pre") builder.pre = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "post") builder.post = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "weight") builder.weight = parseConfigInt(keyRaw, value, "toml", sourcePath, line);
+  else throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown menu configuration field '${keyRaw}'`, sourcePath, line, 1);
+};
+
+const applyLanguageField = (
+  builder: LanguageConfigBuilder,
+  keyRaw: string,
+  value: string,
+  sourcePath: string | undefined,
+  line: int,
+): void => {
+  const key = keyRaw.toLowerCase();
+  if (key === "languagename") builder.languageName = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "languagedirection") builder.languageDirection = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "contentdir") builder.contentDir = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "weight") builder.weight = parseConfigInt(keyRaw, value, "toml", sourcePath, line);
+  else throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown language configuration field '${keyRaw}'`, sourcePath, line, 1);
+};
+
+const applyRootField = (
+  config: SiteConfig,
+  keyRaw: string,
+  value: string,
+  sourcePath: string | undefined,
+  line: int,
+): void => {
+  const key = keyRaw.toLowerCase();
+  if (key === "title") config.title = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "baseurl") config.baseURL = ensureTrailingSlash(parseConfigString(keyRaw, value, "toml", sourcePath, line));
+  else if (key === "languagecode") config.languageCode = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "contentdir") config.contentDir = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "theme") config.theme = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else if (key === "copyright") config.copyright = parseConfigString(keyRaw, value, "toml", sourcePath, line);
+  else throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown configuration field '${keyRaw}'`, sourcePath, line, 1);
+};
+
+const menuBuildersToEntries = (builders: Map<string, MenuEntryBuilder[]>): Map<string, MenuEntry[]> => {
+  const menus = new Map<string, MenuEntry[]>();
+  for (const menuName of builders.keys()) {
+    const source = builders.get(menuName);
+    if (source === undefined) {
+      throw createTsumoError("TSUMO_CONFIG_MODEL_INCONSISTENT", `Menu '${menuName}' disappeared during configuration finalization`);
+    }
+    const entries: MenuEntry[] = [];
+    for (let index = 0; index < source.length; index++) entries.push(source[index]!.toEntry());
+    menus.set(menuName, buildMenuHierarchy(entries));
+  }
+  return menus;
+};
+
+export const parseModuleToml = (text: string, sourcePath?: string): ModuleMount[] => {
   const mounts: ModuleMount[] = [];
   const lines = replaceLineEndings(text, "\n").split("\n");
-
+  let source = "";
+  let target = "";
   let inMount = false;
-  let currentSource = "";
-  let currentTarget = "";
+  let mountFields = new Set<string>();
+  const finishMount = (line: int): void => {
+    if (!inMount) return;
+    if (source === "" || target === "") throw createTsumoError("TSUMO_CONFIG_INVALID_MOUNT", "Every module mount requires source and target", sourcePath, line, 1);
+    mounts.push(new ModuleMount(source, target));
+  };
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i]!;
-    const line = raw.trim();
-    if (line === "" || line.startsWith("#")) continue;
-
+  for (let index: int = 0; index < lines.length; index++) {
+    const lineNumber = index + 1;
+    const line = stripStructuredComment(lines[index]!, "toml").trim();
+    if (line === "") continue;
     if (line === "[[mounts]]") {
-      if (inMount && currentSource !== "" && currentTarget !== "") {
-        mounts.push(new ModuleMount(currentSource, currentTarget));
-      }
+      finishMount(lineNumber);
       inMount = true;
-      currentSource = "";
-      currentTarget = "";
+      source = "";
+      target = "";
+      mountFields = new Set<string>();
       continue;
     }
-
-    if (inMount && line.includes("=")) {
-      const eq = line.indexOf("=");
-      const key = substringCount(line, 0, eq).trim().toLowerCase();
-      const value = unquote(substringFrom(line, eq + 1).trim());
-      if (key === "source") currentSource = value;
-      else if (key === "target") currentTarget = value;
-    }
+    if (!inMount) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "module.toml accepts only [[mounts]] entries", sourcePath, lineNumber, 1);
+    const assignment = splitAssignment(line, sourcePath, lineNumber);
+    recordField(mountFields, assignment[0]!, "Module mount", sourcePath, lineNumber);
+    const key = assignment[0]!.toLowerCase();
+    if (key === "source") source = parseConfigString(assignment[0]!, assignment[1]!, "toml", sourcePath, lineNumber);
+    else if (key === "target") target = parseConfigString(assignment[0]!, assignment[1]!, "toml", sourcePath, lineNumber);
+    else throw createTsumoError("TSUMO_CONFIG_UNKNOWN_FIELD", `Unknown module mount field '${assignment[0]}'`, sourcePath, lineNumber, 1);
   }
-
-  if (inMount && currentSource !== "" && currentTarget !== "") {
-    mounts.push(new ModuleMount(currentSource, currentTarget));
-  }
-
+  finishMount(lines.length);
   return mounts;
 };
 
-export const parseTomlConfig = (text: string): SiteConfig => {
-  let title = "Tsumo Site";
-  let baseURL = "";
-  let languageCode = "en-us";
-  let hasLanguageCode = false;
-  let contentDir = "content";
-  let theme: string | undefined;
-  let copyright: string | undefined;
-  const params = new Map<string, ParamValue>();
-  const languages: LanguageConfigBuilder[] = [];
+export const parseTomlConfig = (text: string, sourcePath?: string): SiteConfig => {
+  const config = new SiteConfig("Tsumo Site", "", "en-us", undefined, undefined);
+  const languages = new Map<string, LanguageConfigBuilder>();
   const menuBuilders = new Map<string, MenuEntryBuilder[]>();
-
   const lines = replaceLineEndings(text, "\n").split("\n");
-
   let table = "";
-  let isArrayTable = false;
-  let currentMenuEntry: MenuEntryBuilder | undefined;
+  let currentMenu: MenuEntryBuilder | undefined;
+  let hasLanguageCode = false;
+  const rootFields = new Set<string>();
+  const declaredTables = new Set<string>();
+  let tableFields = new Set<string>();
+  let menuFields = new Set<string>();
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i]!;
-    const line = raw.trim();
-    if (line === "" || line.startsWith("#")) continue;
-
-    if (line.startsWith("[[") && line.endsWith("]]")) {
-      const tableName = substringCount(line, 2, line.length - 4).trim().toLowerCase();
-      table = tableName;
-      isArrayTable = true;
-
-      if (tableName.startsWith("menu.")) {
-        const menuName = substringFrom(tableName, "menu.".length).trim();
-        currentMenuEntry = new MenuEntryBuilder(menuName);
-        const entries = menuBuilders.get(menuName) ?? [];
-        entries.push(currentMenuEntry);
-        menuBuilders.set(menuName, entries);
-      } else {
-        currentMenuEntry = undefined;
-      }
+  for (let index: int = 0; index < lines.length; index++) {
+    const lineNumber = index + 1;
+    const line = stripStructuredComment(lines[index]!, "toml").trim();
+    if (line === "") continue;
+    if (line.startsWith("[[")) {
+      if (!line.endsWith("]]")) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Malformed TOML array table", sourcePath, lineNumber, 1);
+      table = substringCount(line, 2, line.length - 4).trim().toLowerCase();
+      if (!table.startsWith("menu.") || table.length === "menu.".length) throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Unsupported TOML array table '${table}'`, sourcePath, lineNumber, 1);
+      const menuName = substringFrom(table, "menu.".length);
+      currentMenu = new MenuEntryBuilder(menuName);
+      menuFields = new Set<string>();
+      const entries = menuBuilders.get(menuName) ?? [];
+      entries.push(currentMenu);
+      menuBuilders.set(menuName, entries);
       continue;
     }
-
-    if (line.startsWith("[") && line.endsWith("]")) {
+    if (line.startsWith("[")) {
+      if (!line.endsWith("]")) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Malformed TOML table", sourcePath, lineNumber, 1);
       table = substringCount(line, 1, line.length - 2).trim().toLowerCase();
-      isArrayTable = false;
-      currentMenuEntry = undefined;
-      continue;
-    }
-
-    const eq = line.indexOf("=");
-    if (eq < 0) continue;
-
-    const key = substringCount(line, 0, eq).trim();
-    const value = unquote(substringFrom(line, eq + 1).trim());
-
-    if (isArrayTable && currentMenuEntry !== undefined && table.startsWith("menu.")) {
-      const menuKey = key.toLowerCase();
-      if (menuKey === "name") currentMenuEntry.name = value;
-      else if (menuKey === "url") currentMenuEntry.url = value;
-      else if (menuKey === "pageref") currentMenuEntry.pageRef = value;
-      else if (menuKey === "title") currentMenuEntry.title = value;
-      else if (menuKey === "parent") currentMenuEntry.parent = value;
-      else if (menuKey === "identifier") currentMenuEntry.identifier = value;
-      else if (menuKey === "pre") currentMenuEntry.pre = value;
-      else if (menuKey === "post") currentMenuEntry.post = value;
-      else if (menuKey === "weight") {
-        const parsed = tryParseInt(value);
-        if (parsed !== undefined) currentMenuEntry.weight = parsed;
-      }
-      continue;
-    }
-
-    if (table === "params") {
-      params.set(key, ParamValue.parseScalar(value));
-      continue;
-    }
-
-    if (table.startsWith("languages.")) {
-      const lang = substringFrom(table, "languages.".length).trim();
-      if (lang !== "") {
-        let entry = languages.find((current) => current.lang.toLowerCase() === lang);
-        if (entry === undefined) {
-          entry = new LanguageConfigBuilder(lang);
-          languages.push(entry);
-        }
-
-        const langKey = key.toLowerCase();
-        if (langKey === "languagename") entry.languageName = value;
-        else if (langKey === "languagedirection") entry.languageDirection = value;
-        else if (langKey === "contentdir") entry.contentDir = value;
-        else if (langKey === "weight") {
-          const parsed = tryParseInt(value);
-          if (parsed !== undefined) entry.weight = parsed;
-        }
+      currentMenu = undefined;
+      if (declaredTables.has(table)) throw createTsumoError("TSUMO_CONFIG_DUPLICATE_FIELD", `Configuration table '${table}' is declared more than once`, sourcePath, lineNumber, 1);
+      declaredTables.add(table);
+      tableFields = new Set<string>();
+      if (table === "params") continue;
+      if (table.startsWith("languages.") && table.length > "languages.".length) {
+        const lang = substringFrom(table, "languages.".length);
+        if (!languages.has(lang)) languages.set(lang, new LanguageConfigBuilder(lang));
         continue;
       }
+      throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Unsupported TOML table '${table}'`, sourcePath, lineNumber, 1);
     }
 
-    const lower = key.toLowerCase();
-    if (lower === "title") title = value;
-    else if (lower === "baseurl") baseURL = value;
-    else if (lower === "languagecode") {
-      languageCode = value;
-      hasLanguageCode = true;
-    } else if (lower === "contentdir") contentDir = value;
-    else if (lower === "theme") theme = value;
-    else if (lower === "copyright") copyright = value;
+    const assignment = splitAssignment(line, sourcePath, lineNumber);
+    const key = assignment[0]!;
+    const value = assignment[1]!;
+    if (currentMenu !== undefined) {
+      recordField(menuFields, key, `Menu '${currentMenu.menu}' entry`, sourcePath, lineNumber);
+      applyMenuField(currentMenu, key, value, sourcePath, lineNumber);
+    }
+    else if (table === "params") {
+      recordField(tableFields, key, "Configuration params", sourcePath, lineNumber);
+      config.Params.set(key, parseConfigParam(value, "toml", sourcePath, lineNumber));
+    }
+    else if (table.startsWith("languages.")) {
+      const lang = substringFrom(table, "languages.".length);
+      const language = languages.get(lang);
+      if (language === undefined) throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Unknown language table '${table}'`, sourcePath, lineNumber, 1);
+      recordField(tableFields, key, `Language '${lang}'`, sourcePath, lineNumber);
+      applyLanguageField(language, key, value, sourcePath, lineNumber);
+    } else if (table === "") {
+      recordField(rootFields, key, "Configuration", sourcePath, lineNumber);
+      applyRootField(config, key, value, sourcePath, lineNumber);
+      if (key.toLowerCase() === "languagecode") hasLanguageCode = true;
+    }
+    else throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Unsupported TOML table '${table}'`, sourcePath, lineNumber, 1);
   }
 
-  const config = new SiteConfig(title, ensureTrailingSlash(baseURL), languageCode, theme, copyright);
-  config.contentDir = contentDir;
-  if (languages.length > 0) {
-    config.languages = sortLanguages(languages.map((entry) => entry.toConfig()));
+  config.Menus = menuBuildersToEntries(menuBuilders);
+  config.languages = sortLanguages(Array.from(languages.values(), (language) => language.toConfig()));
+  if (config.languages.length > 0) {
     const selected = config.languages[0]!;
     config.contentDir = selected.contentDir;
     if (!hasLanguageCode) config.languageCode = selected.lang;
   }
-  config.Params = params;
-
-  for (const [menuName, builders] of menuBuilders) {
-    const entries: MenuEntry[] = [];
-    for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
-    config.Menus.set(menuName, buildMenuHierarchy(entries));
-  }
-
   return config;
 };
 
-export const mergeTomlIntoConfig = (config: SiteConfig, text: string, fileName: string): SiteConfig => {
+export const mergeTomlIntoConfig = (
+  config: SiteConfig,
+  text: string,
+  fileName: string,
+  sourcePath?: string,
+): SiteConfig => {
+  const lower = fileName.toLowerCase();
+  if (lower === "hugo.toml" || lower === "config.toml") return parseTomlConfig(text, sourcePath);
+  if (lower === "module.toml") {
+    config.moduleMounts = parseModuleToml(text, sourcePath);
+    return config;
+  }
+
   const lines = replaceLineEndings(text, "\n").split("\n");
-  const lowerFileName = fileName.toLowerCase();
-
-  if (lowerFileName === "params.toml") {
-    let nestedPrefix = "";
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
-
+  if (lower === "params.toml") {
+    let prefix = "";
+    const fields = new Set<string>();
+    const tables = new Set<string>();
+    for (let index: int = 0; index < lines.length; index++) {
+      const lineNumber = index + 1;
+      const line = stripStructuredComment(lines[index]!, "toml").trim();
+      if (line === "") continue;
       if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
-        const table = substringCount(line, 1, line.length - 2).trim();
-        nestedPrefix = table === "" ? "" : `${table}.`;
-        continue;
-      }
-
-      const eq = line.indexOf("=");
-      if (eq < 0) continue;
-      const key = `${nestedPrefix}${substringCount(line, 0, eq).trim()}`;
-      config.Params.set(key, parseTomlValue(substringFrom(line, eq + 1).trim()));
-    }
-    return config;
-  }
-
-  if (lowerFileName === "languages.toml") {
-    const langBuilders = new Map<string, LanguageConfigBuilder>();
-    let currentLang = "";
-    let inParamsTable = false;
-
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
-
-      if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
-        const tableName = substringCount(line, 1, line.length - 2).trim().toLowerCase();
-        if (tableName.includes(".params")) {
-          currentLang = substringCount(tableName, 0, tableName.indexOf("."));
-          inParamsTable = true;
-        } else {
-          currentLang = tableName;
-          inParamsTable = false;
-          if (!langBuilders.has(currentLang)) {
-            langBuilders.set(currentLang, new LanguageConfigBuilder(currentLang));
-          }
+        prefix = substringCount(line, 1, line.length - 2).trim();
+        const normalized = prefix.toLowerCase();
+        if (tables.has(normalized)) {
+          throw createTsumoError("TSUMO_CONFIG_DUPLICATE_FIELD", `Configuration params table '${prefix}' is declared more than once`, sourcePath, lineNumber, 1);
         }
+        tables.add(normalized);
+        if (prefix !== "") prefix += ".";
         continue;
       }
-
-      if (currentLang === "" || inParamsTable) continue;
-
-      const eq = line.indexOf("=");
-      if (eq < 0) continue;
-
-      const key = substringCount(line, 0, eq).trim().toLowerCase();
-      const value = unquote(substringFrom(line, eq + 1).trim());
-      const builder = langBuilders.get(currentLang);
-      if (builder === undefined) continue;
-
-      if (key === "languagename") builder.languageName = value;
-      else if (key === "languagedirection") builder.languageDirection = value;
-      else if (key === "contentdir") builder.contentDir = value;
-      else if (key === "weight") {
-        const parsed = tryParseInt(value);
-        if (parsed !== undefined) builder.weight = parsed;
-      }
-    }
-
-    config.languages = sortLanguages(Array.from(langBuilders.values(), (builder) => builder.toConfig()));
-    if (config.languages.length > 0) {
-      const selected = config.languages[0]!;
-      config.contentDir = selected.contentDir;
-      config.languageCode = selected.lang;
+      const assignment = splitAssignment(line, sourcePath, lineNumber);
+      const key = prefix + assignment[0]!;
+      recordField(fields, key, "Configuration params", sourcePath, lineNumber);
+      config.Params.set(key, parseConfigParam(assignment[1]!, "toml", sourcePath, lineNumber));
     }
     return config;
   }
 
-  if (lowerFileName.startsWith("languages.") && lowerFileName.endsWith(".toml")) {
-    const prefixLength = "languages.".length;
-    const suffixLength = ".toml".length;
-    const extractLength = lowerFileName.length - prefixLength - suffixLength;
-    if (extractLength <= 0) return config;
-
-    const langCode = substringCount(lowerFileName, prefixLength, extractLength);
-    if (langCode === "") return config;
-
-    let langBuilder = config.languages.find((language) => language.lang.toLowerCase() === langCode);
-    const nextBuilder = new LanguageConfigBuilder(langCode);
-    if (langBuilder !== undefined) {
-      nextBuilder.languageName = langBuilder.languageName;
-      nextBuilder.languageDirection = langBuilder.languageDirection;
-      nextBuilder.contentDir = langBuilder.contentDir;
-      nextBuilder.weight = langBuilder.weight;
+  if (lower === "languages.toml" || (lower.startsWith("languages.") && lower.endsWith(".toml"))) {
+    const aggregate = lower === "languages.toml";
+    const existing = new Map<string, LanguageConfig>();
+    for (let index = 0; index < config.languages.length; index++) {
+      existing.set(config.languages[index]!.lang.toLowerCase(), config.languages[index]!);
     }
-
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
-
-      const eq = line.indexOf("=");
-      if (eq < 0) continue;
-      const key = substringCount(line, 0, eq).trim().toLowerCase();
-      const value = unquote(substringFrom(line, eq + 1).trim());
-
-      if (key === "languagename") nextBuilder.languageName = value;
-      else if (key === "languagedirection") nextBuilder.languageDirection = value;
-      else if (key === "contentdir") nextBuilder.contentDir = value;
-      else if (key === "weight") {
-        const parsed = tryParseInt(value);
-        if (parsed !== undefined) nextBuilder.weight = parsed;
-      }
-    }
-
-    const nextLanguages = config.languages.filter((language) => language.lang.toLowerCase() !== langCode);
-    nextLanguages.push(nextBuilder.toConfig());
-    config.languages = sortLanguages(nextLanguages);
-    return config;
-  }
-
-  if (lowerFileName.startsWith("menus.") && lowerFileName.endsWith(".toml")) {
-    const menuBuilders = new Map<string, MenuEntryBuilder[]>();
-    let currentMenuEntry: MenuEntryBuilder | undefined;
-
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
-
-      if (line.startsWith("[[") && line.endsWith("]]")) {
-        const tableName = substringCount(line, 2, line.length - 4).trim().toLowerCase();
-        currentMenuEntry = new MenuEntryBuilder(tableName);
-        const entries = menuBuilders.get(tableName) ?? [];
-        entries.push(currentMenuEntry);
-        menuBuilders.set(tableName, entries);
-        continue;
-      }
-
-      if (currentMenuEntry === undefined) continue;
-
-      const eq = line.indexOf("=");
-      if (eq < 0) continue;
-
-      const key = substringCount(line, 0, eq).trim().toLowerCase();
-      const value = unquote(substringFrom(line, eq + 1).trim());
-
-      if (key === "name") currentMenuEntry.name = value;
-      else if (key === "url") currentMenuEntry.url = value;
-      else if (key === "pageref") currentMenuEntry.pageRef = value;
-      else if (key === "title") currentMenuEntry.title = value;
-      else if (key === "parent") currentMenuEntry.parent = value;
-      else if (key === "identifier") currentMenuEntry.identifier = value;
-      else if (key === "pre") currentMenuEntry.pre = value;
-      else if (key === "post") currentMenuEntry.post = value;
-      else if (key === "weight") {
-        const parsed = tryParseInt(value);
-        if (parsed !== undefined) currentMenuEntry.weight = parsed;
-      }
-    }
-
-    for (const [menuName, builders] of menuBuilders) {
-      const entries: MenuEntry[] = [];
-      for (let i = 0; i < builders.length; i++) entries.push(builders[i]!.toEntry());
-      config.Menus.set(menuName, buildMenuHierarchy(entries));
-    }
-    return config;
-  }
-
-  if (lowerFileName === "hugo.toml" || lowerFileName === "config.toml") {
-    let table = "";
-
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]!;
-      const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
-
+    const builders = new Map<string, LanguageConfigBuilder>();
+    const fields = new Map<string, Set<string>>();
+    const tables = new Set<string>();
+    let current = "";
+    if (!aggregate) current = substringCount(lower, "languages.".length, lower.length - "languages.".length - ".toml".length);
+    for (let index: int = 0; index < lines.length; index++) {
+      const lineNumber = index + 1;
+      const line = stripStructuredComment(lines[index]!, "toml").trim();
+      if (line === "") continue;
       if (line.startsWith("[") && line.endsWith("]") && !line.startsWith("[[")) {
-        table = substringCount(line, 1, line.length - 2).trim().toLowerCase();
+        if (!aggregate) {
+          throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Language file '${fileName}' accepts fields only for '${current}'`, sourcePath, lineNumber, 1);
+        }
+        current = substringCount(line, 1, line.length - 2).trim().toLowerCase();
+        if (current === "" || current.includes(".")) throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Unsupported language table '${current}'`, sourcePath, lineNumber, 1);
+        if (tables.has(current)) throw createTsumoError("TSUMO_CONFIG_DUPLICATE_FIELD", `Language table '${current}' is declared more than once`, sourcePath, lineNumber, 1);
+        tables.add(current);
         continue;
       }
-
-      const eq = line.indexOf("=");
-      if (eq < 0) continue;
-
-      const key = substringCount(line, 0, eq).trim().toLowerCase();
-      const rawValue = substringFrom(line, eq + 1).trim();
-      const value = unquote(rawValue);
-
-      if (table === "") {
-        if (key === "title") config.title = value;
-        else if (key === "baseurl") config.baseURL = ensureTrailingSlash(value);
-        else if (key === "languagecode") config.languageCode = value;
-        else if (key === "contentdir") config.contentDir = value;
-        else if (key === "theme") config.theme = value;
-        else if (key === "copyright") config.copyright = value;
-      } else if (table === "params") {
-        config.Params.set(key, parseTomlValue(rawValue));
+      if (current === "") throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "Language configuration requires a language identity", sourcePath, lineNumber, 1);
+      let builder = builders.get(current);
+      if (builder === undefined) {
+        builder = new LanguageConfigBuilder(current, existing.get(current));
+        builders.set(current, builder);
+        fields.set(current, new Set<string>());
       }
+      const assignment = splitAssignment(line, sourcePath, lineNumber);
+      const languageFields = fields.get(current);
+      if (languageFields === undefined) throw createTsumoError("TSUMO_CONFIG_MODEL_INCONSISTENT", `Language '${current}' fields disappeared during configuration merge`, sourcePath);
+      recordField(languageFields, assignment[0]!, `Language '${current}'`, sourcePath, lineNumber);
+      applyLanguageField(builder, assignment[0]!, assignment[1]!, sourcePath, lineNumber);
     }
+    for (const key of builders.keys()) {
+      const builder = builders.get(key);
+      if (builder === undefined) throw createTsumoError("TSUMO_CONFIG_MODEL_INCONSISTENT", `Language '${key}' disappeared during configuration merge`, sourcePath);
+      existing.set(key, builder.toConfig());
+    }
+    config.languages = sortLanguages(Array.from(existing.values()));
+    if (config.languages.length > 0) {
+      config.contentDir = config.languages[0]!.contentDir;
+      config.languageCode = config.languages[0]!.lang;
+    }
+    return config;
   }
 
-  return config;
+  if (lower.startsWith("menus.") && lower.endsWith(".toml")) {
+    const menuName = substringCount(lower, "menus.".length, lower.length - "menus.".length - ".toml".length);
+    if (menuName === "") throw createTsumoError("TSUMO_CONFIG_FILE_UNSUPPORTED", `Unsupported split configuration file '${fileName}'`, sourcePath);
+    const builders: MenuEntryBuilder[] = [];
+    let current: MenuEntryBuilder | undefined;
+    let fields = new Set<string>();
+    for (let index: int = 0; index < lines.length; index++) {
+      const lineNumber = index + 1;
+      const line = stripStructuredComment(lines[index]!, "toml").trim();
+      if (line === "") continue;
+      if (line.startsWith("[[") && line.endsWith("]]")) {
+        const table = substringCount(line, 2, line.length - 4).trim().toLowerCase();
+        if (table !== menuName) throw createTsumoError("TSUMO_CONFIG_TABLE_UNSUPPORTED", `Menu file '${fileName}' cannot declare '${table}'`, sourcePath, lineNumber, 1);
+        current = new MenuEntryBuilder(menuName);
+        fields = new Set<string>();
+        builders.push(current);
+        continue;
+      }
+      if (current === undefined) throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", `Menu file '${fileName}' requires [[${menuName}]] entries`, sourcePath, lineNumber, 1);
+      const assignment = splitAssignment(line, sourcePath, lineNumber);
+      recordField(fields, assignment[0]!, `Menu '${menuName}' entry`, sourcePath, lineNumber);
+      applyMenuField(current, assignment[0]!, assignment[1]!, sourcePath, lineNumber);
+    }
+    const entries: MenuEntry[] = [];
+    for (let index = 0; index < builders.length; index++) entries.push(builders[index]!.toEntry());
+    config.Menus.set(menuName, buildMenuHierarchy(entries));
+    return config;
+  }
+
+  throw createTsumoError("TSUMO_CONFIG_FILE_UNSUPPORTED", `Unsupported split configuration file '${fileName}'`, sourcePath);
 };

@@ -1,6 +1,6 @@
-import { PageContext, PageFile } from "../../models.ts";
-import type { ResourceManager } from "../../resources.ts";
-import { TemplateValue } from "./base.ts";
+import { PageContext, PageFile } from "../../models.js";
+import type { ResourceManager } from "../../resources.js";
+import { TemplateValue } from "./base.js";
 
 export class PageValue extends TemplateValue {
   value: PageContext;

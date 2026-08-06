@@ -1,0 +1,24 @@
+{
+  "$schema": "https://tsonic.org/schema/v1.json",
+  "entryPoint": "index.ts",
+  "rootDir": "src",
+  "outDir": "out",
+  "targets": [
+    {
+      "id": "csharp",
+      "surfaces": ["js"],
+      "options": {
+        "namespace": "Tsumo.Tests",
+        "assemblyName": "Tsumo.Tests",
+        "outputType": "Library",
+        "projectFile": "Tsumo.Tests.csproj",
+        "providerReferences": {
+          "directories": [
+            "../../.temp/active-provider-references/product",
+            "../../.temp/active-provider-references/tests"
+          ]
+        }
+      }
+    }
+  ]
+}

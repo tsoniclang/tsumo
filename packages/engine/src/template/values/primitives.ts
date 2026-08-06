@@ -1,6 +1,6 @@
-import type { int } from "@tsonic/core/types.js";
-import { HtmlString } from "../../utils/html.ts";
-import { TemplateValue } from "./base.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { HtmlString } from "../../utils/html.js";
+import { TemplateValue } from "./base.js";
 
 export class StringValue extends TemplateValue {
   value: string;

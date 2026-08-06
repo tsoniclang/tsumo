@@ -1,4 +1,4 @@
-import { logLine } from "./log-line.ts";
+import { logLine } from "./log-line.js";
 
 export const printUsage = (): void => {
   logLine("tsumo - Hugo-inspired blog engine (Tsonic)");

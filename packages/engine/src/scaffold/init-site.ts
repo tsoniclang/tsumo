@@ -1,16 +1,18 @@
-import { readdirSync } from "@tsonic/nodejs/fs.js";
-import { basename, join, resolve } from "@tsonic/nodejs/path.js";
-import { ensureDir, dirExists, writeTextFile } from "../fs.ts";
-import { humanizeSlug } from "../utils/text.ts";
+import { readdirSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
+import { ensureDir, dirExists, rejectFilesystemLink, writeTextFile } from "../fs.js";
+import { humanizeSlug } from "../utils/text.js";
+import { createTsumoError } from "../diagnostics.js";
 
 const ensureEmptyDir = (path: string): void => {
   if (!dirExists(path)) {
     ensureDir(path);
     return;
   }
+  rejectFilesystemLink(path);
 
   if (readdirSync(path).length > 0) {
-    throw new Error(`Directory not empty: ${path}`);
+    throw createTsumoError("TSUMO_SCAFFOLD_DESTINATION_NOT_EMPTY", `Directory not empty: ${path}`, path);
   }
 };
 
@@ -149,9 +151,9 @@ description: "Example site for tsumo."
 Welcome to your new site.
 `;
 
-const helloWorldMd = (): string => `---
+const helloWorldMd = (creationTime: Date): string => `---
 title: "Hello World"
-date: "${new Date().toISOString()}"
+date: "${creationTime.toISOString()}"
 draft: false
 description: "An end-to-end demo of tsumo with GFM markdown."
 tags: ["hello", "tsumo", "gfm"]
@@ -181,11 +183,13 @@ nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 .content pre { padding: 0.75rem 1rem; background: rgba(127,127,127,0.15); overflow: auto; border-radius: 10px; }
 `;
 
-export const initSite = (targetDir: string): void => {
+export const initSite = (targetDir: string, creationTime?: Date): void => {
   const dir = resolve(targetDir);
+  const scaffoldTime = creationTime ?? new Date();
   ensureEmptyDir(dir);
 
-  const title = humanizeSlug(basename(dir) || "Tsumo Site");
+  const base = basename(dir);
+  const title = humanizeSlug(base === "" ? "Tsumo Site" : base);
 
   ensureDir(join(dir, "content"));
   ensureDir(join(dir, "content", "posts"));
@@ -205,5 +209,5 @@ export const initSite = (targetDir: string): void => {
   writeTextFile(join(dir, "layouts", "partials", "footer.html"), partialFooter());
   writeTextFile(join(dir, "static", "style.css"), styleCss());
   writeTextFile(join(dir, "content", "_index.md"), indexMd());
-  writeTextFile(join(dir, "content", "posts", "hello-world.md"), helloWorldMd());
+  writeTextFile(join(dir, "content", "posts", "hello-world.md"), helloWorldMd(scaffoldTime));
 };

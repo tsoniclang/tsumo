@@ -6,7 +6,10 @@ Source builds use workspace `file:` dependencies that expect sibling checkouts
 of:
 
 - `../tsonic`
-- `../tsbindgen`
+- `../tsonic-csharp`
+- `../csharp-runtime`
+- `../csharp-js`
+- `../csharp-nodejs`
 
 From the `tsumo` repo root:
 
@@ -15,34 +18,37 @@ npm install
 npm run build
 ```
 
-The CLI binary is produced at:
+`npm run build` prepares the provider reference assemblies, runs `tsonic build`
+for each project (emitting C# under each package's ignored `out/csharp/`), and
+then builds the user-owned `.csproj` projects with `dotnet build`. The CLI
+binary is produced at:
 
-- `./packages/cli/out/tsumo`
+- `./packages/cli/bin/Debug/net10.0/tsumo`
 
-Optional: NativeAOT build:
+NativeAOT publish:
 
 ```bash
-npm run -w tsumo-cli build:aot
-./packages/cli/out/tsumo-aot --help
+npm run -w tsumo-cli publish:aot
+./packages/cli/bin/Release/net10.0/linux-x64/publish/tsumo --help
 ```
 
 ## Quick start: create and serve a site
 
 ```bash
-./packages/cli/out/tsumo new site ./my-site
-./packages/cli/out/tsumo server --source ./my-site
+./packages/cli/bin/Debug/net10.0/tsumo new site ./my-site
+./packages/cli/bin/Debug/net10.0/tsumo server --source ./my-site
 ```
 
 Create a new page under `content/`:
 
 ```bash
-./packages/cli/out/tsumo new posts/first-post.md --source ./my-site
+./packages/cli/bin/Debug/net10.0/tsumo new posts/first-post.md --source ./my-site
 ```
 
 Build a static site:
 
 ```bash
-./packages/cli/out/tsumo build --source ./my-site --destination public
+./packages/cli/bin/Debug/net10.0/tsumo build --source ./my-site --destination public
 ```
 
 ## Try the included examples
@@ -50,15 +56,15 @@ Build a static site:
 Blog example:
 
 ```bash
-./packages/cli/out/tsumo build --source ./examples/basic-blog
-./packages/cli/out/tsumo server --source ./examples/basic-blog
+./packages/cli/bin/Debug/net10.0/tsumo build --source ./examples/basic-blog
+./packages/cli/bin/Debug/net10.0/tsumo server --source ./examples/basic-blog
 ```
 
 Docs example (requires you to point mounts at real docs folders):
 
 ```bash
-./packages/cli/out/tsumo build --source ./examples/docs-site
-./packages/cli/out/tsumo server --source ./examples/docs-site
+./packages/cli/bin/Debug/net10.0/tsumo build --source ./examples/docs-site
+./packages/cli/bin/Debug/net10.0/tsumo server --source ./examples/docs-site
 ```
 
 ## Themes
@@ -77,7 +83,7 @@ theme = "hugo-book"
 Then build with a themes directory (example):
 
 ```bash
-./packages/cli/out/tsumo build -s ./my-site --themesDir /path/to/hugo-themes
+./packages/cli/bin/Debug/net10.0/tsumo build -s ./my-site --themesDir /path/to/hugo-themes
 ```
 
 ## Assets (Sass)
@@ -89,11 +95,5 @@ Some Hugo themes require the Sass pipeline (`css.Sass`). tsumo shells out to a S
 Example:
 
 ```bash
-TSUMO_SASS=$(which sass) ./packages/cli/out/tsumo build -s ./my-site
+TSUMO_SASS=$(which sass) ./packages/cli/bin/Debug/net10.0/tsumo build -s ./my-site
 ```
-
-## Selftest package overlays
-
-`npm run selftest` uses local first-party package repos when the sibling
-checkouts exist beside this repo. The generated verification artifacts are
-ignored by git.

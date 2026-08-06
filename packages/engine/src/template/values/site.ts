@@ -1,5 +1,5 @@
-import { LanguageContext, SiteContext } from "../../models.ts";
-import { TemplateValue } from "./base.ts";
+import { LanguageContext, SiteContext } from "../../models.js";
+import { TemplateValue } from "./base.js";
 
 export class SiteValue extends TemplateValue {
   value: SiteContext;

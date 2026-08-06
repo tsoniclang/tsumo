@@ -1,20 +1,19 @@
-import { Markdown } from "markdig-types/Markdig.js";
-import { HtmlAttributesExtensions } from "markdig-types/Markdig.Renderers.Html.js";
-import type { ContainerBlock, HeadingBlock } from "markdig-types/Markdig.Syntax.js";
-import type {
+import { Markdown } from "@tsonic/dotnet/Markdig.js";
+import { HtmlAttributesExtensions } from "@tsonic/dotnet/Markdig.Renderers.Html.js";
+import { ContainerBlock, HeadingBlock } from "@tsonic/dotnet/Markdig.Syntax.js";
+import {
   AutolinkInline,
   CodeInline,
   ContainerInline,
   HtmlEntityInline,
-  Inline,
   LineBreakInline,
   LiteralInline,
-} from "markdig-types/Markdig.Syntax.Inlines.js";
-import { List, Stack } from "@tsonic/dotnet/System.Collections.Generic.js";
+} from "@tsonic/dotnet/Markdig.Syntax.Inlines.js";
+import type { Inline } from "@tsonic/dotnet/Markdig.Syntax.Inlines.js";
+import { Stack } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/core/types.js";
-import { trycast } from "@tsonic/core/lang.js";
-import { markdownPipeline } from "./pipeline.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { markdownPipeline } from "./pipeline.js";
 
 class TocHeading {
   level: int;
@@ -45,38 +44,37 @@ const indent = (depth: int): string => {
 };
 
 const appendInlinePlainText = (inline: Inline, sb: StringBuilder): void => {
-  const literal = trycast<LiteralInline>(inline);
-  if (literal !== null) {
+  if (inline instanceof LiteralInline) {
+    const literal = inline as LiteralInline;
     sb.Append(literal.ToString());
     return;
   }
 
-  const code = trycast<CodeInline>(inline);
-  if (code !== null) {
+  if (inline instanceof CodeInline) {
+    const code = inline as CodeInline;
     sb.Append(code.Content);
     return;
   }
 
-  const entity = trycast<HtmlEntityInline>(inline);
-  if (entity !== null) {
+  if (inline instanceof HtmlEntityInline) {
+    const entity = inline as HtmlEntityInline;
     sb.Append(entity.Transcoded.ToString());
     return;
   }
 
-  const autolink = trycast<AutolinkInline>(inline);
-  if (autolink !== null) {
+  if (inline instanceof AutolinkInline) {
+    const autolink = inline as AutolinkInline;
     sb.Append(autolink.Url);
     return;
   }
 
-  const lineBreak = trycast<LineBreakInline>(inline);
-  if (lineBreak !== null) {
+  if (inline instanceof LineBreakInline) {
     sb.Append(" ");
     return;
   }
 
-  const container = trycast<ContainerInline>(inline);
-  if (container !== null) {
+  if (inline instanceof ContainerInline) {
+    const container = inline as ContainerInline;
     const it = container.GetEnumerator();
     while (it.MoveNext()) appendInlinePlainText(it.Current, sb);
     it.Dispose();
@@ -94,18 +92,18 @@ const getHeadingPlainText = (heading: HeadingBlock): string => {
 
 // Collect headings from AST using actual Markdig-generated IDs
 const collectHeadingsFromAst = (document: ContainerBlock): TocHeading[] => {
-  const headings = new List<TocHeading>();
+  const headings: TocHeading[] = [];
   collectHeadingsRecursive(document, headings);
-  return headings.ToArray();
+  return headings;
 };
 
-const collectHeadingsRecursive = (container: ContainerBlock, headings: List<TocHeading>): void => {
+const collectHeadingsRecursive = (container: ContainerBlock, headings: TocHeading[]): void => {
   const it = container.GetEnumerator();
   while (it.MoveNext()) {
     const block = it.Current;
 
-    const heading = trycast<HeadingBlock>(block);
-    if (heading !== null) {
+    if (block instanceof HeadingBlock) {
+      const heading = block as HeadingBlock;
       // Get the ID from Markdig's HtmlAttributes (set by AutoIdentifiers extension)
       const attrs = HtmlAttributesExtensions.TryGetAttributes(heading);
       const id = attrs?.Id ?? "";
@@ -113,13 +111,12 @@ const collectHeadingsRecursive = (container: ContainerBlock, headings: List<TocH
       // Get plain text from heading content
       const text = getHeadingPlainText(heading);
 
-      headings.Add(new TocHeading(heading.Level, text, id));
+      headings.push(new TocHeading(heading.Level, text, id));
     }
 
     // Recurse into child containers
-    const childContainer = trycast<ContainerBlock>(block);
-    if (childContainer !== null) {
-      collectHeadingsRecursive(childContainer, headings);
+    if (block instanceof ContainerBlock) {
+      collectHeadingsRecursive(block as ContainerBlock, headings);
     }
   }
   it.Dispose();
@@ -145,7 +142,7 @@ export const generateTableOfContents = (markdown: string): string => {
   sb.Append(`<nav id="TableOfContents">\n`);
 
   const listStack = new Stack<TocListFrame>();
-  let currentLevel = 0;
+  let currentLevel: int = 0;
 
   for (let i = 0; i < headings.length; i++) {
     const h = headings[i]!;

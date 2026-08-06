@@ -20,6 +20,10 @@ Shortcodes support:
 - named params: `{{< figure src="a.png" caption="..." >}}`
 - positional params: `{{< figure "a.png" "..." >}}`
 
+Named and positional arguments cannot be mixed in one call, duplicate named
+arguments are rejected, and unclosed actions or strings report an exact
+`TSUMO_SHORTCODE_*` diagnostic at the content location.
+
 ## Assets pipeline (Hugo-like subset)
 
 Themes commonly use Hugo’s assets pipeline (`resources.*`, `css.Sass`, fingerprinting). tsumo supports a working subset:
@@ -28,7 +32,7 @@ Themes commonly use Hugo’s assets pipeline (`resources.*`, `css.Sass`, fingerp
 - `resources.GetMatch "glob"`
 - `resources.FromString "name" "content"`
 - `resources.ExecuteAsTemplate "outName" <ctx>` (expects a `Resource` piped into it)
-- `resources.Minify` (best-effort)
+- `resources.Minify` (deterministic blank-line removal and line trimming for text resources)
 - `resources.Fingerprint` (adds a content hash to the output path and populates `.Data.Integrity`)
 - `css.Sass` (requires a Sass executable)
 
@@ -37,4 +41,3 @@ Themes commonly use Hugo’s assets pipeline (`resources.*`, `css.Sass`, fingerp
 tsumo executes an external Sass compiler.
 
 - Install Dart Sass (`sass` CLI), or set `TSUMO_SASS` to the full path of a Sass executable.
-

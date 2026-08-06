@@ -1,5 +1,5 @@
-import type { int } from "@tsonic/core/types.js";
-import { parseInt32 } from "./utils/int32.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { parseInt32 } from "./utils/int32.js";
 
 export class ParamKind {
   static String: int = 0;

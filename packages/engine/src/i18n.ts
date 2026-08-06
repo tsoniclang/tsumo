@@ -1,19 +1,16 @@
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { Directory, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
-import { fileExists, readTextFile } from "./fs.ts";
-import { indexOfText, replaceLineEndings, substringCount, substringFrom } from "./utils/strings.ts";
+import { Path } from "@tsonic/dotnet/System.IO.js";
+import { listFilesTopDirectory, readTextFile } from "./fs.js";
+import { indexOfText, replaceLineEndings, substringCount, substringFrom } from "./utils/strings.js";
 
 export class I18nStore {
-  translations: Dictionary<string, Dictionary<string, string>>;
+  translations: Map<string, Map<string, string>>;
 
   constructor() {
-    this.translations = new Dictionary<string, Dictionary<string, string>>();
+    this.translations = new Map<string, Map<string, string>>();
   }
 
   loadFromDir(dir: string): void {
-    if (!Directory.Exists(dir)) return;
-
-    const files = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly);
+    const files = listFilesTopDirectory(dir, "*");
     for (let i = 0; i < files.length; i++) {
       const file = files[i]!;
       const ext = (Path.GetExtension(file) ?? "").toLowerCase();
@@ -25,12 +22,10 @@ export class I18nStore {
       const lang = fileName.toLowerCase();
       const content = readTextFile(file);
 
-      let langDict = new Dictionary<string, string>();
-      const hasLang = this.translations.TryGetValue(lang, langDict);
-      if (!hasLang) {
-        langDict = new Dictionary<string, string>();
-        this.translations.Remove(lang);
-        this.translations.Add(lang, langDict);
+      let langDict = this.translations.get(lang);
+      if (langDict === undefined) {
+        langDict = new Map<string, string>();
+        this.translations.set(lang, langDict);
       }
 
       if (ext === ".yaml" || ext === ".yml") {
@@ -43,7 +38,7 @@ export class I18nStore {
     }
   }
 
-  parseYamlI18n(content: string, dict: Dictionary<string, string>): void {
+  parseYamlI18n(content: string, dict: Map<string, string>): void {
     const lines = replaceLineEndings(content, "\n").split("\n");
     let currentId = "";
 
@@ -61,8 +56,7 @@ export class I18nStore {
       } else if (line.startsWith("translation:") && currentId !== "") {
         const value = substringFrom(line, "translation:".length).trim();
         const translation = this.unquoteYaml(value);
-        dict.Remove(currentId);
-        dict.Add(currentId, translation);
+        dict.set(currentId, translation);
         currentId = "";
       }
     }
@@ -79,7 +73,7 @@ export class I18nStore {
     return trimmed;
   }
 
-  parseTomlI18n(content: string, dict: Dictionary<string, string>): void {
+  parseTomlI18n(content: string, dict: Map<string, string>): void {
     const lines = replaceLineEndings(content, "\n").split("\n");
     let currentId = "";
 
@@ -100,8 +94,7 @@ export class I18nStore {
       const value = this.unquoteToml(substringFrom(line, eq + 1).trim());
 
       if ((key === "other" || key === "translation") && currentId !== "") {
-        dict.Remove(currentId);
-        dict.Add(currentId, value);
+        dict.set(currentId, value);
       }
     }
   }
@@ -117,32 +110,30 @@ export class I18nStore {
     return trimmed;
   }
 
-  parseJsonI18n(content: string, _dict: Dictionary<string, string>): void {
+  parseJsonI18n(content: string, _dict: Map<string, string>): void {
     // Simplified JSON parsing - not fully implemented
     // Hugo i18n JSON is typically same format as YAML array
   }
 
   translate(lang: string, key: string): string {
-    let langDict = new Dictionary<string, string>();
     const langLower = lang.toLowerCase();
 
-    let hasLang = this.translations.TryGetValue(langLower, langDict);
-    if (!hasLang) {
+    let langDict = this.translations.get(langLower);
+    if (langDict === undefined) {
       const dashIdx = indexOfText(langLower, "-");
       if (dashIdx > 0) {
         const baseLang = substringCount(langLower, 0, dashIdx);
-        hasLang = this.translations.TryGetValue(baseLang, langDict);
+        langDict = this.translations.get(baseLang);
       }
     }
 
-    if (!hasLang) {
-      hasLang = this.translations.TryGetValue("en", langDict);
+    if (langDict === undefined) {
+      langDict = this.translations.get("en");
     }
 
-    if (!hasLang) return key;
+    if (langDict === undefined) return key;
 
-    let value = "";
-    const hasKey = langDict.TryGetValue(key, value);
-    return hasKey ? value : key;
+    const value = langDict.get(key);
+    return value !== undefined ? value : key;
   }
 }

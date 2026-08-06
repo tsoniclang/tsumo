@@ -1,5 +1,5 @@
-import { OutputFormat, SiteContext } from "../../models.ts";
-import { TemplateValue } from "./base.ts";
+import { OutputFormat, SiteContext } from "../../models.js";
+import { TemplateValue } from "./base.js";
 
 export class OutputFormatsValue extends TemplateValue {
   site: SiteContext;

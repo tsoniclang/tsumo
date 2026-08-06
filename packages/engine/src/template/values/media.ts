@@ -1,5 +1,5 @@
-import { MediaType } from "../../models.ts";
-import { TemplateValue } from "./base.ts";
+import { MediaType } from "../../models.js";
+import { TemplateValue } from "./base.js";
 
 export class MediaTypeValue extends TemplateValue {
   value: MediaType;

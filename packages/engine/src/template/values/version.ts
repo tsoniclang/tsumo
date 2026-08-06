@@ -1,8 +1,7 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int } from "@tsonic/csharp/types.js";
 import { Int32 } from "@tsonic/dotnet/System.js";
-import { List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { TemplateValue } from "./base.ts";
-import { compareText, substringCount, substringFrom } from "../../utils/strings.ts";
+import { TemplateValue } from "./base.js";
+import { compareText, substringCount, substringFrom } from "../../utils/strings.js";
 
 /**
  * Represents a version string with semver comparison semantics.
@@ -45,14 +44,14 @@ export class VersionStringValue extends TemplateValue {
     }
     // Split by dots and convert to numbers
     const parts = cleaned.split(".");
-    const result = new List<int>();
+    const result: int[] = [];
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]!;
       // Extract leading numeric portion (handles cases like "1-beta")
       const num = VersionStringValue.extractLeadingNumber(part);
-      result.Add(num);
+      result.push(num);
     }
-    return result.ToArray();
+    return result;
   }
 
   static extractLeadingNumber(s: string): int {

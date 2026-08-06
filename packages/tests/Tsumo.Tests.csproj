@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Tsumo.Tests</AssemblyName>
+    <RootNamespace>Tsumo.Tests</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <IsPackable>false</IsPackable>
+    <TsumoRepoRoot>$(MSBuildThisFileDirectory)../../</TsumoRepoRoot>
+    <TsumoProviderReferenceDirectory>$(TsumoRepoRoot).temp/active-provider-references/product</TsumoProviderReferenceDirectory>
+    <TsumoTestProviderReferenceDirectory>$(TsumoRepoRoot).temp/active-provider-references/tests</TsumoTestProviderReferenceDirectory>
+    <TsonicRuntimeAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-runtime/runtimes/$(TargetFramework)/Tsonic.CSharp.Runtime.dll</TsonicRuntimeAssembly>
+    <TsonicJsAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-js/runtimes/$(TargetFramework)/Tsonic.CSharp.Js.dll</TsonicJsAssembly>
+    <TsonicNodeAssembly>$(TsumoRepoRoot)node_modules/@tsonic/csharp-nodejs/runtimes/$(TargetFramework)/Tsonic.CSharp.Node.dll</TsonicNodeAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="out/csharp/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Tsonic.CSharp.Runtime" HintPath="$(TsonicRuntimeAssembly)" />
+    <Reference Include="Tsonic.CSharp.Js" HintPath="$(TsonicJsAssembly)" />
+    <Reference Include="Tsonic.CSharp.Node" HintPath="$(TsonicNodeAssembly)" />
+    <Reference Include="Markdig" HintPath="$(TsumoProviderReferenceDirectory)/Markdig.dll" />
+    <PackageReference Include="PhotoSauce.MagicScaler" Version="0.14.2" />
+    <PackageReference Include="PhotoSauce.NativeCodecs.Libpng" Version="1.6.43-preview2" />
+    <PackageReference Include="PhotoSauce.NativeCodecs.Libjpeg" Version="3.0.2-preview2" />
+    <PackageReference Include="PhotoSauce.NativeCodecs.Giflib" Version="5.2.2-preview2" />
+    <PackageReference Include="PhotoSauce.NativeCodecs.Libwebp" Version="1.3.2-preview3" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <Target Name="ValidateTsonicReferences" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('$(TsonicRuntimeAssembly)')" Text="Tsonic.CSharp.Runtime.dll is missing at $(TsonicRuntimeAssembly). Run npm install from the repository root." />
+    <Error Condition="!Exists('$(TsumoProviderReferenceDirectory)/Markdig.dll')" Text="Markdig.dll is missing at $(TsumoProviderReferenceDirectory). Run npm run prepare:provider-references from the repository root." />
+  </Target>
+  <!-- Materializes only the xUnit provider reflection inputs for
+       Tsonic-authored tests. Product provider references stay in
+       the active product snapshot; test-only assemblies never leak there. -->
+  <Target Name="PrepareTsonicTestProviderReferences" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <TsonicTestProviderReference
+        Include="@(ReferencePath)"
+        Condition="'%(ReferencePath.Extension)' == '.dll' And $([System.String]::new('%(ReferencePath.NuGetPackageId)').StartsWith('xunit'))" />
+    </ItemGroup>
+    <MakeDir Directories="$(TsumoTestProviderReferenceDirectory)" />
+    <Copy SourceFiles="@(TsonicTestProviderReference)" DestinationFolder="$(TsumoTestProviderReferenceDirectory)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

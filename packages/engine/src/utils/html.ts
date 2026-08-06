@@ -1,4 +1,4 @@
-import { replaceText } from "./strings.ts";
+import { replaceText } from "./strings.js";
 
 export const escapeHtml = (input: string): string => {
   let s = input;

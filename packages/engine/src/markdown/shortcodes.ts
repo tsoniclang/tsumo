@@ -1,54 +1,50 @@
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/core/types.js";
-import { parseShortcodes, ShortcodeCall } from "../shortcode.ts";
-import { ShortcodeContext, ShortcodeValue, RenderScope, TemplateEnvironment, TemplateNode, PageValue } from "../template/index.ts";
-import { PageContext, SiteContext } from "../models.ts";
-import { substringCount, substringFrom } from "../utils/strings.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { createTsumoError } from "../diagnostics.js";
+import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
+import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
+import type { TemplateEnvironment } from "../template/environment.js";
+import type { TemplateNode } from "../template/nodes.js";
+import { PageContext, SiteContext } from "../models.js";
+import { substringCount, substringFrom } from "../utils/strings.js";
 
 // Shortcode execution ordinal tracker
 export class ShortcodeOrdinalTracker {
-  counts: Dictionary<string, int>;
+  counts: Map<string, int>;
 
   constructor() {
-    this.counts = new Dictionary<string, int>();
+    this.counts = new Map<string, int>();
   }
 
   next(name: string): int {
-    let count: int = 0;
-    const has = this.counts.TryGetValue(name, count);
-    const nextVal = has ? count + 1 : 0;
-    this.counts.Remove(name);
-    this.counts.Add(name, nextVal);
+    const count = this.counts.get(name);
+    const nextVal = (count !== undefined ? count + 1 : 0) as int;
+    this.counts.set(name, nextVal);
     return nextVal;
   }
 }
 
-const executeShortcode = (
+export const renderShortcode = (
   call: ShortcodeCall,
   page: PageContext,
   site: SiteContext,
   env: TemplateEnvironment,
   ordinalTracker: ShortcodeOrdinalTracker,
   parent: ShortcodeContext | undefined,
-  recursionGuard: Dictionary<string, boolean>,
+  recursionGuard: Map<string, boolean>,
 ): string => {
   const template = env.getShortcodeTemplate(call.name);
   if (template === undefined) {
-    // Return raw shortcode text if no template found
-    return "";
+    throw createTsumoError("TSUMO_SHORTCODE_TEMPLATE_MISSING", `Shortcode template not found: ${call.name}`, call.sourcePath ?? page.File?.Filename, call.line, call.column);
   }
 
   // Check recursion guard
   const guardKey = call.name;
-  let isRecursing: boolean = false;
-  const hasGuard = recursionGuard.TryGetValue(guardKey, isRecursing);
-  if (hasGuard && isRecursing) {
-    return `<!-- shortcode recursion detected: ${call.name} -->`;
+  const isRecursing = recursionGuard.get(guardKey);
+  if (isRecursing !== undefined && isRecursing) {
+    throw createTsumoError("TSUMO_SHORTCODE_RECURSION", `Shortcode recursion detected: ${call.name}`, call.sourcePath ?? page.File?.Filename, call.line, call.column);
   }
 
-  recursionGuard.Remove(guardKey);
-  recursionGuard.Add(guardKey, true);
+  recursionGuard.set(guardKey, true);
 
   const ordinal = ordinalTracker.next(call.name);
 
@@ -70,18 +66,13 @@ const executeShortcode = (
     parent,
   );
 
-  const sb = new StringBuilder();
-  const pageValue = new PageValue(page);
   const shortcodeValue = new ShortcodeValue(ctx);
-  const scope = new RenderScope(shortcodeValue, shortcodeValue, site, env, undefined);
-  const emptyOverrides = new Dictionary<string, TemplateNode[]>();
+  const emptyOverrides = new Map<string, TemplateNode[]>();
+  const result = env.renderTemplate(template, shortcodeValue, site, emptyOverrides);
 
-  template.renderInto(sb, scope, env, emptyOverrides);
+  recursionGuard.set(guardKey, false);
 
-  recursionGuard.Remove(guardKey);
-  recursionGuard.Add(guardKey, false);
-
-  return sb.ToString();
+  return result;
 };
 
 export const processShortcodes = (
@@ -91,36 +82,33 @@ export const processShortcodes = (
   env: TemplateEnvironment,
   ordinalTracker: ShortcodeOrdinalTracker,
   parent: ShortcodeContext | undefined,
-  recursionGuard: Dictionary<string, boolean>,
+  recursionGuard: Map<string, boolean>,
 ): string => {
-  const calls = parseShortcodes(text);
+  const calls = parseShortcodes(text, page.File?.Filename);
   if (calls.length === 0) return text;
 
-  // Sort by startIndex descending to process from end to beginning
-  const sorted = new List<ShortcodeCall>();
-  for (let i = 0; i < calls.length; i++) sorted.Add(calls[i]!);
+  return processShortcodeCalls(text, calls, page, site, env, ordinalTracker, parent, recursionGuard);
+};
 
-  // Simple bubble sort by startIndex descending
-  const arr = sorted.ToArray();
-  for (let i = 0; i < arr.length; i++) {
-    for (let j = i + 1; j < arr.length; j++) {
-      if (arr[j]!.startIndex > arr[i]!.startIndex) {
-        const tmp = arr[i]!;
-        arr[i] = arr[j]!;
-        arr[j] = tmp;
-      }
-    }
+export const processShortcodeCalls = (
+  text: string,
+  calls: readonly ShortcodeCall[],
+  page: PageContext,
+  site: SiteContext,
+  env: TemplateEnvironment,
+  ordinalTracker: ShortcodeOrdinalTracker,
+  parent: ShortcodeContext | undefined,
+  recursionGuard: Map<string, boolean>,
+): string => {
+  const replacements: string[] = [];
+  for (let i = 0; i < calls.length; i++) {
+    replacements.push(renderShortcode(calls[i]!, page, site, env, ordinalTracker, parent, recursionGuard));
   }
 
   let result = text;
-  for (let i = 0; i < arr.length; i++) {
-    const call = arr[i]!;
-
-    // Skip comment shortcodes ({{</* ... */>}} or {{%/* ... */%}})
-    // These are handled by parseShortcodes skipping them already
-
-    const replacement = executeShortcode(call, page, site, env, ordinalTracker, parent, recursionGuard);
-    result = substringCount(result, 0, call.startIndex) + replacement + substringFrom(result, call.endIndex);
+  for (let i = calls.length - 1; i >= 0; i--) {
+    const call = calls[i]!;
+    result = substringCount(result, 0, call.startIndex) + replacements[i]! + substringFrom(result, call.endIndex);
   }
 
   return result;

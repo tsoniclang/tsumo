@@ -1,6 +1,6 @@
-import type { int } from "@tsonic/core/types.js";
-import { LanguageConfig, MenuEntry } from "../models.ts";
-import { ParamValue } from "../params.ts";
+import type { int } from "@tsonic/csharp/types.js";
+import { LanguageConfig, MenuEntry } from "../models.js";
+import { ParamValue } from "../params.js";
 
 export class MenuEntryBuilder {
   name: string;
@@ -53,12 +53,12 @@ export class LanguageConfigBuilder {
   contentDir: string;
   weight: int;
 
-  constructor(lang: string) {
+  constructor(lang: string, source?: LanguageConfig) {
     this.lang = lang;
-    this.languageName = lang;
-    this.languageDirection = "ltr";
-    this.contentDir = `content.${lang}`;
-    this.weight = 0;
+    this.languageName = source?.languageName ?? lang;
+    this.languageDirection = source?.languageDirection ?? "ltr";
+    this.contentDir = source?.contentDir ?? `content.${lang}`;
+    this.weight = source?.weight ?? 0;
   }
 
   toConfig(): LanguageConfig {

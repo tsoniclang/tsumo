@@ -1,4 +1,4 @@
-import { MediaType } from "./media-type.ts";
+import { MediaType } from "./media-type.js";
 
 export class OutputFormat {
   Rel: string;

@@ -1,6 +1,6 @@
-import { ParamValue } from "../params.ts";
-import { LanguageConfig } from "./language.ts";
-import { MenuEntry } from "./menu-entry.ts";
+import { ParamValue } from "../params.js";
+import { LanguageConfig } from "./language.js";
+import { MenuEntry } from "./menu-entry.js";
 
 export class ModuleMount {
   source: string;
@@ -24,7 +24,7 @@ export class SiteConfig {
   Menus: Map<string, MenuEntry[]>;
   moduleMounts: ModuleMount[];
 
-  constructor(title: string, baseURL: string, languageCode: string, theme: string | undefined, copyright?: string) {
+  constructor(title: string, baseURL: string, languageCode: string, theme: string | undefined, copyright: string | undefined) {
     this.title = title;
     this.baseURL = baseURL;
     this.languageCode = languageCode;

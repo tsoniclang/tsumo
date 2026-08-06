@@ -11,4 +11,4 @@ export {
   createOrdinalTracker,
   renderMarkdown,
   renderMarkdownWithShortcodes,
-} from "./markdown/index.ts";
+} from "./markdown/index.js";

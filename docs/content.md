@@ -11,6 +11,12 @@ tsumo uses the same top-level directories Hugo does:
 - `themes/` — themes (optional; or use `--themesDir`)
 - `archetypes/` — content templates used by `tsumo new`
 
+Tsumo-managed source trees do not follow symbolic links or filesystem reparse
+points. Content, layouts, static files, assets, themes, docs mounts, and page
+bundle resources must be ordinary files and directories inside their declared
+roots; encountering a link fails the build with
+`TSUMO_FILESYSTEM_LINK_UNSUPPORTED`.
+
 ## Routing and bundles
 
 ### Regular pages
@@ -30,6 +36,11 @@ tsumo uses the same top-level directories Hugo does:
 ## Front matter formats
 
 tsumo supports YAML, TOML, and JSON front matter.
+
+YAML and TOML front matter begin with `---` and `+++` respectively on the first
+line and end with the same delimiter. JSON front matter begins with `{` as the
+first byte of the file; leading whitespace means the JSON-looking text is
+ordinary page content. TOML strings must be quoted.
 
 Supported fields:
 
@@ -51,6 +62,11 @@ Front matter is parsed into typed page and parameter models. Supported scalar
 values are strings, booleans, and integer-like numbers. Arrays are supported for
 fields such as `tags` and `categories`. Open-ended nested objects should live
 under documented `params` shapes that templates read explicitly.
+
+Malformed delimiters or syntax, duplicate fields, unknown nested shapes, and
+values with the wrong scalar kind fail with a `TSUMO_FRONTMATTER_*` diagnostic
+that identifies the content file and source location. A failed parse does not
+publish a replacement site.
 
 ### YAML front matter example
 

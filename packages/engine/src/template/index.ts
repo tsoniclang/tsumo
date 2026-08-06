@@ -11,7 +11,7 @@ export {
   OutputFormatsValue, OutputFormatValue, OutputFormatsGetValue,
   TaxonomiesValue, TaxonomyTermsValue, MediaTypeValue,
   DictValue, ScratchStore, ScratchValue, UrlParts, UrlValue,
-} from "./values.ts";
+} from "./values.js";
 
 // Context types
 export {
@@ -19,25 +19,26 @@ export {
   LinkHookContext, LinkHookValue,
   ImageHookContext, ImageHookValue,
   HeadingHookContext, HeadingHookValue,
-} from "./contexts.ts";
+} from "./contexts.js";
 
 // Scope
-export { RenderScope } from "./scope.ts";
+export { RenderScope } from "./scope.js";
 
 // Environment
-export { TemplateEnvironment } from "./environment.ts";
+export { TemplateEnvironment } from "./environment.js";
 
 // Template nodes
 export {
   TemplateNode, TextNode, OutputNode, AssignmentNode,
   TemplateInvokeNode, IfNode, RangeNode, WithNode, BlockNode,
-} from "./nodes.ts";
+} from "./nodes.js";
 
 // Template class
-export { Template } from "./template.ts";
+export { Template } from "./template.js";
 
 // Runtime helpers (used by markdown.ts)
-export { nil, isTruthy, stringify, toPlainString } from "./runtime-helpers.ts";
+export { nil, isTruthy, stringify, toPlainString } from "./runtime-helpers.js";
 
-// Runtime and parsing
-export { Pipeline, Expr, Command, parseTemplate } from "./runtime.ts";
+// Syntax and parsing
+export { Pipeline, Expr, Command } from "./syntax/expressions.js";
+export { parseTemplate } from "./parser/parse-template.js";

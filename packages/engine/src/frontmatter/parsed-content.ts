@@ -1,4 +1,4 @@
-import { FrontMatter } from "./data.ts";
+import { FrontMatter } from "./data.js";
 
 export class ParsedContent {
   frontMatter: FrontMatter;

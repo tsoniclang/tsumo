@@ -1,14 +1,15 @@
-import { readFileSync, readFileSyncBytes, statSync } from "@tsonic/nodejs/fs.js";
-import { Buffer } from "@tsonic/nodejs/buffer.js";
-import { createServer, type IncomingMessage, type ServerResponse } from "@tsonic/nodejs/http.js";
-import { extname, resolve, sep } from "@tsonic/nodejs/path.js";
-import type { byte, int } from "@tsonic/core/types.js";
-import { buildSite } from "./build-site.ts";
-import { loadDocsConfig } from "./docs/config.ts";
-import { dirExists, fileExists, listFilesRecursive } from "./fs.ts";
-import { ServeRequest } from "./models.ts";
-import { contentTypeForPath } from "./utils/mime.ts";
-import { ensureTrailingSlash } from "./utils/text.ts";
+import { Buffer } from "node:buffer";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { extname, resolve, sep } from "node:path";
+import type { int } from "@tsonic/csharp/types.js";
+import { buildSite } from "./build-site.js";
+import { loadDocsConfig } from "./docs/config.js";
+import { fileExists, readBinaryFile, readTextFile } from "./fs.js";
+import { ServeRequest } from "./models.js";
+import { contentTypeForPath } from "./utils/mime.js";
+import { ensureTrailingSlash } from "./utils/text.js";
+import { TsumoError } from "./diagnostics.js";
+import { createWatchSnapshot, watchSnapshotsEqual } from "./watch-snapshot.js";
 
 const logLine = (message: string): void => {
   console.log(message);
@@ -24,10 +25,10 @@ const sendText = (response: ServerResponse, statusCode: int, contentType: string
   response.end(body);
 };
 
-const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: byte[]): void => {
+const sendBytes = (response: ServerResponse, statusCode: int, contentType: string, bytes: Buffer): void => {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", contentType);
-  response.end(Buffer.fromBytes(bytes));
+  response.end(bytes);
 };
 
 const isTextLikeContentType = (contentType: string): boolean => {
@@ -50,7 +51,8 @@ const getRequestPath = (request: IncomingMessage): string => {
   return path === "" ? "/" : path;
 };
 
-const safeResolveUnderRoot = (rootDir: string, requestPath: string, suffix?: string): string | undefined => {
+const safeResolveUnderRoot = (rootDir: string, requestPath: string, suffixRaw?: string): string | undefined => {
+  const suffix = suffixRaw;
   const rootFull = resolve(rootDir);
   const prefix = rootFull.endsWith(sep) ? rootFull : rootFull + sep;
   const candidate = suffix === undefined
@@ -93,11 +95,11 @@ const handleRequest = (outDir: string, request: IncomingMessage, response: Serve
 
   const contentType = contentTypeForPath(filePath);
   if (isTextLikeContentType(contentType)) {
-    sendText(response, 200, contentType, readFileSync(filePath, "utf-8"));
+    sendText(response, 200, contentType, readTextFile(filePath));
     return;
   }
 
-  sendBytes(response, 200, contentType, readFileSyncBytes(filePath));
+  sendBytes(response, 200, contentType, readBinaryFile(filePath));
 };
 
 const collectWatchTargets = (req: ServeRequest): string[] => {
@@ -121,37 +123,6 @@ const collectWatchTargets = (req: ServeRequest): string[] => {
   return targets;
 };
 
-const createWatchSnapshot = (targets: string[]): Map<string, number> => {
-  const snapshot = new Map<string, number>();
-
-  for (let i = 0; i < targets.length; i++) {
-    const target = targets[i]!;
-    if (fileExists(target)) {
-      snapshot.set(target, statSync(target).mtimeMs);
-      continue;
-    }
-    if (!dirExists(target)) {
-      continue;
-    }
-
-    const files = listFilesRecursive(target, "*");
-    for (let j = 0; j < files.length; j++) {
-      const filePath = files[j]!;
-      snapshot.set(filePath, statSync(filePath).mtimeMs);
-    }
-  }
-
-  return snapshot;
-};
-
-const snapshotsEqual = (left: Map<string, number>, right: Map<string, number>): boolean => {
-  if (left.size !== right.size) return false;
-  for (const [filePath, stamp] of left.entries()) {
-    if (right.get(filePath) !== stamp) return false;
-  }
-  return true;
-};
-
 const startWatchLoop = (req: ServeRequest, onRebuild: (outputDir: string) => void): void => {
   const targets = collectWatchTargets(req);
   let snapshot = createWatchSnapshot(targets);
@@ -161,7 +132,7 @@ const startWatchLoop = (req: ServeRequest, onRebuild: (outputDir: string) => voi
     if (rebuilding) return;
 
     const next = createWatchSnapshot(targets);
-    if (snapshotsEqual(snapshot, next)) return;
+    if (watchSnapshotsEqual(snapshot, next)) return;
 
     snapshot = next;
     rebuilding = true;
@@ -169,8 +140,9 @@ const startWatchLoop = (req: ServeRequest, onRebuild: (outputDir: string) => voi
       const result = buildSite(req);
       onRebuild(result.outputDir);
       logLine(`[tsumo] rebuilt → ${result.outputDir}`);
-    } catch {
-      logErrorLine("[tsumo] rebuild failed");
+    } catch (error) {
+      const message = error instanceof TsumoError ? error.diagnostic.format() : `${error}`;
+      logErrorLine(`[tsumo] rebuild failed: ${message}`);
     } finally {
       rebuilding = false;
     }
@@ -182,7 +154,8 @@ export const serveSite = (req: ServeRequest): void => {
   const port = req.port;
   const prefix = `http://${host}:${port}/`;
 
-  if (req.baseURL === undefined || req.baseURL.trim() === "") {
+  const baseURL = req.baseURL;
+  if (baseURL === undefined || baseURL.trim() === "") {
     req.baseURL = ensureTrailingSlash(prefix);
   }
 

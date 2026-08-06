@@ -1,5 +1,5 @@
-import type { DocsMountContext, NavItem } from "../../docs/models.ts";
-import { TemplateValue } from "./base.ts";
+import type { DocsMountContext, NavItem } from "../../docs/models.js";
+import { TemplateValue } from "./base.js";
 
 export class DocsMountValue extends TemplateValue {
   value: DocsMountContext;

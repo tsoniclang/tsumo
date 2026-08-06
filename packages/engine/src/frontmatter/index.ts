@@ -1,4 +1,4 @@
-export { FrontMatterMenu } from "./menu.ts";
-export { FrontMatter } from "./data.ts";
-export { ParsedContent } from "./parsed-content.ts";
-export { parseContent } from "./parse.ts";
+export { FrontMatterMenu } from "./menu.js";
+export { FrontMatter } from "./data.js";
+export { ParsedContent } from "./parsed-content.js";
+export { parseContent } from "./parse.js";

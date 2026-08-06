@@ -10,6 +10,6 @@ export {
   SiteContext,
   PageContext,
   ModuleMount,
-} from "./models/index.ts";
+} from "./models/index.js";
 
-export { BuildRequest, ServeRequest, BuildResult } from "./build.ts";
+export { BuildRequest, ServeRequest, BuildResult } from "./build.js";

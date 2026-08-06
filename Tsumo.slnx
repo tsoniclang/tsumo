@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/packages/">
+    <Project Path="packages/engine/Tsumo.Engine.csproj" />
+    <Project Path="packages/cli/Tsumo.Cli.csproj" />
+    <Project Path="packages/tests/Tsumo.Tests.csproj" />
+    <Project Path="packages/markdig/vendor-src/Markdig.Vendored.csproj" />
+  </Folder>
+</Solution>

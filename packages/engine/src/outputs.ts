@@ -1,7 +1,7 @@
-import { PageContext, SiteConfig } from "./models.ts";
-import { escapeHtml } from "./utils/html.ts";
-import { replaceText, substringFrom } from "./utils/strings.ts";
-import { ensureTrailingSlash } from "./utils/text.ts";
+import { PageContext, SiteConfig } from "./models.js";
+import { escapeHtml } from "./utils/html.js";
+import { replaceText, substringFrom } from "./utils/strings.js";
+import { ensureTrailingSlash } from "./utils/text.js";
 
 const toAbsoluteUrl = (baseURL: string, relPermalink: string): string => {
   const base = ensureTrailingSlash(baseURL);
@@ -16,12 +16,11 @@ const escapeXml = (value: string): string => escapeHtml(value);
 const wrapCdata = (raw: string): string => "<![CDATA[" + replaceText(raw, "]]>", "]]]]><![CDATA[>") + "]]>";
 
 const parsePageDate = (value: string, fallback: Date): Date => {
-  const parsed = new Date(Date.parse(value));
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  const milliseconds = Date.parse(value);
+  return Number.isNaN(milliseconds) ? fallback : new Date(milliseconds);
 };
 
-export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
-  const now = new Date();
+export const renderRss = (config: SiteConfig, pages: PageContext[], buildTime: Date): string => {
   const out: string[] = [
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     "<rss version=\"2.0\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">",
@@ -30,14 +29,14 @@ export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
     `<link>${escapeXml(toAbsoluteUrl(config.baseURL, "/"))}</link>`,
     `<description>${escapeXml(config.title)}</description>`,
     `<language>${escapeXml(config.languageCode)}</language>`,
-    `<lastBuildDate>${now.toISOString()}</lastBuildDate>`,
+    `<lastBuildDate>${buildTime.toISOString()}</lastBuildDate>`,
     "<generator>tsumo</generator>",
   ];
 
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i]!;
     const link = toAbsoluteUrl(config.baseURL, page.relPermalink);
-    const pubDate = parsePageDate(page.date, now).toISOString();
+    const pubDate = parsePageDate(page.date, buildTime).toISOString();
 
     out.push("<item>");
     out.push(`<title>${escapeXml(page.title)}</title>`);
@@ -54,8 +53,8 @@ export const renderRss = (config: SiteConfig, pages: PageContext[]): string => {
   return out.join("\n") + "\n";
 };
 
-export const renderSitemap = (config: SiteConfig, relPermalinks: string[]): string => {
-  const now = new Date().toISOString();
+export const renderSitemap = (config: SiteConfig, relPermalinks: string[], buildTime: Date): string => {
+  const buildTimestamp = buildTime.toISOString();
   const out: string[] = [
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
@@ -64,7 +63,7 @@ export const renderSitemap = (config: SiteConfig, relPermalinks: string[]): stri
   for (let i = 0; i < relPermalinks.length; i++) {
     const rel = relPermalinks[i]!;
     const loc = toAbsoluteUrl(config.baseURL, rel);
-    out.push(`<url><loc>${escapeXml(loc)}</loc><lastmod>${now}</lastmod></url>`);
+    out.push(`<url><loc>${escapeXml(loc)}</loc><lastmod>${buildTimestamp}</lastmod></url>`);
   }
 
   out.push("</urlset>");

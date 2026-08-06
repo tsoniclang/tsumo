@@ -10,11 +10,11 @@ The upstream sources are copied into:
 
 We build a local `Markdig.dll` from that source via:
 
-- `packages/markdig/vendor-src/Markdig.Vendored.csproj` → `libs/Markdig.dll` (committed)
+- `packages/markdig/vendor-src/Markdig.Vendored.csproj` → the immutable provider snapshot selected by `.temp/active-provider-references` (ignored; materialized by `scripts/prepare-provider-references.sh`)
 
 That assembly is used as a local DLL dependency to provide GitHub Flavored Markdown (GFM) rendering in Tsumo.
 
-TypeScript bindings are generated on-demand by `tsonic restore` into `node_modules/markdig-types` (not committed).
+TypeScript declarations come from the compiler-owned `@tsonic/dotnet/Markdig*.js` provider modules reflected from this assembly; no generated binding package exists.
 
 To regenerate the DLL:
 

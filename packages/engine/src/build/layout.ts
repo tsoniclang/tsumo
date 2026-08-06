@@ -1,8 +1,8 @@
-import { isAbsolute, join } from "@tsonic/nodejs/path.js";
-import { dirExists } from "../fs.ts";
-import { LayoutEnvironment } from "../layouts.ts";
-import { PageContext, SiteConfig } from "../models.ts";
-import { trimEndChar, trimStartChar } from "../utils/strings.ts";
+import { isAbsolute, join } from "node:path";
+import { dirExists } from "../fs.js";
+import { LayoutEnvironment } from "../layouts.js";
+import { PageContext, SiteConfig } from "../models.js";
+import { trimEndChar, trimStartChar } from "../utils/strings.js";
 
 export const combineUrl = (parts: string[]): string => {
   const slash = "/";
@@ -14,12 +14,14 @@ export const combineUrl = (parts: string[]): string => {
   return "/" + cleaned.join("/") + "/";
 };
 
-export const resolveThemeDir = (siteDir: string, config: SiteConfig, themesDir?: string): string | undefined => {
-  if (config.theme === undefined) return undefined;
-  const themeName = config.theme.trim();
+export const resolveThemeDir = (siteDir: string, config: SiteConfig, themesDirRaw: string | undefined): string | undefined => {
+  const configTheme = config.theme;
+  if (configTheme === undefined) return undefined;
+  const themeName = configTheme.trim();
   if (themeName === "") return undefined;
 
-  const customThemesDir = themesDir?.trim() ?? "";
+  const themesDir = themesDirRaw;
+  const customThemesDir = themesDir !== undefined ? themesDir.trim() : "";
   if (customThemesDir !== "") {
     const themesBase = isAbsolute(customThemesDir) ? customThemesDir : join(siteDir, customThemesDir);
     const candidate = join(themesBase, themeName);
@@ -38,10 +40,11 @@ export const selectTemplate = (env: LayoutEnvironment, candidates: string[]): st
   return undefined;
 };
 
-export const renderWithBase = (env: LayoutEnvironment, basePath: string | undefined, mainPath: string, ctx: PageContext): string => {
+export const renderWithBase = (env: LayoutEnvironment, basePathRaw: string | undefined, mainPath: string, ctx: PageContext): string => {
   const main = env.getTemplate(mainPath);
   if (main === undefined) return "";
 
+  const basePath = basePathRaw;
   if (basePath !== undefined) {
     const base = env.getTemplate(basePath);
     if (base !== undefined) {

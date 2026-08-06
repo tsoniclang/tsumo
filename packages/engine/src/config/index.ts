@@ -1,2 +1,2 @@
-export { LoadedConfig } from "./loaded-config.ts";
-export { loadSiteConfig } from "./loader.ts";
+export { LoadedConfig } from "./loaded-config.js";
+export { loadSiteConfig } from "./loader.js";

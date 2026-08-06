@@ -1,28 +1,30 @@
-import { Exception } from "@tsonic/dotnet/System.js";
-import { Dictionary, List } from "@tsonic/dotnet/System.Collections.Generic.js";
-import type { char, int } from "@tsonic/core/types.js";
-import { trycast } from "@tsonic/core/lang.js";
-import { Markdown } from "markdig-types/Markdig.js";
-import type { Block, ContainerBlock, LeafBlock, LinkReferenceDefinition, MarkdownDocument } from "markdig-types/Markdig.Syntax.js";
-import type { ContainerInline, LinkInline } from "markdig-types/Markdig.Syntax.Inlines.js";
-import { MarkdownResult, markdownPipeline } from "../markdown.ts";
-import { DocsMountConfig } from "./models.ts";
-import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.ts";
-import { splitUrlSuffix } from "./url.ts";
+import type { char, int } from "@tsonic/csharp/types.js";
+import { Markdown } from "@tsonic/dotnet/Markdig.js";
+import { ContainerBlock, LeafBlock, LinkReferenceDefinition } from "@tsonic/dotnet/Markdig.Syntax.js";
+import type { Block, MarkdownDocument } from "@tsonic/dotnet/Markdig.Syntax.js";
+import { ContainerInline, LinkInline } from "@tsonic/dotnet/Markdig.Syntax.Inlines.js";
+import { MarkdownResult, markdownPipeline } from "../markdown.js";
+import { createTsumoError } from "../diagnostics.js";
+import { DocsMountConfig } from "./models.js";
+import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom, trimEndChar, trimStartChar } from "../utils/strings.js";
+import { splitUrlSuffix } from "./url.js";
 
 export class DocsLinkRewriteContext {
   mount: DocsMountConfig;
+  sourcePath: string;
   currentDirKey: string;
-  relPermalinkByRelPathLower: Dictionary<string, string>;
+  relPermalinkByRelPathLower: Map<string, string>;
   strictLinks: boolean;
 
   constructor(
     mount: DocsMountConfig,
+    sourcePath: string,
     currentDirKey: string,
-    relPermalinkByRelPathLower: Dictionary<string, string>,
+    relPermalinkByRelPathLower: Map<string, string>,
     strictLinks: boolean,
   ) {
     this.mount = mount;
+    this.sourcePath = sourcePath;
     this.currentDirKey = currentDirKey;
     this.relPermalinkByRelPathLower = relPermalinkByRelPathLower;
     this.strictLinks = strictLinks;
@@ -38,9 +40,13 @@ const isExternalUrl = (url: string): boolean => {
     lower.startsWith("https://") ||
     lower.startsWith("mailto:") ||
     lower.startsWith("tel:") ||
-    lower.startsWith("javascript:") ||
     lower.startsWith("//")
   );
+};
+
+const isUnsafeUrl = (url: string): boolean => {
+  const lower = url.trim().toLowerCase();
+  return lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:");
 };
 
 const isMarkdownLink = (path: string): boolean => {
@@ -50,12 +56,12 @@ const isMarkdownLink = (path: string): boolean => {
 
 const normalizeRelativePath = (baseDirKey: string, targetPath: string): string | undefined => {
   const base = baseDirKey.trim();
-  const start = new List<string>();
+  const start: string[] = [];
   if (base !== "") {
     const baseParts = base.split("/");
     for (let i = 0; i < baseParts.length; i++) {
       const seg = baseParts[i]!.trim();
-      if (seg !== "") start.Add(seg);
+      if (seg !== "") start.push(seg);
     }
   }
 
@@ -67,14 +73,14 @@ const normalizeRelativePath = (baseDirKey: string, targetPath: string): string |
     const seg = raw.trim();
     if (seg === "" || seg === ".") continue;
     if (seg === "..") {
-      if (start.Count === 0) return undefined;
-      start.RemoveAt(start.Count - 1);
+      if (start.length === 0) return undefined;
+      start.pop();
       continue;
     }
-    start.Add(seg);
+    start.push(seg);
   }
 
-  const arr = start.ToArray();
+  const arr = start;
   if (arr.length === 0) return "";
   let out = arr[0]!;
   for (let i = 1; i < arr.length; i++) out += "/" + arr[i]!;
@@ -82,9 +88,10 @@ const normalizeRelativePath = (baseDirKey: string, targetPath: string): string |
 };
 
 const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): string | undefined => {
-  if (mount.repoUrl === undefined) return undefined;
+  const repoUrl = mount.repoUrl;
+  if (repoUrl === undefined) return undefined;
   const slash = "/";
-  const repo = trimEndChar(mount.repoUrl.trim(), slash);
+  const repo = trimEndChar(repoUrl.trim(), slash);
   if (repo === "") return undefined;
   const branch = mount.repoBranch.trim() === "" ? "main" : mount.repoBranch.trim();
   const rel = trimStartChar(repoRelPath.trim(), slash);
@@ -92,9 +99,13 @@ const computeGitHubBlobUrl = (mount: DocsMountConfig, repoRelPath: string): stri
   return `${repo}/blob/${branch}/${rel}`;
 };
 
-const maybeRewriteUrl = (urlRaw: string | null | undefined, ctx: DocsLinkRewriteContext): string | undefined => {
+const maybeRewriteUrl = (urlValue: string | null | undefined, ctx: DocsLinkRewriteContext): string | undefined => {
+  const urlRaw = urlValue;
   if (urlRaw == null) return undefined;
   const url = urlRaw.trim();
+  if (isUnsafeUrl(url)) {
+    throw createTsumoError("TSUMO_DOCS_LINK_UNSAFE", `Unsafe docs link: ${url}`, ctx.sourcePath);
+  }
   if (url === "" || url.startsWith("#") || isExternalUrl(url)) return undefined;
 
   const split = splitUrlSuffix(url);
@@ -126,10 +137,14 @@ const maybeRewriteUrl = (urlRaw: string | null | undefined, ctx: DocsLinkRewrite
 
   if (escaped) {
     if (ctx.strictLinks) {
-      throw new Exception(`Out-of-mount link from ${ctx.mount.name}: ${url}`);
+      throw createTsumoError(
+        "TSUMO_DOCS_LINK_ESCAPES_MOUNT",
+        `Out-of-mount link from ${ctx.mount.name}: ${url}`,
+        ctx.sourcePath,
+      );
     }
 
-    // Best-effort: rewrite to GitHub if mount has repo info.
+    // Repository metadata defines the explicit fallback for links outside the mounted source root.
     const repoPathRaw = ctx.mount.repoPath;
     if (repoPathRaw === undefined || repoPathRaw.trim() === "") return undefined;
 
@@ -147,9 +162,16 @@ const maybeRewriteUrl = (urlRaw: string | null | undefined, ctx: DocsLinkRewrite
   if (!isMarkdownLink(resolvedRel)) return undefined;
 
   const key = resolvedRel.toLowerCase();
-  let mapped = "";
-  const ok = ctx.relPermalinkByRelPathLower.TryGetValue(key, mapped);
-  return ok ? mapped + suffix : undefined;
+  const mapped = ctx.relPermalinkByRelPathLower.get(key);
+  if (mapped !== undefined) return mapped + suffix;
+  if (ctx.strictLinks) {
+    throw createTsumoError(
+      "TSUMO_DOCS_LINK_UNRESOLVED",
+      `Unresolved docs link from ${ctx.mount.name}: ${url}`,
+      ctx.sourcePath,
+    );
+  }
+  return undefined;
 };
 
 const rewriteInInlines = (container: ContainerInline, ctx: DocsLinkRewriteContext): void => {
@@ -157,33 +179,32 @@ const rewriteInInlines = (container: ContainerInline, ctx: DocsLinkRewriteContex
   while (it.MoveNext()) {
     const inline = it.Current;
 
-    const link = trycast<LinkInline>(inline);
-    if (link !== null) {
+    if (inline instanceof LinkInline) {
+      const link = inline as LinkInline;
       const updated = maybeRewriteUrl(link.Url, ctx);
       if (updated !== undefined) link.Url = updated;
     }
 
-    const childContainer = trycast<ContainerInline>(inline);
-    if (childContainer !== null) rewriteInInlines(childContainer, ctx);
+    if (inline instanceof ContainerInline) rewriteInInlines(inline as ContainerInline, ctx);
   }
   it.Dispose();
 };
 
 const rewriteInBlock = (block: Block, ctx: DocsLinkRewriteContext): void => {
-  const leaf = trycast<LeafBlock>(block);
-  if (leaf !== null) {
+  if (block instanceof LeafBlock) {
+    const leaf = block as LeafBlock;
     const inline = leaf.Inline;
     if (inline != null) rewriteInInlines(inline, ctx);
 
-    const def = trycast<LinkReferenceDefinition>(block);
-    if (def !== null) {
+    if (block instanceof LinkReferenceDefinition) {
+      const def = block as LinkReferenceDefinition;
       const updated = maybeRewriteUrl(def.Url, ctx);
       if (updated !== undefined) def.Url = updated;
     }
   }
 
-  const container = trycast<ContainerBlock>(block);
-  if (container !== null) {
+  if (block instanceof ContainerBlock) {
+    const container = block as ContainerBlock;
     const it = container.GetEnumerator();
     while (it.MoveNext()) rewriteInBlock(it.Current, ctx);
     it.Dispose();
