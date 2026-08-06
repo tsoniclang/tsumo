@@ -24,15 +24,15 @@ tsumo aims to be *Hugo-compatible where it matters* for real sites and themes, w
 | Advanced Hugo | Full template lookup order | ❌ | Intentional subset |
 | Advanced Hugo | Pagination | ❌ | Not implemented |
 
-## Theme compatibility
+## Compatibility fixtures
 
-tsumo is tested against real Hugo themes. Current known-good target:
-
-- `hugo-book` (example site builds; requires Sass via `TSUMO_SASS` or a `sass` CLI)
+The automated compatibility contract builds the committed
+`examples/basic-blog` and `examples/docs-site` projects. Tsumo does not yet
+maintain a pinned corpus of external Hugo themes, so no broader theme
+compatibility is claimed.
 
 If you hit a theme that fails, it’s usually due to a missing template function/value. Please file an issue with:
 
 - theme name + version
 - the template error message
 - the minimal site to reproduce
-
