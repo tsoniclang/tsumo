@@ -1,23 +1,21 @@
-import { File, Path } from "@tsonic/dotnet/System.IO.js";
+import { Path } from "@tsonic/dotnet/System.IO.js";
 import type { int } from "@tsonic/csharp/types.js";
 import { BuildRequest, BuildResult, LanguageContext, PageContext, PageFile, SiteContext } from "./models.js";
 import { ParamValue } from "./params.js";
 import { renderRobotsTxt, renderRss, renderSitemap } from "./outputs.js";
 import { loadSiteConfig } from "./config.js";
 import { loadDocsConfig } from "./docs/config.js";
-import { copyDirRecursive, ensureDir, writeTextFile } from "./fs.js";
 import { BuildEnvironment } from "./env.js";
 import { renderMarkdownWithShortcodes } from "./markdown.js";
 import { HtmlString } from "./utils/html.js";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "./utils/text.js";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "./build/layout.js";
 import { buildDocsSite } from "./docs/builder.js";
-import { replaceText } from "./utils/strings.js";
 import { beginOutputPublication } from "./output-publication.js";
-import { copyBundleResources } from "./build/bundle-resources.js";
-import { ContentPageSource } from "./build/content-model.js";
+import { addBundleResources } from "./build/bundle-resources.js";
 import { discoverContent } from "./build/discover-content.js";
 import { configureSiteMenus } from "./build/menu-resolution.js";
+import { SiteOutputPlan } from "./build/output-plan.js";
 import { siteOutputPath, sitePathIsNested, splitSitePath } from "./build/site-routes.js";
 
 const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: string): int => {
@@ -31,14 +29,13 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
   const env = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts);
-
-  ensureDir(outDir);
+  const outputPlan = new SiteOutputPlan();
 
   if (themeDir !== undefined) {
-    copyDirRecursive(Path.Combine(themeDir, "static"), outDir);
+    outputPlan.addDirectory(Path.Combine(themeDir, "static"), "", "theme static files", "theme-static");
   }
   const staticDir = Path.Combine(siteDir, "static");
-  copyDirRecursive(staticDir, outDir);
+  outputPlan.addDirectory(staticDir, "", "site static files", "site-static");
 
   const contentDir = Path.Combine(siteDir, config.contentDir);
   const content = discoverContent(contentDir, request.buildDrafts);
@@ -129,7 +126,6 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
   const singleTpl = selectTemplate(env, singleCandidates) ?? singleCandidates[0]!;
   const baseTpl = selectTemplate(env, baseCandidates);
 
-  let pagesBuilt = 0;
   const sitemapUrlSet = new Map<string, boolean>();
 
   let homeTitle = config.title;
@@ -194,10 +190,9 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
   }
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
-  writeTextFile(Path.Combine(outDir, "index.html"), homeHtml);
-  pagesBuilt++;
+  outputPlan.addText("index.html", homeHtml, "home page");
   sitemapUrlSet.set("/", true);
-  if (homeSourceDir !== undefined) copyBundleResources(homeSourceDir, outDir);
+  if (homeSourceDir !== undefined) addBundleResources(homeSourceDir, "", "home bundle", outputPlan);
 
   const sectionKeySet = new Map<string, boolean>();
   for (const k of bySection.keys()) {
@@ -281,14 +276,13 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       ctx.plain = md.plainText;
     }
 
-    const relOut = Path.Combine(section, "index.html");
+    const relOut = siteOutputPath([section]);
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
     const basePath = selectTemplate(env, [`${listType}/baseof.html`, `${section}/baseof.html`, "_default/baseof.html"]) ?? baseTpl;
     const html = renderWithBase(env, basePath, mainPath, ctx);
-    writeTextFile(Path.Combine(outDir, relOut), html);
-    pagesBuilt++;
+    outputPlan.addText(relOut, html, `section '${section}'`);
     sitemapUrlSet.set(ctx.relPermalink, true);
-    if (listSourceDir !== undefined) copyBundleResources(listSourceDir, Path.Combine(outDir, section));
+    if (listSourceDir !== undefined) addBundleResources(listSourceDir, section, `section bundle '${section}'`, outputPlan);
   }
 
   const nestedListDirs: string[] = [];
@@ -375,17 +369,11 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
     const mainPath = selectTemplate(env, [`${listType}/list.html`, `${section}/list.html`, "_default/list.html"]) ?? listTpl;
     const basePath = selectTemplate(env, [`${listType}/baseof.html`, `${section}/baseof.html`, "_default/baseof.html"]) ?? baseTpl;
     const html = renderWithBase(env, basePath, mainPath, ctx);
-    writeTextFile(Path.Combine(outDir, outRel), html);
-    pagesBuilt++;
+    outputPlan.addText(outRel, html, `nested section '${dirKey}'`);
     sitemapUrlSet.set(ctx.relPermalink, true);
 
     if (listSourceDir !== undefined) {
-      const slash = "/";
-      const destDir = Path.Combine(
-        outDir,
-        replaceText(dirKey, slash, `${Path.DirectorySeparatorChar}`)
-      );
-      copyBundleResources(listSourceDir, destDir);
+      addBundleResources(listSourceDir, dirKey, `nested section bundle '${dirKey}'`, outputPlan);
     }
   }
 
@@ -459,14 +447,13 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
 
       termPagesOut.push(ctx);
 
-      const outRel = Path.Combine(taxonomy, termSlug, "index.html");
+      const outRel = siteOutputPath([taxonomy, termSlug]);
       const mainPath =
         selectTemplate(env, [`${taxonomy}/taxonomy.html`, "taxonomy/taxonomy.html", "_default/taxonomy.html", "_default/list.html"]) ?? listTpl;
       const basePath =
         selectTemplate(env, [`${taxonomy}/baseof.html`, "taxonomy/baseof.html", "_default/baseof.html"]) ?? baseTpl;
       const html = renderWithBase(env, basePath, mainPath, ctx);
-      writeTextFile(Path.Combine(outDir, outRel), html);
-      pagesBuilt++;
+      outputPlan.addText(outRel, html, `taxonomy term '${taxonomy}/${termSlug}'`);
       sitemapUrlSet.set(ctx.relPermalink, true);
     }
 
@@ -502,14 +489,13 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
       undefined,
     );
 
-    const taxOutRel = Path.Combine(taxonomy, "index.html");
+    const taxOutRel = siteOutputPath([taxonomy]);
     const taxMainPath =
       selectTemplate(env, [`${taxonomy}/terms.html`, "taxonomy/terms.html", "_default/terms.html", "_default/list.html"]) ?? listTpl;
     const taxBasePath =
       selectTemplate(env, [`${taxonomy}/baseof.html`, "taxonomy/baseof.html", "_default/baseof.html"]) ?? baseTpl;
     const taxHtml = renderWithBase(env, taxBasePath, taxMainPath, taxCtx);
-    writeTextFile(Path.Combine(outDir, taxOutRel), taxHtml);
-    pagesBuilt++;
+    outputPlan.addText(taxOutRel, taxHtml, `taxonomy '${taxonomy}'`);
     sitemapUrlSet.set(taxCtx.relPermalink, true);
   };
 
@@ -555,15 +541,14 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
     ) ?? baseTpl;
 
     const html = renderWithBase(env, basePath, mainPath, ctx);
-    writeTextFile(Path.Combine(outDir, p.outputRelPath), html);
-    pagesBuilt++;
+    outputPlan.addText(p.outputRelPath, html, `content page '${p.sourcePath}'`);
     sitemapUrlSet.set(ctx.relPermalink, true);
 
     const sourceDir = Path.GetDirectoryName(p.sourcePath);
     if (p.leafBundle && sourceDir !== undefined && sourceDir !== "") {
-      const destDir = Path.GetDirectoryName(Path.Combine(outDir, p.outputRelPath));
-      if (destDir !== undefined && destDir !== "") {
-        copyBundleResources(sourceDir, destDir);
+      const destinationPrefix = Path.GetDirectoryName(p.outputRelPath);
+      if (destinationPrefix !== undefined && destinationPrefix !== "") {
+        addBundleResources(sourceDir, destinationPrefix, `leaf bundle '${p.sourcePath}'`, outputPlan);
       }
     }
   }
@@ -571,25 +556,11 @@ const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: strin
   const relArr: string[] = [];
   for (const relKey of sitemapUrlSet.keys()) relArr.push(relKey);
 
-  const sitemapPath = Path.Combine(outDir, "sitemap.xml");
-  if (!File.Exists(sitemapPath)) {
-    writeTextFile(sitemapPath, renderSitemap(config, relArr, request.buildTime));
-    pagesBuilt++;
-  }
-
-  const rssPath = Path.Combine(outDir, "index.xml");
-  if (!File.Exists(rssPath)) {
-    writeTextFile(rssPath, renderRss(config, site.pages, request.buildTime));
-    pagesBuilt++;
-  }
-
-  const robotsPath = Path.Combine(outDir, "robots.txt");
-  if (!File.Exists(robotsPath)) {
-    writeTextFile(robotsPath, renderRobotsTxt(config));
-    pagesBuilt++;
-  }
-
-  return pagesBuilt;
+  outputPlan.addDefaultText("sitemap.xml", renderSitemap(config, relArr, request.buildTime), "generated sitemap");
+  outputPlan.addDefaultText("index.xml", renderRss(config, site.pages, request.buildTime), "generated RSS");
+  outputPlan.addDefaultText("robots.txt", renderRobotsTxt(config), "generated robots policy");
+  outputPlan.render(outDir);
+  return outputPlan.generatedOutputCount();
 };
 
 export const buildSite = (request: BuildRequest): BuildResult => {

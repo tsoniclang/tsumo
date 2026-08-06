@@ -1,12 +1,17 @@
 import { Directory, File, Path, SearchOption } from "@tsonic/dotnet/System.IO.js";
+import { SiteOutputPlan } from "./output-plan.js";
 import { compareSitePaths } from "./site-routes.js";
 
 const isBundleDirectory = (directory: string): boolean =>
   File.Exists(Path.Combine(directory, "index.md")) || File.Exists(Path.Combine(directory, "_index.md"));
 
-export const copyBundleResources = (sourceDir: string, destinationDir: string): void => {
+export const addBundleResources = (
+  sourceDir: string,
+  outputPrefix: string,
+  owner: string,
+  outputPlan: SiteOutputPlan,
+): void => {
   if (!Directory.Exists(sourceDir)) return;
-  Directory.CreateDirectory(destinationDir);
 
   const files = Array.from(Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly));
   files.sort((left: string, right: string) => compareSitePaths(left, right));
@@ -15,7 +20,8 @@ export const copyBundleResources = (sourceDir: string, destinationDir: string): 
     if (sourceFile.toLowerCase().endsWith(".md")) continue;
     const name = Path.GetFileName(sourceFile);
     if (name === undefined || name === "") continue;
-    File.Copy(sourceFile, Path.Combine(destinationDir, name), true);
+    const outputPath = outputPrefix === "" ? name : outputPrefix + "/" + name;
+    outputPlan.addAsset(outputPath, sourceFile, owner, "bundle");
   }
 
   const directories = Array.from(Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly));
@@ -26,6 +32,7 @@ export const copyBundleResources = (sourceDir: string, destinationDir: string): 
     if (Directory.GetFiles(child, "*.md", SearchOption.TopDirectoryOnly).length > 0) continue;
     const name = Path.GetFileName(child);
     if (name === undefined || name === "") continue;
-    copyBundleResources(child, Path.Combine(destinationDir, name));
+    const childPrefix = outputPrefix === "" ? name : outputPrefix + "/" + name;
+    addBundleResources(child, childPrefix, owner, outputPlan);
   }
 };
