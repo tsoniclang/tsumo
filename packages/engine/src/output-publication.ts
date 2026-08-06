@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
-import { Exception } from "@tsonic/dotnet/System.js";
 
+import { createTsumoError } from "./diagnostics.js";
 import { copyDirRecursive, dirExists, ensureDir, fileExists } from "./fs.js";
 import { pathContainsOrEquals } from "./utils/paths.js";
 
@@ -32,6 +32,17 @@ export class OutputPublication {
       }
       throw error;
     }
+    if (previousOutputMoved && dirExists(this.backupDir)) rmSync(this.backupDir, true);
+  }
+
+  abort(): void {
+    if (dirExists(this.stagingDir)) rmSync(this.stagingDir, true);
+    if (!dirExists(this.backupDir)) return;
+    if (dirExists(this.destinationDir)) {
+      rmSync(this.backupDir, true);
+    } else {
+      renameSync(this.backupDir, this.destinationDir);
+    }
   }
 }
 
@@ -46,18 +57,24 @@ export const beginOutputPublication = (
     : resolve(siteRoot, requestedDestinationDir);
 
   if (!isAbsolute(requestedDestinationDir) && !pathContainsOrEquals(siteRoot, destinationDir)) {
-    throw new Exception(`Relative output directory escapes the site root: ${requestedDestinationDir}`);
+    throw createTsumoError(
+      "TSUMO_OUTPUT_DESTINATION_ESCAPES_SITE",
+      `Relative output directory escapes the site root: ${requestedDestinationDir}`,
+    );
   }
   if (pathContainsOrEquals(destinationDir, siteRoot)) {
-    throw new Exception(`Output directory cannot contain the source site: ${destinationDir}`);
+    throw createTsumoError(
+      "TSUMO_OUTPUT_DESTINATION_CONTAINS_SITE",
+      `Output directory cannot contain the source site: ${destinationDir}`,
+    );
   }
 
   const parent = dirname(destinationDir);
   if (parent === destinationDir) {
-    throw new Exception(`Output directory cannot be a filesystem root: ${destinationDir}`);
+    throw createTsumoError("TSUMO_OUTPUT_DESTINATION_IS_ROOT", `Output directory cannot be a filesystem root: ${destinationDir}`);
   }
   if (fileExists(destinationDir)) {
-    throw new Exception(`Output directory path names an existing file: ${destinationDir}`);
+    throw createTsumoError("TSUMO_OUTPUT_DESTINATION_IS_FILE", `Output directory path names an existing file: ${destinationDir}`);
   }
 
   ensureDir(parent);
@@ -82,7 +99,7 @@ const recoverOutputPublication = (
   stageNamePrefix: string,
 ): void => {
   if (fileExists(backupDir)) {
-    throw new Exception(`Output publication backup path names an existing file: ${backupDir}`);
+    throw createTsumoError("TSUMO_OUTPUT_BACKUP_IS_FILE", `Output publication backup path names an existing file: ${backupDir}`);
   }
   if (dirExists(backupDir)) {
     if (dirExists(destinationDir)) {

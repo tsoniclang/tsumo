@@ -6,7 +6,7 @@ import { pathContainsOrEquals } from "../utils/paths.js";
 import { compareSitePaths, joinSitePath, normalizeSitePath, splitSitePath } from "./site-routes.js";
 import type { int } from "@tsonic/csharp/types.js";
 
-type AssetLayer = "theme-static" | "site-static" | "bundle";
+type AssetLayer = "theme-static" | "site-static" | "bundle" | "docs-asset";
 
 class OutputClaim {
   relativePath: string;

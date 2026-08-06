@@ -202,12 +202,13 @@ test("failed builds preserve the complete prior output and the next build recove
   assert.notEqual(result.status, 0, "invalid template must fail the build");
   assert.deepEqual(fileManifest(outDir), priorInventory);
   assert.equal(readFileSync(join(outDir, "index.html"), "utf8"), priorHome);
+  assert.deepEqual(publicationScratchEntries(outDir), []);
 
   writeFileSync(failingContentPath, "{\"title\":\"recovered\",\"draft\":true}\nbody\n", "utf8");
   result = runTsumo(["build", "--source", site, "--destination", outDir]);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(readFileSync(join(outDir, "index.html"), "utf8"), priorHome);
-  assert.deepEqual(stagingEntries(outDir), []);
+  assert.deepEqual(publicationScratchEntries(outDir), []);
 });
 
 test("malformed delimited front matter fails closed without publishing output", () => {
@@ -278,9 +279,9 @@ test("CLI failure paths exit non-zero with usage output", () => {
   assert.match(invalidPort.stdout + invalidPort.stderr, /Invalid port: 0/u);
 });
 
-function stagingEntries(outputDir) {
+function publicationScratchEntries(outputDir) {
   const absoluteOutputDir = resolve(outputDir);
   const key = createHash("sha256").update(absoluteOutputDir).digest("hex").slice(0, 24);
   return readdirSync(dirname(absoluteOutputDir))
-    .filter((name) => name.startsWith(`.tsumo-output-${key}.stage-`));
+    .filter((name) => name.startsWith(`.tsumo-output-${key}.`));
 }

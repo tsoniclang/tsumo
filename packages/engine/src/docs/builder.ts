@@ -2,10 +2,10 @@ import { Path } from "@tsonic/dotnet/System.IO.js";
 import type { int } from "@tsonic/csharp/types.js";
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "../build/layout.js";
+import { SiteOutputPlan } from "../build/output-plan.js";
 import { loadSiteConfig } from "../config.js";
 import { createTsumoError } from "../diagnostics.js";
 import { BuildEnvironment } from "../env.js";
-import { copyDirRecursive, ensureDir, writeTextFile } from "../fs.js";
 import { markdownPipeline } from "../markdown.js";
 import { BuildRequest, PageContext, PageFile, SiteContext } from "../models.js";
 import { ParamValue } from "../params.js";
@@ -26,10 +26,8 @@ import { DocsLinkRewriteContext, renderDocsMarkdown } from "./markdown.js";
 import { DocsMountContext } from "./models.js";
 import { loadMountNav } from "./nav.js";
 import {
-  copyDocsAssets,
   docsOutputPathForPermalink,
   DocsOutputClaims,
-  resolveDocsOutputPath,
 } from "./output.js";
 import {
   discoverDocsMountRoutes,
@@ -53,17 +51,18 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
   const env = new BuildEnvironment(siteDir, themeDir, outDir);
-  ensureDir(outDir);
+  const outputPlan = new SiteOutputPlan();
 
   if (themeDir !== undefined) {
-    copyDirRecursive(Path.Combine(themeDir, "static"), outDir);
+    outputPlan.addDirectory(Path.Combine(themeDir, "static"), "", "theme static files", "theme-static");
   }
-  copyDirRecursive(Path.Combine(siteDir, "static"), outDir);
+  outputPlan.addDirectory(Path.Combine(siteDir, "static"), "", "site static files", "site-static");
 
   const emptyPages: PageContext[] = [];
   const emptyTranslations: PageContext[] = [];
   const emptyStrings: string[] = [];
   const site = new SiteContext(config, emptyPages, undefined, undefined);
+  site.Sites = [site];
 
   const baseTpl = selectTemplate(env, ["_default/baseof.html"]);
   const homeTpl = selectTemplate(env, ["index.html", "docs/home.html", "docs/list.html", "_default/list.html"]) ?? "_default/list.html";
@@ -85,6 +84,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     for (let index = 0; index < discovered.assets.length; index++) {
       const asset = discovered.assets[index]!;
       outputClaims.add(asset.outputRelPath, asset.sourcePath);
+      outputPlan.addAsset(asset.outputRelPath, asset.sourcePath, `docs asset '${asset.sourcePath}'`, "docs-asset");
     }
     for (const indexed of content.indexByDirectory.values()) {
       outputClaims.add(indexed.route.outputRelPath, indexed.route.sourcePath);
@@ -93,7 +93,6 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       const leaf = content.leaves[index]!;
       outputClaims.add(leaf.route.outputRelPath, leaf.route.sourcePath);
     }
-    copyDocsAssets(outDir, discovered.assets);
     const routeMap = content.permalinkByRelativePath;
     mountContexts.push(new DocsMountContext(mount.name, mount.urlPrefix, loadMountNav(mount, routeMap)));
 
@@ -193,7 +192,10 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
 
     const dirKeys: string[] = [];
     for (const collectedDirKey of dirSet.keys()) dirKeys.push(collectedDirKey);
-    dirKeys.sort((a: string, b: string) => docsDirectoryDepth(b) - docsDirectoryDepth(a));
+    dirKeys.sort((a: string, b: string) => {
+      const depth = docsDirectoryDepth(b) - docsDirectoryDepth(a);
+      return depth !== 0 ? depth : compareText(a, b);
+    });
 
     const sectionByDir = new Map<string, PageContext>();
 
@@ -397,11 +399,13 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   );
 
   assignDocsPageAncestry(homeCtx, undefined, emptyPages);
+  site.home = homeCtx;
+  const allSitePages: PageContext[] = [homeCtx];
+  for (let index = 0; index < allPagesForOutput.length; index++) allSitePages.push(allPagesForOutput[index]!);
+  site.allPages = allSitePages;
 
   const homeHtml = renderWithBase(env, baseTpl, homeTpl, homeCtx);
-  writeTextFile(resolveDocsOutputPath(outDir, "index.html"), homeHtml);
-
-  let pagesBuilt: int = 1;
+  outputPlan.addText("index.html", homeHtml, "docs home page");
 
   // Render all docs pages (skip the home page, which is always /index.html).
   const allPages = allPagesForOutput;
@@ -413,8 +417,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     const html = renderWithBase(env, baseTpl, tpl, page);
 
     const outputRelPath = docsOutputPathForPermalink(page.relPermalink);
-    writeTextFile(resolveDocsOutputPath(outDir, outputRelPath), html);
-    pagesBuilt++;
+    outputPlan.addText(outputRelPath, html, `docs page '${page.relPermalink}'`);
   }
 
   if (docsConfig.generateSearchIndex) {
@@ -422,10 +425,10 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     if (name !== "") {
       outputClaims.add(name, "<generated docs search index>");
       const json = renderSearchIndexJson(searchDocs);
-      writeTextFile(resolveDocsOutputPath(outDir, name), json);
-      pagesBuilt++;
+      outputPlan.addText(name, json, "docs search index");
     }
   }
 
-  return pagesBuilt;
+  outputPlan.render(outDir);
+  return outputPlan.generatedOutputCount();
 };

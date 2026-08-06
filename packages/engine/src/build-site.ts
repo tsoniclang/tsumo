@@ -13,9 +13,14 @@ export const buildSite = (request: BuildRequest): BuildResult => {
     request.destinationDir,
     !request.cleanDestinationDir,
   );
-  const pagesBuilt = docs === undefined
-    ? buildStandardSite(request, siteDir, publication.stagingDir)
-    : buildDocsSite(request, docs, publication.stagingDir);
-  publication.publish();
-  return new BuildResult(publication.destinationDir, pagesBuilt);
+  try {
+    const pagesBuilt = docs === undefined
+      ? buildStandardSite(request, siteDir, publication.stagingDir)
+      : buildDocsSite(request, docs, publication.stagingDir);
+    publication.publish();
+    return new BuildResult(publication.destinationDir, pagesBuilt);
+  } catch (error) {
+    publication.abort();
+    throw error;
+  }
 };
