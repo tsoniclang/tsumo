@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { substringFrom } from "../../utils/strings.js";
 import {
@@ -40,7 +40,7 @@ class ParseNodesResult {
 
 class TemplateParser {
   segments: TemplateSegment[];
-  index: int;
+  index: int32;
   defines: Map<string, TemplateNode[]>;
   sourcePath: string | undefined;
 
@@ -164,7 +164,7 @@ class TemplateParser {
       }
 
       if (head === "range") {
-        let tokenIndex: int = 1;
+        let tokenIndex: int32 = 1;
         let keyVariable: string | undefined = undefined;
         let valueVariable: string | undefined = undefined;
         const first = tokenIndex < tokens.length ? tokens[tokenIndex]! : "";

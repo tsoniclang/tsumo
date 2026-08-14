@@ -1,14 +1,14 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { Char } from "@tsonic/dotnet/System.js";
 import { createTsumoError, TsumoError } from "../diagnostics.js";
 import { compareText, indexOfText } from "./strings.js";
 
 export class JsonValue {
   kind: string;
-  line: int;
-  column: int;
+  line: int32;
+  column: int32;
 
-  constructor(kind: string, line: int, column: int) {
+  constructor(kind: string, line: int32, column: int32) {
     this.kind = kind;
     this.line = line;
     this.column = column;
@@ -18,7 +18,7 @@ export class JsonValue {
 export class JsonNull extends JsonValue {
   value: null;
 
-  constructor(line: int, column: int) {
+  constructor(line: int32, column: int32) {
     super("null", line, column);
     this.value = null;
   }
@@ -27,7 +27,7 @@ export class JsonNull extends JsonValue {
 export class JsonBool extends JsonValue {
   value: boolean;
 
-  constructor(value: boolean, line: int, column: int) {
+  constructor(value: boolean, line: int32, column: int32) {
     super("bool", line, column);
     this.value = value;
   }
@@ -36,7 +36,7 @@ export class JsonBool extends JsonValue {
 export class JsonNumber extends JsonValue {
   value: number;
 
-  constructor(value: number, line: int, column: int) {
+  constructor(value: number, line: int32, column: int32) {
     super("number", line, column);
     this.value = value;
   }
@@ -45,7 +45,7 @@ export class JsonNumber extends JsonValue {
 export class JsonString extends JsonValue {
   value: string;
 
-  constructor(value: string, line: int, column: int) {
+  constructor(value: string, line: int32, column: int32) {
     super("string", line, column);
     this.value = value;
   }
@@ -54,7 +54,7 @@ export class JsonString extends JsonValue {
 export class JsonArray extends JsonValue {
   items: JsonValue[];
 
-  constructor(items: JsonValue[], line: int, column: int) {
+  constructor(items: JsonValue[], line: int32, column: int32) {
     super("array", line, column);
     this.items = items;
   }
@@ -63,10 +63,10 @@ export class JsonArray extends JsonValue {
 export class JsonProperty {
   key: string;
   value: JsonValue;
-  line: int;
-  column: int;
+  line: int32;
+  column: int32;
 
-  constructor(key: string, value: JsonValue, line: int, column: int) {
+  constructor(key: string, value: JsonValue, line: int32, column: int32) {
     this.key = key;
     this.value = value;
     this.line = line;
@@ -77,7 +77,7 @@ export class JsonProperty {
 export class JsonObject extends JsonValue {
   properties: JsonProperty[];
 
-  constructor(properties: JsonProperty[], line: int, column: int) {
+  constructor(properties: JsonProperty[], line: int32, column: int32) {
     super("object", line, column);
     this.properties = properties;
   }
@@ -102,10 +102,10 @@ export class JsonObject extends JsonValue {
 
 class JsonParser {
   text: string;
-  index: int;
+  index: int32;
   sourcePath: string | undefined;
-  lineStarts: int[];
-  depth: int;
+  lineStarts: int32[];
+  depth: int32;
 
   constructor(text: string, sourcePath?: string) {
     this.text = text;
@@ -113,7 +113,7 @@ class JsonParser {
     this.sourcePath = sourcePath;
     this.lineStarts = [0];
     this.depth = 0;
-    for (let position: int = 0; position < text.length; position++) {
+    for (let position: int32 = 0; position < text.length; position++) {
       const current = text[position]!;
       if (current === "\n") this.lineStarts.push(position + 1);
       else if (current === "\r") {
@@ -274,10 +274,10 @@ class JsonParser {
     return Char.ConvertFromUtf32(first);
   }
 
-  parseUnicodeCodeUnit(): int {
+  parseUnicodeCodeUnit(): int32 {
     if (this.index + 4 > this.text.length) throw this.syntaxError("JSON unicode escapes require four hexadecimal digits");
-    let value: int = 0;
-    for (let offset: int = 0; offset < 4; offset++) {
+    let value: int32 = 0;
+    for (let offset: int32 = 0; offset < 4; offset++) {
       const ch = this.text[this.index + offset]!.toLowerCase();
       const digit = indexOfText("0123456789abcdef", ch);
       if (digit < 0) throw this.syntaxError("JSON unicode escapes require hexadecimal digits", this.index + offset);
@@ -287,7 +287,7 @@ class JsonParser {
     return value;
   }
 
-  parseNumber(line: int, column: int): JsonNumber {
+  parseNumber(line: int32, column: int32): JsonNumber {
     const start = this.index;
     if (this.peek() === "-") this.index++;
     if (this.peek() === "0") {
@@ -354,38 +354,38 @@ class JsonParser {
     return compareText(ch, "0") >= 0 && compareText(ch, "9") <= 0;
   }
 
-  enterComposite(index: int): void {
+  enterComposite(index: int32): void {
     this.depth++;
     if (this.depth > 256) {
       throw this.error("TSUMO_JSON_DEPTH_EXCEEDED", "JSON nesting exceeds the supported depth of 256", index);
     }
   }
 
-  lineIndexAt(index: int): int {
-    let low: int = 0;
-    let high: int = this.lineStarts.length;
+  lineIndexAt(index: int32): int32 {
+    let low: int32 = 0;
+    let high: int32 = this.lineStarts.length;
     while (low < high) {
-      const middle = (low + Math.floor((high - low) / 2)) as int;
+      const middle = (low + Math.floor((high - low) / 2)) as int32;
       if (this.lineStarts[middle]! <= index) low = middle + 1;
       else high = middle;
     }
     return low - 1;
   }
 
-  lineAt(index: int): int {
+  lineAt(index: int32): int32 {
     return this.lineIndexAt(index) + 1;
   }
 
-  columnAt(index: int): int {
+  columnAt(index: int32): int32 {
     const lineIndex = this.lineIndexAt(index);
     return index - this.lineStarts[lineIndex]! + 1;
   }
 
-  syntaxError(message: string, index?: int): TsumoError {
+  syntaxError(message: string, index?: int32): TsumoError {
     return this.error("TSUMO_JSON_SYNTAX_INVALID", message, index ?? this.index);
   }
 
-  error(code: string, message: string, index: int): TsumoError {
+  error(code: string, message: string, index: int32): TsumoError {
     return createTsumoError(code, message, this.sourcePath, this.lineAt(index), this.columnAt(index));
   }
 }

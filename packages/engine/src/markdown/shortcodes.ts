@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../diagnostics.js";
 import { parseShortcodes, ShortcodeCall } from "../shortcode.js";
 import { ShortcodeContext, ShortcodeValue } from "../template/contexts.js";
@@ -9,15 +9,15 @@ import { substringCount, substringFrom } from "../utils/strings.js";
 
 // Shortcode execution ordinal tracker
 export class ShortcodeOrdinalTracker {
-  counts: Map<string, int>;
+  counts: Map<string, int32>;
 
   constructor() {
-    this.counts = new Map<string, int>();
+    this.counts = new Map<string, int32>();
   }
 
-  next(name: string): int {
+  next(name: string): int32 {
     const count = this.counts.get(name);
-    const nextVal = (count !== undefined ? count + 1 : 0) as int;
+    const nextVal = (count !== undefined ? count + 1 : 0) as int32;
     this.counts.set(name, nextVal);
     return nextVal;
   }

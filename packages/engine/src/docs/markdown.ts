@@ -1,4 +1,4 @@
-import type { char, int } from "@tsonic/csharp/types.js";
+import type { char, int32 } from "@tsonic/core/types.js";
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
 import { ContainerBlock, LeafBlock, LinkReferenceDefinition } from "@tsonic/dotnet/Markdig.Syntax.js";
 import type { Block, MarkdownDocument } from "@tsonic/dotnet/Markdig.Syntax.js";
@@ -220,7 +220,7 @@ const normalizeNewlines = (text: string): string => replaceLineEndings(text, "\n
 const summaryMarker = "<!--more-->";
 const summaryMarkerLength = summaryMarker.length;
 
-const findSummaryDividerIndex = (markdown: string): int => indexOfTextIgnoreCase(markdown, summaryMarker);
+const findSummaryDividerIndex = (markdown: string): int32 => indexOfTextIgnoreCase(markdown, summaryMarker);
 
 const firstBlock = (markdown: string): string => {
   const text = markdown.trim();

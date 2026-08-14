@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError } from "../diagnostics.js";
 import { ParamKind, ParamValue } from "../params.js";
@@ -10,7 +10,7 @@ export const parseFrontMatterParam = (
   value: string,
   format: StructuredScalarFormat,
   sourcePath?: string,
-  line?: int,
+  line?: int32,
 ): ParamValue => parseStructuredScalar(value, format, (message: string) =>
   createTsumoError("TSUMO_FRONTMATTER_SCALAR_INVALID", message, sourcePath, line, 1));
 
@@ -19,7 +19,7 @@ export const parseFrontMatterString = (
   field: string,
   format: StructuredScalarFormat,
   sourcePath?: string,
-  line?: int,
+  line?: int32,
 ): string => {
   const parsed = parseFrontMatterParam(value, format, sourcePath, line);
   if (parsed.kind === ParamKind.String) return parsed.stringValue;
@@ -37,7 +37,7 @@ export const recordFrontMatterField = (
   field: string,
   context: string,
   sourcePath?: string,
-  line?: int,
+  line?: int32,
 ): void => {
   const normalized = field.toLowerCase();
   if (fields.has(normalized)) {
@@ -57,8 +57,8 @@ export const parseFrontMatterInt = (
   field: string,
   format: StructuredScalarFormat,
   sourcePath?: string,
-  line?: int,
-): int => {
+  line?: int32,
+): int32 => {
   const parsed = parseFrontMatterParam(value, format, sourcePath, line);
   if (parsed.kind !== ParamKind.Number) {
     throw createTsumoError(
@@ -77,7 +77,7 @@ export const parseFrontMatterStringArray = (
   field: string,
   format: StructuredScalarFormat,
   sourcePath?: string,
-  line?: int,
+  line?: int32,
 ): string[] => {
   const trimmed = value.trim();
   if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
@@ -94,10 +94,10 @@ export const parseFrontMatterStringArray = (
   if (inner.trim() === "") return [];
 
   const values: string[] = [];
-  let start: int = 0;
+  let start: int32 = 0;
   let quote = "";
   let escaped = false;
-  for (let index: int = 0; index <= inner.length; index++) {
+  for (let index: int32 = 0; index <= inner.length; index++) {
     const current = index < inner.length ? inner[index]! : ",";
     if (escaped) {
       escaped = false;
@@ -144,7 +144,7 @@ export const applyFrontMatterScalar = (
   valueRaw: string,
   format: StructuredScalarFormat,
   sourcePath?: string,
-  line?: int,
+  line?: int32,
 ): void => {
   const key = keyRaw.trim().toLowerCase();
   const value = valueRaw.trim();

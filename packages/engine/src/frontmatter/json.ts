@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError, TsumoError } from "../diagnostics.js";
 import { ParamValue } from "../params.js";
@@ -30,7 +30,7 @@ const requireString = (field: string, value: JsonValue, sourcePath?: string): st
   throw invalidShape(field, "a string", value, sourcePath);
 };
 
-const requireInt = (field: string, value: JsonValue, sourcePath?: string): int => {
+const requireInt = (field: string, value: JsonValue, sourcePath?: string): int32 => {
   if (value instanceof JsonNumber) {
     const narrowed = toInt32(value.value);
     if (narrowed !== undefined) return narrowed;

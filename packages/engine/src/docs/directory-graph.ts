@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { PageContext } from "../models.js";
 import { substringCount, substringFrom } from "../utils/strings.js";
 
@@ -12,9 +12,9 @@ export const addDocsDirectoryWithParents = (directory: string, directories: Map<
   }
 };
 
-export const docsDirectoryDepth = (directory: string): int => {
+export const docsDirectoryDepth = (directory: string): int32 => {
   if (directory === "") return 0;
-  let depth: int = 1;
+  let depth: int32 = 1;
   let position = 0;
   while (true) {
     const separator = directory.indexOf("/", position);

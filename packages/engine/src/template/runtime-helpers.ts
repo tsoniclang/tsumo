@@ -1,6 +1,6 @@
 import { escapeHtml } from "../utils/html.js";
 import { parseInt32 } from "../utils/int32.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import {
   TemplateValue, NilValue, BoolValue, NumberValue, StringValue, HtmlValue,
   PageValue, DictValue, PageArrayValue, StringArrayValue, SitesArrayValue,
@@ -86,7 +86,7 @@ export const toPlainString = (value: TemplateValue): string => {
   return "";
 };
 
-export const toNumber = (value: TemplateValue): int => {
+export const toNumber = (value: TemplateValue): int32 => {
   if (value instanceof NumberValue) return value.value;
   if (value instanceof StringValue) return parseInt32(value.value) ?? 0;
   if (value instanceof BoolValue) return value.value ? 1 : 0;

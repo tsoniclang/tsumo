@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 export class BuildRequest {
   siteDir: string;
@@ -22,7 +22,7 @@ export class BuildRequest {
 
 export class ServeRequest extends BuildRequest {
   host: string;
-  port: int;
+  port: int32;
   watch: boolean;
 
   constructor(siteDir: string) {
@@ -35,9 +35,9 @@ export class ServeRequest extends BuildRequest {
 
 export class BuildResult {
   outputDir: string;
-  pagesBuilt: int;
+  pagesBuilt: int32;
 
-  constructor(outputDir: string, pagesBuilt: int) {
+  constructor(outputDir: string, pagesBuilt: int32) {
     this.outputDir = outputDir;
     this.pagesBuilt = pagesBuilt;
   }

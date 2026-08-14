@@ -1,5 +1,5 @@
 import process from "node:process";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { ServeRequest, serveSite } from "@tsumo/engine/index.js";
 
@@ -13,7 +13,7 @@ export const handleServe = (args: readonly string[]): void => {
   let serveBaseURL: string | undefined = undefined;
   let serveThemesDir: string | undefined = undefined;
   let serveHost = "localhost";
-  let servePort: int = 1313;
+  let servePort: int32 = 1313;
   let serveWatch = true;
   let serveBuildDrafts = false;
   let serveClean = true;

@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { PageContext, SiteContext } from "../models.js";
 import { ParamValue } from "../params.js";
 import { innerDeindent } from "../shortcode.js";
@@ -14,7 +14,7 @@ export class ShortcodeContext {
   IsNamedParams: boolean;
   Inner: string;
   InnerDeindent: string;
-  Ordinal: int;
+  Ordinal: int32;
   Parent: ShortcodeContext | undefined;
 
   constructor(
@@ -25,7 +25,7 @@ export class ShortcodeContext {
     positionalParams: string[],
     isNamedParams: boolean,
     inner: string,
-    ordinal: int,
+    ordinal: int32,
     parent: ShortcodeContext | undefined,
   ) {
     this.name = name;
@@ -112,13 +112,13 @@ export class ImageHookValue extends TemplateValue {
 }
 
 export class HeadingHookContext {
-  Level: int;
+  Level: int32;
   Text: string;
   PlainText: string;
   Anchor: string;
   Page: PageContext;
 
-  constructor(level: int, text: string, plainText: string, anchor: string, page: PageContext) {
+  constructor(level: int32, text: string, plainText: string, anchor: string, page: PageContext) {
     this.Level = level;
     this.Text = text;
     this.PlainText = plainText;

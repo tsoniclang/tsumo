@@ -8,7 +8,7 @@ import { HtmlInline, ContainerInline, LinkInline } from "@tsonic/dotnet/Markdig.
 import { StringLineGroup } from "@tsonic/dotnet/Markdig.Helpers.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { StringWriter } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import type { TemplateEnvironment } from "../template/environment.js";
 import type { TemplateNode } from "../template/nodes.js";
 import type { Template } from "../template/template.js";
@@ -177,7 +177,7 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
 const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHookContext): void => {
   // Collect headings to rewrite with their indices (can't modify during iteration)
   const headingsToRewrite: HeadingBlock[] = [];
-  const headingIndices: int[] = [];
+  const headingIndices: int32[] = [];
 
   const blockIt = containerBlock.GetEnumerator();
   let idx = 0;

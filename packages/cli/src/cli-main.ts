@@ -1,5 +1,5 @@
 import process from "node:process";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { TsumoError } from "@tsumo/engine/index.js";
 
 import { logErrorLine } from "./log-error-line.js";
@@ -50,7 +50,7 @@ export function main(): void {
     return;
   }
 
-  const buildArgStart: int = first === "build" || first === "gen" || first === "generate" ? 1 : 0;
+  const buildArgStart: int32 = first === "build" || first === "gen" || first === "generate" ? 1 : 0;
   handleBuild(args, buildArgStart);
 }
 

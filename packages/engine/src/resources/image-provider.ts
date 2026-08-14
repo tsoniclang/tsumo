@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { readFileSync, writeFileSync } from "node:fs";
 import { Guid } from "@tsonic/dotnet/System.js";
 import { Directory, Path } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { CodecManager, MagicImageProcessor, ProcessImageSettings } from "@tsonic/dotnet/PhotoSauce.MagicScaler.js";
 import type { CodecCollection } from "@tsonic/dotnet/PhotoSauce.MagicScaler.js";
 import { CodecCollectionExtensions as GiflibCodecs } from "@tsonic/dotnet/PhotoSauce.NativeCodecs.Giflib.js";
@@ -30,18 +30,18 @@ const ensureImageCodecsRegistered = (): void => {
 };
 
 class ImageResizeRequest {
-  width: int;
-  height: int;
+  width: int32;
+  height: int32;
   format: string | undefined;
 
-  constructor(width: int, height: int, format: string | undefined) {
+  constructor(width: int32, height: int32, format: string | undefined) {
     this.width = width;
     this.height = height;
     this.format = format;
   }
 }
 
-const parsePositiveDimension = (value: string, spec: string): int => {
+const parsePositiveDimension = (value: string, spec: string): int32 => {
   if (value === "") return 0;
   const parsed = parseInt32(value);
   if (parsed === undefined || parsed <= 0) {
@@ -58,8 +58,8 @@ const parseImageResizeRequest = (spec: string): ImageResizeRequest => {
 
   const dimensions = tokens[0]!;
   const separator = dimensions.indexOf("x");
-  let width: int;
-  let height: int;
+  let width: int32;
+  let height: int32;
   if (separator < 0) {
     width = parsePositiveDimension(dimensions, spec);
     height = 0;
@@ -88,8 +88,8 @@ const parseImageResizeRequest = (spec: string): ImageResizeRequest => {
 
 export const resizeImageResource = (resource: Resource, specification: string): Resource => {
   const request = parseImageResizeRequest(specification);
-  let width: int = request.width;
-  let height: int = request.height;
+  let width: int32 = request.width;
+  let height: int32 = request.height;
   if (width === 0 && resource.width > 0 && resource.height > 0) {
     width = (resource.width * height) / resource.height;
   } else if (height === 0 && resource.width > 0 && resource.height > 0) {
@@ -126,8 +126,8 @@ export const resizeImageResource = (resource: Resource, specification: string): 
     MagicImageProcessor.ProcessImage(inputPath, outputPath, settings);
 
     const outputBytes = readFileSync(outputPath);
-    let outputWidth: int = width;
-    let outputHeight: int = height;
+    let outputWidth: int32 = width;
+    let outputHeight: int32 = height;
     const dimensions = parseImageDimensions(outputBytes);
     if (dimensions !== undefined) {
       outputWidth = dimensions.width;

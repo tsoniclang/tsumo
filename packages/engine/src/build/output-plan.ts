@@ -4,7 +4,7 @@ import { createTsumoError } from "../diagnostics.js";
 import { ensureDir, listFilesRecursive, writeTextFile } from "../fs.js";
 import { pathContainsOrEquals } from "../utils/paths.js";
 import { compareSitePaths, joinSitePath, normalizeSitePath, splitSitePath } from "./site-routes.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 type AssetLayer = "theme-static" | "site-static" | "bundle" | "docs-asset";
 
@@ -118,8 +118,8 @@ export class SiteOutputPlan {
     }
   }
 
-  generatedOutputCount(): int {
-    let count: int = 0;
+  generatedOutputCount(): int32 {
+    let count: int32 = 0;
     for (const unused of this.textByPath.values()) count++;
     return count;
   }

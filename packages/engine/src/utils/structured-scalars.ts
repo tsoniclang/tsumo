@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { Char } from "@tsonic/dotnet/System.js";
 
 import type { TsumoError } from "../diagnostics.js";
@@ -9,17 +9,17 @@ import { indexOfText, substringCount, substringFrom } from "./strings.js";
 export type StructuredScalarFormat = "toml" | "yaml";
 export type StructuredScalarErrorFactory = (message: string) => TsumoError;
 
-const hexValue = (character: string): int => indexOfText("0123456789abcdef", character.toLowerCase());
+const hexValue = (character: string): int32 => indexOfText("0123456789abcdef", character.toLowerCase());
 
 const decodeHexEscape = (
   source: string,
-  start: int,
-  count: int,
+  start: int32,
+  count: int32,
   invalid: StructuredScalarErrorFactory,
 ): string => {
   if (start + count > source.length) throw invalid(`String escape requires ${count} hexadecimal digits`);
-  let value: int = 0;
-  for (let offset: int = 0; offset < count; offset++) {
+  let value: int32 = 0;
+  for (let offset: int32 = 0; offset < count; offset++) {
     const digit = hexValue(source[start + offset]!);
     if (digit < 0) throw invalid("String escape contains a non-hexadecimal digit");
     value = value * 16 + digit;
@@ -36,7 +36,7 @@ const decodeSingleQuoted = (
   invalid: StructuredScalarErrorFactory,
 ): string => {
   let result = "";
-  for (let index: int = 0; index < inner.length; index++) {
+  for (let index: int32 = 0; index < inner.length; index++) {
     const current = inner[index]!;
     if (current !== "'") {
       result += current;
@@ -54,7 +54,7 @@ const decodeSingleQuoted = (
 
 const decodeDoubleQuoted = (inner: string, invalid: StructuredScalarErrorFactory): string => {
   let result = "";
-  for (let index: int = 0; index < inner.length; index++) {
+  for (let index: int32 = 0; index < inner.length; index++) {
     const current = inner[index]!;
     if (current === "\"") throw invalid("Double-quoted string contains an unescaped quote");
     if (current !== "\\") {
@@ -133,7 +133,7 @@ export const parseStructuredScalar = (
 export const stripStructuredComment = (line: string, format: StructuredScalarFormat): string => {
   let quote = "";
   let escaped = false;
-  for (let index: int = 0; index < line.length; index++) {
+  for (let index: int32 = 0; index < line.length; index++) {
     const current = line[index]!;
     if (escaped) {
       escaped = false;

@@ -1,6 +1,6 @@
 import { File, Path } from "@tsonic/dotnet/System.IO.js";
 import { JsonDocument, JsonElement, JsonValueKind } from "@tsonic/dotnet/System.Text.Json.js";
-import type { char, int } from "@tsonic/csharp/types.js";
+import type { char, int32 } from "@tsonic/core/types.js";
 import { DocsMountConfig, NavItem } from "./models.js";
 import { createTsumoError } from "../diagnostics.js";
 import { splitUrlSuffix } from "./url.js";
@@ -148,10 +148,10 @@ const parseInlineMarkdownLink = (line: string): InlineLink | undefined => {
 
 class NavGroupBuild {
   title: string;
-  order: int;
+  order: int32;
   children: NavItem[];
 
-  constructor(title: string, order: int) {
+  constructor(title: string, order: int32) {
     this.title = title;
     this.order = order;
     const empty: NavItem[] = [];
@@ -171,7 +171,7 @@ const parseTocMarkdown = (
   const groups: NavGroupBuild[] = [];
   const rootItems: NavItem[] = [];
   let currentGroup: NavGroupBuild | undefined = undefined;
-  let order: int = 1;
+  let order: int32 = 1;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
@@ -277,7 +277,7 @@ function parseNavJsonItems(
 
   const items: NavItem[] = [];
   const it = el.EnumerateArray().GetEnumerator();
-  let order: int = 1;
+  let order: int32 = 1;
   while (it.MoveNext()) {
     const cur = it.Current;
     if (cur.ValueKind !== JsonValueKind.Object) continue;

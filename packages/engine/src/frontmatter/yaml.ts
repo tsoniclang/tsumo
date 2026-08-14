@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError } from "../diagnostics.js";
 import { substringCount, substringFrom } from "../utils/strings.js";
@@ -13,8 +13,8 @@ import {
   recordFrontMatterField,
 } from "./scalars.js";
 
-const indentationOf = (line: string): int => {
-  let indentation: int = 0;
+const indentationOf = (line: string): int32 => {
+  let indentation: int32 = 0;
   while (indentation < line.length && line[indentation] === " ") indentation++;
   return indentation;
 };
@@ -24,7 +24,7 @@ const yamlText = (line: string): string => stripStructuredComment(line, "yaml").
 const splitYamlPair = (
   text: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): string[] => {
   const separator = text.indexOf(":");
   if (separator <= 0) {
@@ -44,7 +44,7 @@ const applyMenuProperty = (
   keyRaw: string,
   valueRaw: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const key = keyRaw.toLowerCase();
   if (key === "weight") entry.weight = parseFrontMatterInt(valueRaw, keyRaw, "yaml", sourcePath, line);
@@ -65,7 +65,7 @@ const applyMenuProperty = (
   }
 };
 
-const validateYamlLine = (line: string, sourcePath: string | undefined, lineNumber: int): void => {
+const validateYamlLine = (line: string, sourcePath: string | undefined, lineNumber: int32): void => {
   if (line.includes("\t")) {
     throw createTsumoError(
       "TSUMO_FRONTMATTER_YAML_SYNTAX_INVALID",
@@ -80,7 +80,7 @@ const validateYamlLine = (line: string, sourcePath: string | undefined, lineNumb
 export const parseYamlFrontMatter = (lines: string[], sourcePath?: string): FrontMatter => {
   const frontMatter = new FrontMatter();
   const rootFields = new Set<string>();
-  let index: int = 0;
+  let index: int32 = 0;
   while (index < lines.length) {
     const raw = lines[index]!;
     const lineNumber = index + 2;

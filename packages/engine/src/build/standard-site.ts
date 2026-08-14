@@ -1,5 +1,5 @@
 import { Path } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { loadSiteConfig } from "../config.js";
 import { BuildEnvironment } from "../env.js";
 import { BuildRequest } from "../models.js";
@@ -18,7 +18,7 @@ import { createStandardPageGraph } from "./standard-page-graph.js";
 import { createStandardTaxonomies } from "./standard-taxonomies.js";
 import { selectStandardTemplates } from "./standard-templates.js";
 
-export const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: string): int => {
+export const buildStandardSite = (request: BuildRequest, siteDir: string, outDir: string): int32 => {
   const config = loadSiteConfig(siteDir).config;
   const requestedBaseUrl = request.baseURL;
   if (requestedBaseUrl !== undefined && requestedBaseUrl.trim() !== "") {

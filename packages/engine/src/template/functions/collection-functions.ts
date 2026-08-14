@@ -1,5 +1,5 @@
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { PageContext } from "../../models.js";
 import { substringCount, substringFrom } from "../../utils/strings.js";
 import {
@@ -111,7 +111,7 @@ export const callCollectionFunction = (
 
     if (collection instanceof PageArrayValue) {
       const pages = copyPageArray(collection.value);
-      const start: int = pages.length > n ? pages.length - n : 0;
+      const start: int32 = pages.length > n ? pages.length - n : 0;
       const result: PageContext[] = [];
       for (let i = start; i < pages.length; i++) result.push(pages[i]!);
       return new PageArrayValue(result);
@@ -119,7 +119,7 @@ export const callCollectionFunction = (
 
     if (collection instanceof AnyArrayValue) {
       const items = collection.value;
-      const start: int = items.length > n ? items.length - n : 0;
+      const start: int32 = items.length > n ? items.length - n : 0;
       const result: TemplateValue[] = [];
       for (let i = start; i < items.length; i++) result.push(items[i]!);
       return new AnyArrayValue(result);

@@ -1,5 +1,5 @@
 import process from "node:process";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { BuildRequest, buildSite } from "@tsumo/engine/index.js";
 
@@ -7,7 +7,7 @@ import { logLine } from "../log-line.js";
 import { reportUsageError } from "../report-usage-error.js";
 import { readSourceDateEpoch } from "../source-date-epoch.js";
 
-export const handleBuild = (args: readonly string[], buildArgStart: int): void => {
+export const handleBuild = (args: readonly string[], buildArgStart: int32): void => {
   let buildSourceDir = process.cwd();
   let buildDestinationDir = "public";
   let buildBaseURL: string | undefined = undefined;

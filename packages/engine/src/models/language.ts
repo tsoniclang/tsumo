@@ -1,13 +1,13 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 export class LanguageConfig {
   lang: string;
   languageName: string;
   languageDirection: string;
   contentDir: string;
-  weight: int;
+  weight: int32;
 
-  constructor(lang: string, languageName: string, languageDirection: string, contentDir: string, weight: int) {
+  constructor(lang: string, languageName: string, languageDirection: string, contentDir: string, weight: int32) {
     this.lang = lang;
     this.languageName = languageName;
     this.languageDirection = languageDirection;

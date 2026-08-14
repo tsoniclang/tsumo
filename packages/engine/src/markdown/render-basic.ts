@@ -1,5 +1,5 @@
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { indexOfText, indexOfTextIgnoreCase, replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
 import { MarkdownResult } from "./result.js";
 import { markdownPipeline } from "./pipeline.js";
@@ -10,7 +10,7 @@ export const normalizeNewlines = (text: string): string => replaceLineEndings(te
 export const summaryMarker = "<!--more-->";
 export const summaryMarkerLength = summaryMarker.length;
 
-export const findSummaryDividerIndex = (markdown: string): int => indexOfTextIgnoreCase(markdown, summaryMarker);
+export const findSummaryDividerIndex = (markdown: string): int32 => indexOfTextIgnoreCase(markdown, summaryMarker);
 
 export const firstBlock = (markdown: string): string => {
   const text = markdown.trim();
