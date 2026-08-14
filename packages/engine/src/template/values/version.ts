@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { Int32 } from "@tsonic/dotnet/System.js";
 import { TemplateValue } from "./base.js";
 import { compareText, substringCount, substringFrom } from "../../utils/strings.js";
@@ -19,7 +19,7 @@ export class VersionStringValue extends TemplateValue {
    * Compare two version strings using semver-like comparison.
    * Returns -1 if a < b, 0 if a == b, 1 if a > b.
    */
-  static compare(a: string, b: string): int {
+  static compare(a: string, b: string): int32 {
     const aParts = VersionStringValue.parseVersion(a);
     const bParts = VersionStringValue.parseVersion(b);
 
@@ -28,15 +28,15 @@ export class VersionStringValue extends TemplateValue {
     const maxLen = aLen > bLen ? aLen : bLen;
 
     for (let i = 0; i < maxLen; i++) {
-      const av: int = i < aLen ? aParts[i]! : 0;
-      const bv: int = i < bLen ? bParts[i]! : 0;
+      const av: int32 = i < aLen ? aParts[i]! : 0;
+      const bv: int32 = i < bLen ? bParts[i]! : 0;
       if (av < bv) return -1;
       if (av > bv) return 1;
     }
     return 0;
   }
 
-  static parseVersion(v: string): int[] {
+  static parseVersion(v: string): int32[] {
     // Remove common prefixes like "v" or "V"
     let cleaned = v;
     if (cleaned.startsWith("v") || cleaned.startsWith("V")) {
@@ -44,7 +44,7 @@ export class VersionStringValue extends TemplateValue {
     }
     // Split by dots and convert to numbers
     const parts = cleaned.split(".");
-    const result: int[] = [];
+    const result: int32[] = [];
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]!;
       // Extract leading numeric portion (handles cases like "1-beta")
@@ -54,7 +54,7 @@ export class VersionStringValue extends TemplateValue {
     return result;
   }
 
-  static extractLeadingNumber(s: string): int {
+  static extractLeadingNumber(s: string): int32 {
     let numStr = "";
     for (let i = 0; i < s.length; i++) {
       const ch = substringCount(s, i, 1);

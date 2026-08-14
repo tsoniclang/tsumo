@@ -1,5 +1,5 @@
 import { Directory, Path } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../diagnostics.js";
 import { listFilesRecursive } from "../fs.js";
 import { compareText, substringCount, trimEndChar, trimStartChar } from "../utils/strings.js";

@@ -32,6 +32,8 @@ test("product source contains no retired Tsonic mechanisms", () => {
   const patterns = [
     ["retired Node module", /@tsonic\/nodejs\//u],
     ["retired generated binding package", /(?:markdig-types|photo-sauce-magic-scaler-types|xunit-types|@tsonic\/tsbindgen)/u],
+    ["target-specific primitive module", /@tsonic\/(?:csharp|rust)\/types\.js/u],
+    ["target-flavored neutral primitive alias", /\bint32\s+as\s+int\b/u],
     ["retired cast marker", /\b(?:trycast|asinterface|attributes)\s*(?:<|\()/u],
     ["TypeScript source import", /(?:from\s+|import\s*\()\s*["'][^"']+\.ts["']/u],
     ["CommonJS module operation", /\brequire\s*\(|\bmodule\.exports\b|\bexport\s*=/u],
@@ -64,6 +66,14 @@ test("product source does not bypass shared recursive filesystem traversal", () 
       : [];
   });
   assert.deepEqual(violations, []);
+});
+
+test("locked restores exclude SDK-local package substitutes", () => {
+  const buildProperties = readFileSync(join(repoRoot, "Directory.Build.props"), "utf8");
+  assert.match(
+    buildProperties,
+    /<DisableImplicitLibraryPacksFolder>true<\/DisableImplicitLibraryPacksFolder>/u,
+  );
 });
 
 test("compiler projects use one current source and target contract", () => {

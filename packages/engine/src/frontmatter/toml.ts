@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError } from "../diagnostics.js";
 import { substringCount, substringFrom } from "../utils/strings.js";
@@ -18,7 +18,7 @@ const applyMenuProperty = (
   keyRaw: string,
   valueRaw: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const key = keyRaw.toLowerCase();
   if (key === "weight") entry.weight = parseFrontMatterInt(valueRaw, keyRaw, "toml", sourcePath, line);
@@ -49,7 +49,7 @@ export const parseTomlFrontMatter = (lines: string[], sourcePath?: string): Fron
   let tableFields = new Set<string>();
   let menuFields = new Set<string>();
 
-  for (let index: int = 0; index < lines.length; index++) {
+  for (let index: int32 = 0; index < lines.length; index++) {
     const lineNumber = index + 2;
     const line = stripStructuredComment(lines[index]!, "toml").trim();
     if (line === "") continue;

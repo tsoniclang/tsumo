@@ -1,5 +1,5 @@
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { PageContext } from "../../models.js";
 import { compareText, substringCount, substringFrom } from "../../utils/strings.js";
 import { toPlainString } from "../runtime-helpers.js";
@@ -138,7 +138,7 @@ export const copyStringArray = (strings: string[]): string[] => {
  * Returns negative if a < b, positive if a > b, 0 if equal.
  */
 
-export const compareValues = (a: TemplateValue, b: TemplateValue): int => {
+export const compareValues = (a: TemplateValue, b: TemplateValue): int32 => {
   // Compare strings
   if (a instanceof StringValue && b instanceof StringValue) {
     const aStr = (a as StringValue).value;
@@ -147,8 +147,8 @@ export const compareValues = (a: TemplateValue, b: TemplateValue): int => {
   }
   // Compare numbers
   if (a instanceof NumberValue && b instanceof NumberValue) {
-    const aNum: int = (a as NumberValue).value;
-    const bNum: int = (b as NumberValue).value;
+    const aNum: int32 = (a as NumberValue).value;
+    const bNum: int32 = (b as NumberValue).value;
     if (aNum < bNum) return -1;
     if (aNum > bNum) return 1;
     return 0;

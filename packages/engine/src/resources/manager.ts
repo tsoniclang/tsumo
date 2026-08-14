@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../diagnostics.js";
 import { listFilesRecursive, readBinaryFile } from "../fs.js";
 import { compareText } from "../utils/strings.js";
@@ -107,8 +107,8 @@ export class ResourceManager {
     const extension = (Path.GetExtension(fullPath) ?? "").toLowerCase();
     const mediaType = resourceMediaTypeForExtension(extension);
     const text = isTextResourceMediaType(mediaType) ? bytes.toString("utf8") : undefined;
-    let width: int = 0;
-    let height: int = 0;
+    let width: int32 = 0;
+    let height: int32 = 0;
     if (isImageResourceExtension(extension)) {
       const dimensions = parseImageDimensions(bytes);
       if (dimensions !== undefined) {

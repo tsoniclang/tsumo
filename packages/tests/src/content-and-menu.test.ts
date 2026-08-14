@@ -1,5 +1,5 @@
 import { attribute } from "@tsonic/core/lang.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
 import { Exception } from "@tsonic/dotnet/System.js";
 import { Assert, FactAttribute } from "@tsonic/dotnet/Xunit.js";
@@ -31,7 +31,7 @@ const captureContentDiagnostic = (operation: () => void): string => {
   throw new Exception("Expected a content or menu diagnostic");
 };
 
-const createMenuEntry = (identity: string, parent: string, weight: int, pageRef: string): MenuEntry =>
+const createMenuEntry = (identity: string, parent: string, weight: int32, pageRef: string): MenuEntry =>
   new MenuEntry(identity, "", pageRef, "", weight, parent, identity, "", "", "main");
 
 const createPage = (site: SiteContext, route: string, slug: string): PageContext => {

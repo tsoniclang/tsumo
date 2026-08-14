@@ -1,19 +1,19 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { parseInt32 } from "./utils/int32.js";
 
 export class ParamKind {
-  static String: int = 0;
-  static Bool: int = 1;
-  static Number: int = 2;
+  static String: int32 = 0;
+  static Bool: int32 = 1;
+  static Number: int32 = 2;
 }
 
 export class ParamValue {
-  kind: int;
+  kind: int32;
   stringValue: string;
   boolValue: boolean;
-  numberValue: int;
+  numberValue: int32;
 
-  constructor(kind: int, stringValue: string, boolValue: boolean, numberValue: int) {
+  constructor(kind: int32, stringValue: string, boolValue: boolean, numberValue: int32) {
     this.kind = kind;
     this.stringValue = stringValue;
     this.boolValue = boolValue;
@@ -28,7 +28,7 @@ export class ParamValue {
     return new ParamValue(ParamKind.Bool, "", value, 0);
   }
 
-  static number(value: int): ParamValue {
+  static number(value: int32): ParamValue {
     return new ParamValue(ParamKind.Number, "", false, value);
   }
 

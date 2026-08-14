@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { PageContext, SiteContext } from "../../models.js";
 import { replaceText } from "../../utils/strings.js";
 import { trimEndCharacter, trimSlashes, trimStartCharacter } from "./serialization.js";
@@ -51,7 +51,7 @@ export const splitGlobSegments = (raw: string): string[] => {
   return normalized.split("/");
 };
 
-export const globMatchAt = (patSegs: string[], pathSegs: string[], pi: int, si: int): boolean => {
+export const globMatchAt = (patSegs: string[], pathSegs: string[], pi: int32, si: int32): boolean => {
   if (pi >= patSegs.length) return si >= pathSegs.length;
   const p = patSegs[pi]!;
   if (p === "**") {

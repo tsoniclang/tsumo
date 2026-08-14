@@ -1,4 +1,4 @@
-import type { char } from "@tsonic/csharp/types.js";
+import type { char } from "@tsonic/core/types.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { isAbsolute, join, sep } from "node:path";
 import { dirExists, fileExists, readTextFile } from "./fs.js";

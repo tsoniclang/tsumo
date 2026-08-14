@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError } from "../diagnostics.js";
 import { replaceLineEndings, substringCount, substringFrom } from "../utils/strings.js";
@@ -9,14 +9,14 @@ import { parseTomlFrontMatter } from "./toml.js";
 import { parseYamlFrontMatter } from "./yaml.js";
 
 const tryParseJsonFrontMatter = (text: string, sourcePath?: string): ParsedContent | undefined => {
-  const start: int = 0;
+  const start: int32 = 0;
   if (text.length === 0 || text[start] !== "{") return undefined;
 
-  let depth: int = 0;
+  let depth: int32 = 0;
   let inString = false;
   let escaped = false;
-  let end: int = -1;
-  for (let index: int = start; index < text.length; index++) {
+  let end: int32 = -1;
+  for (let index: int32 = start; index < text.length; index++) {
     const current = text[index]!;
     if (inString && escaped) {
       escaped = false;
@@ -62,8 +62,8 @@ const parseDelimitedFrontMatter = (
   sourcePath: string | undefined,
 ): ParsedContent => {
   const frontMatterLines: string[] = [];
-  let bodyStart: int = lines.length;
-  for (let index: int = 1; index < lines.length; index++) {
+  let bodyStart: int32 = lines.length;
+  for (let index: int32 = 1; index < lines.length; index++) {
     if (lines[index]!.trim() === delimiter) {
       bodyStart = index + 1;
       const body = lines.slice(bodyStart).join("\n").trimStart();

@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { ParamValue } from "../params.js";
 import type { PageContext } from "./page-context.js";
 
@@ -7,7 +7,7 @@ export class MenuEntry {
   url: string;
   pageRef: string;
   title: string;
-  weight: int;
+  weight: int32;
   parent: string;
   identifier: string;
   pre: string;
@@ -22,7 +22,7 @@ export class MenuEntry {
     url: string,
     pageRef: string,
     title: string,
-    weight: int,
+    weight: int32,
     parent: string,
     identifier: string,
     pre: string,

@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 export class ResourceData {
   Integrity: string;
@@ -10,10 +10,10 @@ export class ResourceData {
 }
 
 export class ImageDimensions {
-  width: int;
-  height: int;
+  width: int32;
+  height: int32;
 
-  constructor(width: int, height: int) {
+  constructor(width: int32, height: int32) {
     this.width = width;
     this.height = height;
   }
@@ -28,8 +28,8 @@ export class Resource {
   text: string | undefined;
   Data: ResourceData;
   mediaType: string;
-  width: int;
-  height: int;
+  width: int32;
+  height: int32;
 
   constructor(
     id: string,
@@ -40,8 +40,8 @@ export class Resource {
     text: string | undefined,
     data: ResourceData,
     mediaType: string = "",
-    width: int = 0,
-    height: int = 0,
+    width: int32 = 0,
+    height: int32 = 0,
   ) {
     this.id = id;
     this.sourcePath = sourcePath;

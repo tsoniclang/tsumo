@@ -12,15 +12,15 @@ import {
 import type { Inline } from "@tsonic/dotnet/Markdig.Syntax.Inlines.js";
 import { Stack } from "@tsonic/dotnet/System.Collections.Generic.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { markdownPipeline } from "./pipeline.js";
 
 class TocHeading {
-  level: int;
+  level: int32;
   text: string;
   id: string;
 
-  constructor(level: int, text: string, id: string) {
+  constructor(level: int32, text: string, id: string) {
     this.level = level;
     this.text = text;
     this.id = id;
@@ -28,16 +28,16 @@ class TocHeading {
 }
 
 class TocListFrame {
-  level: int;
+  level: int32;
   liOpen: boolean;
 
-  constructor(level: int) {
+  constructor(level: int32) {
     this.level = level;
     this.liOpen = false;
   }
 }
 
-const indent = (depth: int): string => {
+const indent = (depth: int32): string => {
   let out = "";
   for (let i = 0; i < depth; i++) out += "  ";
   return out;
@@ -142,7 +142,7 @@ export const generateTableOfContents = (markdown: string): string => {
   sb.Append(`<nav id="TableOfContents">\n`);
 
   const listStack = new Stack<TocListFrame>();
-  let currentLevel: int = 0;
+  let currentLevel: int32 = 0;
 
   for (let i = 0; i < headings.length; i++) {
     const h = headings[i]!;

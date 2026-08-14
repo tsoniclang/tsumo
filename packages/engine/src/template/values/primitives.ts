@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { HtmlString } from "../../utils/html.js";
 import { TemplateValue } from "./base.js";
 
@@ -21,9 +21,9 @@ export class BoolValue extends TemplateValue {
 }
 
 export class NumberValue extends TemplateValue {
-  value: int;
+  value: int32;
 
-  constructor(value: int) {
+  constructor(value: int32) {
     super();
     this.value = value;
   }

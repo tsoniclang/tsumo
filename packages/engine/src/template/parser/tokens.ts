@@ -1,14 +1,14 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { indexOfTextFrom, substringCount, substringFrom } from "../../utils/strings.js";
 
 export class TemplateSegment {
   isAction: boolean;
   text: string;
-  line: int;
-  column: int;
+  line: int32;
+  column: int32;
 
-  constructor(isAction: boolean, text: string, line: int, column: int) {
+  constructor(isAction: boolean, text: string, line: int32, column: int32) {
     this.isAction = isAction;
     this.text = text;
     this.line = line;
@@ -17,18 +17,18 @@ export class TemplateSegment {
 }
 
 class TemplatePosition {
-  line: int;
-  column: int;
+  line: int32;
+  column: int32;
 
-  constructor(line: int, column: int) {
+  constructor(line: int32, column: int32) {
     this.line = line;
     this.column = column;
   }
 }
 
-const positionAt = (source: string, offset: int): TemplatePosition => {
-  let line: int = 1;
-  let column: int = 1;
+const positionAt = (source: string, offset: int32): TemplatePosition => {
+  let line: int32 = 1;
+  let column: int32 = 1;
   for (let index = 0; index < offset && index < source.length; index++) {
     if (substringCount(source, index, 1) === "\n") {
       line++;
@@ -51,7 +51,7 @@ export const parseStringLiteral = (token: string): string | undefined => {
   return undefined;
 };
 
-export const sliceTokens = (tokens: string[], startIndex: int): string[] => {
+export const sliceTokens = (tokens: string[], startIndex: int32): string[] => {
   const result: string[] = [];
   for (let index = startIndex; index < tokens.length; index++) result.push(tokens[index]!);
   return result;
@@ -59,7 +59,7 @@ export const sliceTokens = (tokens: string[], startIndex: int): string[] => {
 
 export const scanTemplateSegments = (template: string, sourcePath?: string): TemplateSegment[] => {
   const segments: TemplateSegment[] = [];
-  let offset: int = 0;
+  let offset: int32 = 0;
   let lastSegment: TemplateSegment | undefined = undefined;
 
   while (offset < template.length) {
@@ -134,12 +134,12 @@ export const scanTemplateSegments = (template: string, sourcePath?: string): Tem
 
 export const tokenizeTemplateAction = (
   action: string,
-  line?: int,
-  column?: int,
+  line?: int32,
+  column?: int32,
   sourcePath?: string,
 ): string[] => {
   const tokens: string[] = [];
-  let offset: int = 0;
+  let offset: int32 = 0;
 
   while (offset < action.length) {
     const character = substringCount(action, offset, 1);

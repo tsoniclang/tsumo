@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { normalizeResourceRelativePath } from "./paths.js";
 
 const resourceSegmentMatches = (pattern: string, segment: string): boolean => {
@@ -28,8 +28,8 @@ const splitGlobSegments = (value: string): string[] => {
 const resourceGlobMatchesAt = (
   patternSegments: string[],
   pathSegments: string[],
-  patternIndex: int,
-  pathIndex: int,
+  patternIndex: int32,
+  pathIndex: int32,
 ): boolean => {
   if (patternIndex >= patternSegments.length) return pathIndex >= pathSegments.length;
   const pattern = patternSegments[patternIndex]!;

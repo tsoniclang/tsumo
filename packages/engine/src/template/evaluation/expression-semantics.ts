@@ -1,5 +1,5 @@
 import { Int32 } from "@tsonic/dotnet/System.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { PageContext } from "../../models.js";
 import { substringFrom } from "../../utils/strings.js";

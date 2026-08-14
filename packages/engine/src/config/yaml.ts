@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError } from "../diagnostics.js";
 import { MenuEntry, SiteConfig } from "../models.js";
@@ -10,15 +10,15 @@ import { ensureTrailingSlash } from "../utils/text.js";
 import { MenuEntryBuilder } from "./builders.js";
 import { parseConfigInt, parseConfigParam, parseConfigString } from "./scalars.js";
 
-const indentationOf = (line: string): int => {
-  let indentation: int = 0;
+const indentationOf = (line: string): int32 => {
+  let indentation: int32 = 0;
   while (indentation < line.length && line[indentation] === " ") indentation++;
   return indentation;
 };
 
 const yamlText = (line: string): string => stripStructuredComment(line, "yaml").trim();
 
-const splitPair = (text: string, sourcePath: string | undefined, line: int): string[] => {
+const splitPair = (text: string, sourcePath: string | undefined, line: int32): string[] => {
   const separator = text.indexOf(":");
   if (separator <= 0) {
     throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "YAML configuration entries require 'key: value' syntax", sourcePath, line, 1);
@@ -31,7 +31,7 @@ const recordField = (
   field: string,
   context: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const normalized = field.toLowerCase();
   if (fields.has(normalized)) {
@@ -45,7 +45,7 @@ const applyMenuField = (
   keyRaw: string,
   value: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const key = keyRaw.toLowerCase();
   if (key === "name") builder.name = parseConfigString(keyRaw, value, "yaml", sourcePath, line);
@@ -72,7 +72,7 @@ export const parseYamlConfig = (text: string, sourcePath?: string): SiteConfig =
   const rootFields = new Set<string>();
   const lines = text.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
 
-  let index: int = 0;
+  let index: int32 = 0;
   while (index < lines.length) {
     const raw = lines[index]!;
     const lineNumber = index + 1;
@@ -202,7 +202,7 @@ export const mergeYamlIntoConfig = (
   if (lower === "params.yaml" || lower === "params.yml") {
     const lines = text.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
     const fields = new Set<string>();
-    for (let index: int = 0; index < lines.length; index++) {
+    for (let index: int32 = 0; index < lines.length; index++) {
       const raw = lines[index]!;
       const value = yamlText(raw);
       if (value === "" || value.startsWith("#")) continue;

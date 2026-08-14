@@ -1,16 +1,16 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { substringFrom } from "../../utils/strings.js";
 import { AccessExpr, Command, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
 
 class PipelineParser {
   tokens: string[];
-  index: int;
+  index: int32;
   sourcePath: string | undefined;
-  line: int | undefined;
-  column: int | undefined;
+  line: int32 | undefined;
+  column: int32 | undefined;
 
-  constructor(tokens: string[], sourcePath?: string, line?: int, column?: int) {
+  constructor(tokens: string[], sourcePath?: string, line?: int32, column?: int32) {
     this.tokens = tokens;
     this.index = 0;
     this.sourcePath = sourcePath;
@@ -86,8 +86,8 @@ class PipelineParser {
 export const parsePipeline = (
   tokens: string[],
   sourcePath?: string,
-  line?: int,
-  column?: int,
+  line?: int32,
+  column?: int32,
 ): Pipeline => {
   if (tokens.length === 0) return new Pipeline([]);
   const parser = new PipelineParser(tokens, sourcePath, line, column);

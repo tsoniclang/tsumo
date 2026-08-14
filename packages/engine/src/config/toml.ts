@@ -1,4 +1,4 @@
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 
 import { createTsumoError } from "../diagnostics.js";
 import { LanguageConfig, MenuEntry, ModuleMount, SiteConfig } from "../models.js";
@@ -10,7 +10,7 @@ import { LanguageConfigBuilder, MenuEntryBuilder } from "./builders.js";
 import { sortLanguages } from "./helpers.js";
 import { parseConfigInt, parseConfigParam, parseConfigString } from "./scalars.js";
 
-const splitAssignment = (line: string, sourcePath: string | undefined, lineNumber: int): string[] => {
+const splitAssignment = (line: string, sourcePath: string | undefined, lineNumber: int32): string[] => {
   const separator = line.indexOf("=");
   if (separator <= 0) {
     throw createTsumoError("TSUMO_CONFIG_SYNTAX_INVALID", "TOML configuration entries require 'key = value' syntax", sourcePath, lineNumber, 1);
@@ -26,7 +26,7 @@ const recordField = (
   field: string,
   context: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const normalized = field.toLowerCase();
   if (fields.has(normalized)) {
@@ -40,7 +40,7 @@ const applyMenuField = (
   keyRaw: string,
   value: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const key = keyRaw.toLowerCase();
   if (key === "name") builder.name = parseConfigString(keyRaw, value, "toml", sourcePath, line);
@@ -60,7 +60,7 @@ const applyLanguageField = (
   keyRaw: string,
   value: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const key = keyRaw.toLowerCase();
   if (key === "languagename") builder.languageName = parseConfigString(keyRaw, value, "toml", sourcePath, line);
@@ -75,7 +75,7 @@ const applyRootField = (
   keyRaw: string,
   value: string,
   sourcePath: string | undefined,
-  line: int,
+  line: int32,
 ): void => {
   const key = keyRaw.toLowerCase();
   if (key === "title") config.title = parseConfigString(keyRaw, value, "toml", sourcePath, line);
@@ -108,13 +108,13 @@ export const parseModuleToml = (text: string, sourcePath?: string): ModuleMount[
   let target = "";
   let inMount = false;
   let mountFields = new Set<string>();
-  const finishMount = (line: int): void => {
+  const finishMount = (line: int32): void => {
     if (!inMount) return;
     if (source === "" || target === "") throw createTsumoError("TSUMO_CONFIG_INVALID_MOUNT", "Every module mount requires source and target", sourcePath, line, 1);
     mounts.push(new ModuleMount(source, target));
   };
 
-  for (let index: int = 0; index < lines.length; index++) {
+  for (let index: int32 = 0; index < lines.length; index++) {
     const lineNumber = index + 1;
     const line = stripStructuredComment(lines[index]!, "toml").trim();
     if (line === "") continue;
@@ -151,7 +151,7 @@ export const parseTomlConfig = (text: string, sourcePath?: string): SiteConfig =
   let tableFields = new Set<string>();
   let menuFields = new Set<string>();
 
-  for (let index: int = 0; index < lines.length; index++) {
+  for (let index: int32 = 0; index < lines.length; index++) {
     const lineNumber = index + 1;
     const line = stripStructuredComment(lines[index]!, "toml").trim();
     if (line === "") continue;
@@ -236,7 +236,7 @@ export const mergeTomlIntoConfig = (
     let prefix = "";
     const fields = new Set<string>();
     const tables = new Set<string>();
-    for (let index: int = 0; index < lines.length; index++) {
+    for (let index: int32 = 0; index < lines.length; index++) {
       const lineNumber = index + 1;
       const line = stripStructuredComment(lines[index]!, "toml").trim();
       if (line === "") continue;
@@ -269,7 +269,7 @@ export const mergeTomlIntoConfig = (
     const tables = new Set<string>();
     let current = "";
     if (!aggregate) current = substringCount(lower, "languages.".length, lower.length - "languages.".length - ".toml".length);
-    for (let index: int = 0; index < lines.length; index++) {
+    for (let index: int32 = 0; index < lines.length; index++) {
       const lineNumber = index + 1;
       const line = stripStructuredComment(lines[index]!, "toml").trim();
       if (line === "") continue;
@@ -315,7 +315,7 @@ export const mergeTomlIntoConfig = (
     const builders: MenuEntryBuilder[] = [];
     let current: MenuEntryBuilder | undefined;
     let fields = new Set<string>();
-    for (let index: int = 0; index < lines.length; index++) {
+    for (let index: int32 = 0; index < lines.length; index++) {
       const lineNumber = index + 1;
       const line = stripStructuredComment(lines[index]!, "toml").trim();
       if (line === "") continue;

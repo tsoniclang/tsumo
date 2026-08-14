@@ -1,5 +1,5 @@
 import { Path } from "@tsonic/dotnet/System.IO.js";
-import type { int } from "@tsonic/csharp/types.js";
+import type { int32 } from "@tsonic/core/types.js";
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
 import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "../build/layout.js";
 import { SiteOutputPlan } from "../build/output-plan.js";
@@ -36,7 +36,7 @@ import {
 } from "./routes.js";
 import { renderSearchIndexJson, SearchDocument } from "./search-index.js";
 
-export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfig, outDir: string): int => {
+export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfig, outDir: string): int32 => {
   const siteDir = Path.GetFullPath(request.siteDir);
   const loaded = loadSiteConfig(siteDir);
   const config = loaded.config;
