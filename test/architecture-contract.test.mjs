@@ -68,6 +68,14 @@ test("product source does not bypass shared recursive filesystem traversal", () 
   assert.deepEqual(violations, []);
 });
 
+test("locked restores exclude SDK-local package substitutes", () => {
+  const buildProperties = readFileSync(join(repoRoot, "Directory.Build.props"), "utf8");
+  assert.match(
+    buildProperties,
+    /<DisableImplicitLibraryPacksFolder>true<\/DisableImplicitLibraryPacksFolder>/u,
+  );
+});
+
 test("compiler projects use one current source and target contract", () => {
   const projectNames = ["engine", "cli", "tests"];
   for (const projectName of projectNames) {

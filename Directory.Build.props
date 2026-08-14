@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <DisableImplicitLibraryPacksFolder>true</DisableImplicitLibraryPacksFolder>
+  </PropertyGroup>
+</Project>
