@@ -11,6 +11,7 @@ import { compareValues, copyPageArray, matchWhere } from "../evaluation/page-sem
 import { resolvePath } from "../evaluation/property-semantics.js";
 import { isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
+import { createIntegerSequence, reverseTemplateCollection } from "./sequence-semantics.js";
 
 const unionElementsEqual = (left: TemplateValue, right: TemplateValue): boolean | undefined => {
   if (left instanceof NilValue || right instanceof NilValue) {
@@ -35,16 +36,25 @@ const unionElementsEqual = (left: TemplateValue, right: TemplateValue): boolean 
   return undefined;
 };
 
+const requireElementEquality = (
+  left: TemplateValue,
+  right: TemplateValue,
+  diagnosticCode: string,
+  diagnosticMessage: string,
+): boolean => {
+  const equals = unionElementsEqual(left, right);
+  if (equals === undefined) throw createTsumoError(diagnosticCode, diagnosticMessage);
+  return equals;
+};
+
 const appendUniqueUnionValue = (result: TemplateValue[], candidate: TemplateValue): void => {
   for (let index = 0; index < result.length; index++) {
-    const equals = unionElementsEqual(result[index]!, candidate);
-    if (equals === undefined) {
-      throw createTsumoError(
-        "TSUMO_TEMPLATE_UNION_ELEMENT_UNSUPPORTED",
-        "collections.Union cannot compare values with the supplied element type",
-      );
-    }
-    if (equals === true) return;
+    if (requireElementEquality(
+      result[index]!,
+      candidate,
+      "TSUMO_TEMPLATE_UNION_ELEMENT_UNSUPPORTED",
+      "collections.Union cannot compare values with the supplied element type",
+    )) return;
   }
   result.push(candidate);
 };
@@ -69,14 +79,12 @@ const complementContains = (collections: TemplateValue[][], candidate: TemplateV
   for (let collectionIndex = 0; collectionIndex < collections.length; collectionIndex++) {
     const collection = collections[collectionIndex]!;
     for (let valueIndex = 0; valueIndex < collection.length; valueIndex++) {
-      const equals = unionElementsEqual(collection[valueIndex]!, candidate);
-      if (equals === undefined) {
-        throw createTsumoError(
-          "TSUMO_TEMPLATE_COMPLEMENT_ELEMENT_UNSUPPORTED",
-          "collections.Complement cannot compare values with the supplied element type",
-        );
-      }
-      if (equals === true) return true;
+      if (requireElementEquality(
+        collection[valueIndex]!,
+        candidate,
+        "TSUMO_TEMPLATE_COMPLEMENT_ELEMENT_UNSUPPORTED",
+        "collections.Complement cannot compare values with the supplied element type",
+      )) return true;
     }
   }
   return false;
@@ -88,6 +96,8 @@ export const callCollectionFunction = (
   context: TemplateFunctionContext,
 ): TemplateValue | undefined => {
   const scope = context.scope;
+  if (name === "seq") return createIntegerSequence(args);
+
   if (name === "complement" && args.length >= 2) {
     const exclusions: TemplateValue[][] = [];
     for (let index = 0; index < args.length - 1; index++) {
@@ -180,7 +190,7 @@ export const callCollectionFunction = (
           const bVal = keySegs.length === 0 ? new PageValue(arr[j]!) : resolvePath(new PageValue(arr[j]!), keySegs, scope);
           const cmp = compareValues(aVal, bVal);
           const shouldSwap: boolean = isDesc ? cmp < 0 : cmp > 0;
-          if (shouldSwap === true) {
+          if (shouldSwap) {
             const tmp = arr[i]!;
             arr[i] = arr[j]!;
             arr[j] = tmp;
@@ -200,7 +210,7 @@ export const callCollectionFunction = (
           const bVal = keySegs.length === 0 ? arr[j]! : resolvePath(arr[j]!, keySegs, scope);
           const cmp = compareValues(aVal, bVal);
           const shouldSwap: boolean = isDesc ? cmp < 0 : cmp > 0;
-          if (shouldSwap === true) {
+          if (shouldSwap) {
             const tmp = arr[i]!;
             arr[i] = arr[j]!;
             arr[j] = tmp;
@@ -451,6 +461,10 @@ export const callCollectionFunction = (
     return new AnyArrayValue(items);
   }
 
+  if (name === "reverse" && args.length >= 1) {
+    return reverseTemplateCollection(args[0]!);
+  }
+
   if (name === "append" && args.length >= 2) {
     const listValue = args[args.length - 1]!;
     const items: TemplateValue[] = [];
@@ -508,6 +522,11 @@ export const callCollectionFunction = (
       const key = toPlainString(keyValue);
       const v = container.value.get(key);
       return v !== undefined ? v : nil;
+    }
+    if (container instanceof StringArrayValue && keyValue instanceof NumberValue) {
+      const index = keyValue.value;
+      if (index < 0 || index >= container.value.length) return nil;
+      return new StringValue(container.value[index]!);
     }
     if (container instanceof AnyArrayValue) {
       if (keyValue instanceof NumberValue) {

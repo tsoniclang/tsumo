@@ -13,6 +13,6 @@ export {
   MediaTypeValue,
   DictValue,
   ScratchStore, ScratchValue,
-  UrlParts, UrlValue,
+  UrlParts, UrlQueryValue, UrlValue,
   VersionStringValue, PaginatorValue, DeferredTemplateValue,
 } from "./values/index.js";

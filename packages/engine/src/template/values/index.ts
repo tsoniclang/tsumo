@@ -12,7 +12,7 @@ export { TaxonomiesValue, TaxonomyTermsValue } from "./taxonomies.js";
 export { MediaTypeValue } from "./media.js";
 export { DictValue } from "./dict.js";
 export { ScratchStore, ScratchValue } from "./scratch.js";
-export { UrlParts, UrlValue } from "./url.js";
+export { UrlParts, UrlQueryValue, UrlValue } from "./url.js";
 export { VersionStringValue } from "./version.js";
 export { PaginatorValue } from "./pagination.js";
 export { DeferredTemplateValue } from "./deferred.js";

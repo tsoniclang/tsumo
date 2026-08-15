@@ -3,6 +3,10 @@ import type { Pipeline } from "./syntax/expressions.js";
 
 export class TemplateNode {}
 
+export class BreakNode extends TemplateNode {}
+
+export class ContinueNode extends TemplateNode {}
+
 export class TextNode extends TemplateNode {
   text: string;
 

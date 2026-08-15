@@ -2,6 +2,7 @@ import type { int32 } from "@tsonic/core/types.js";
 import { PageContext } from "../../models.js";
 import type { DocsMountContext, NavItem } from "../../docs/models.js";
 import type { ResourceManager } from "../../resources.js";
+import { readResourceText } from "../../resources/text.js";
 import { HtmlString } from "../../utils/html.js";
 import { parseInt32 } from "../../utils/int32.js";
 import { substringCount, substringFrom, trimStartChar } from "../../utils/strings.js";
@@ -18,7 +19,7 @@ import {
   PageValue, ResourceDataValue, ResourceValue, ScratchValue,
   SiteValue, SitesArrayValue, SitesValue, StringArrayValue,
   StringValue, TaxonomiesValue, TaxonomyTermsValue, TemplateValue,
-  UrlValue,
+  UrlQueryValue, UrlValue,
 } from "../values.js";
 import {
   copyPageArray, copyStringArray, pageWeight, pagesWithKind, resolvePageCollectionProperty, siteLastModification,
@@ -27,6 +28,7 @@ import {
   getPageStore, getSiteStore, taxonomyTermsByCount, wrapLanguages, wrapMediaType, wrapParamDict,
 } from "./property-support.js";
 import { splitUrlParts } from "./url-property-semantics.js";
+import { getUrlQueryValue, parseUrlQuery } from "./url-query-semantics.js";
 
 export const resolvePath = (value: TemplateValue, segments: string[], scope: RenderScope): TemplateValue => {
   let cur: TemplateValue = value;
@@ -406,14 +408,21 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
         cur = new StringValue(uri.OriginalString);
         continue;
       }
-      if (k === "path" || k === "rawquery" || k === "fragment") {
+      if (k === "path" || k === "rawquery" || k === "fragment" || k === "query") {
         const parts = splitUrlParts(uri);
         if (k === "path") cur = new StringValue(parts.path);
         else if (k === "rawquery") cur = new StringValue(parts.rawQuery);
-        else cur = new StringValue(parts.fragment);
+        else if (k === "fragment") cur = new StringValue(parts.fragment);
+        else cur = parseUrlQuery(parts.rawQuery);
         continue;
       }
       cur = nil;
+      continue;
+    }
+
+    if (cur instanceof UrlQueryValue) {
+      const selected = getUrlQueryValue(cur.value, seg);
+      cur = selected === undefined ? nil : new StringValue(selected);
       continue;
     }
 
@@ -422,7 +431,7 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       const res = rv.value;
       const k = seg.toLowerCase();
       if (k === "content") {
-        cur = new StringValue(res.text ?? "");
+        cur = new StringValue(readResourceText(res, "Resource.Content"));
         continue;
       }
       if (k === "data") {

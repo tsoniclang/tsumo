@@ -5,6 +5,7 @@ import { createTsumoError } from "../diagnostics.js";
 import { Resource } from "./models.js";
 import { runExternalProcess } from "./external-process.js";
 import { splitResourceFileName, splitResourcePath } from "./paths.js";
+import { readResourceText } from "./text.js";
 
 const cacheKeyPart = (value: string): string => `${value.length}:${value}`;
 
@@ -66,9 +67,7 @@ export const buildJavaScriptResource = (
   resource: Resource,
   options: JavaScriptBuildOptions,
 ): Resource => {
-  if (resource.text === undefined) {
-    throw createTsumoError("TSUMO_JAVASCRIPT_TEXT_REQUIRED", "js.Build requires a text resource");
-  }
+  const sourceText = readResourceText(resource, "js.Build");
   if (options.sourceMap !== "none") {
     throw createTsumoError(
       "TSUMO_JAVASCRIPT_SOURCE_MAP_UNSUPPORTED",
@@ -89,10 +88,10 @@ export const buildJavaScriptResource = (
   try {
     let inputPath = Path.Combine(workDirectory, "input" + sourceExtension(resource));
     const sourcePath = resource.sourcePath;
-    if (sourcePath !== undefined && File.Exists(sourcePath) && File.ReadAllText(sourcePath) === resource.text) {
+    if (sourcePath !== undefined && File.Exists(sourcePath) && File.ReadAllText(sourcePath) === sourceText) {
       inputPath = sourcePath;
     } else {
-      File.WriteAllText(inputPath, resource.text);
+      File.WriteAllText(inputPath, sourceText);
     }
     const outputPath = Path.Combine(workDirectory, "output.js");
     const argumentsList: string[] = [

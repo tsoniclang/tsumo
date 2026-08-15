@@ -5,6 +5,8 @@ import type { TemplateEnvironment } from "../environment.js";
 import {
   AssignmentNode,
   BlockNode,
+  BreakNode,
+  ContinueNode,
   IfNode,
   OutputNode,
   RangeNode,
@@ -39,6 +41,7 @@ import {
 import { evaluatePipeline } from "./evaluate.js";
 
 export type TemplateOutputMode = "html" | "text";
+export type TemplateControlFlow = "normal" | "break" | "continue";
 
 class TemplateRangeValues {
   keys: TemplateValue[];
@@ -127,10 +130,12 @@ export const renderTemplateNodes = (
   overrides: Map<string, TemplateNode[]>,
   defines: Map<string, TemplateNode[]>,
   outputMode: TemplateOutputMode,
-): void => {
+): TemplateControlFlow => {
   for (let index = 0; index < nodes.length; index++) {
-    renderTemplateNode(nodes[index]!, output, scope, environment, overrides, defines, outputMode);
+    const control = renderTemplateNode(nodes[index]!, output, scope, environment, overrides, defines, outputMode);
+    if (control !== "normal") return control;
   }
+  return "normal";
 };
 
 export const renderTemplateNode = (
@@ -141,23 +146,29 @@ export const renderTemplateNode = (
   overrides: Map<string, TemplateNode[]>,
   defines: Map<string, TemplateNode[]>,
   outputMode: TemplateOutputMode,
-): void => {
+): TemplateControlFlow => {
   if (node instanceof TextNode) {
     output.Append(node.text);
-    return;
+    return "normal";
   }
   if (node instanceof OutputNode) {
     output.Append(stringify(
       evaluatePipeline(node.pipeline, scope, environment, overrides, defines),
       outputMode === "html" && node.escape,
     ));
-    return;
+    return "normal";
   }
   if (node instanceof AssignmentNode) {
     const value = evaluatePipeline(node.pipeline, scope, environment, overrides, defines);
     if (node.declare) scope.declareVar(node.name, value);
     else scope.assignVar(node.name, value);
-    return;
+    return "normal";
+  }
+  if (node instanceof BreakNode) {
+    return "break";
+  }
+  if (node instanceof ContinueNode) {
+    return "continue";
   }
   if (node instanceof TemplateInvokeNode) {
     const context = evaluatePipeline(node.context, scope, environment, overrides, defines);
@@ -166,22 +177,37 @@ export const renderTemplateNode = (
     if (invokedNodes === undefined) {
       const invokedTemplate = environment.getTemplate(node.name);
       if (invokedTemplate === undefined) {
-        throw createTsumoError("TSUMO_TEMPLATE_DEFINITION_MISSING", `Template definition '${node.name}' was not found`);
+        throw createTsumoError(
+          "TSUMO_TEMPLATE_DEFINITION_MISSING",
+          `Template definition '${node.name}' was not found`,
+          scope.templateSourcePath,
+        );
       }
       const selected = invokedTemplate.withInheritedDefinitions(defines);
       output.Append(outputMode === "html"
         ? environment.renderTemplate(selected, dot, scope.site, overrides, scope.state)
         : environment.renderTextTemplate(selected, dot, scope.site, overrides, scope.state));
-      return;
+      return "normal";
     }
-    const invokedScope = new RenderScope(dot, dot, scope.site, scope.env, undefined, scope.state);
-    renderTemplateNodes(invokedNodes, output, invokedScope, environment, overrides, defines, outputMode);
-    return;
+    const invokedScope = new RenderScope(
+      dot,
+      dot,
+      scope.site,
+      scope.env,
+      undefined,
+      scope.state,
+      scope.templateSourcePath,
+    );
+    const control = renderTemplateNodes(invokedNodes, output, invokedScope, environment, overrides, defines, outputMode);
+    if (control !== "normal") {
+      throw createTsumoError("TSUMO_TEMPLATE_CONTROL_FLOW_INVALID", "Template invocation cannot transfer loop control to its caller");
+    }
+    return "normal";
   }
   if (node instanceof IfNode) {
     const condition = evaluatePipeline(node.condition, scope, environment, overrides, defines);
     const blockScope = createControlScope(scope, scope.dot, node.binding, condition);
-    renderTemplateNodes(
+    return renderTemplateNodes(
       isTruthy(condition) ? node.thenNodes : node.elseNodes,
       output,
       blockScope,
@@ -190,13 +216,11 @@ export const renderTemplateNode = (
       defines,
       outputMode,
     );
-    return;
   }
   if (node instanceof RangeNode) {
     const range = toRangeValues(evaluatePipeline(node.expr, scope, environment, overrides, defines));
     if (range === undefined || range.values.length === 0) {
-      renderTemplateNodes(node.elseBody, output, scope, environment, overrides, defines, outputMode);
-      return;
+      return renderTemplateNodes(node.elseBody, output, scope, environment, overrides, defines, outputMode);
     }
     for (let index = 0; index < range.values.length; index++) {
       const value = range.values[index]!;
@@ -207,9 +231,11 @@ export const renderTemplateNode = (
       if (keyVariable !== undefined && valueVariable !== undefined) {
         itemScope.declareVar(keyVariable, range.keys[index]!);
       }
-      renderTemplateNodes(node.body, output, itemScope, environment, overrides, defines, outputMode);
+      const control = renderTemplateNodes(node.body, output, itemScope, environment, overrides, defines, outputMode);
+      if (control === "break") return "normal";
+      if (control === "continue") continue;
     }
-    return;
+    return "normal";
   }
   if (node instanceof WithNode) {
     const value = evaluatePipeline(node.expr, scope, environment, overrides, defines);
@@ -226,21 +252,19 @@ export const renderTemplateNode = (
         overrides,
         scope.state,
       ));
-      return;
+      return "normal";
     }
     const nestedScope = createControlScope(scope, isTruthy(value) ? value : scope.dot, node.binding, value);
     if (!isTruthy(value)) {
-      renderTemplateNodes(node.elseBody, output, nestedScope, environment, overrides, defines, outputMode);
-      return;
+      return renderTemplateNodes(node.elseBody, output, nestedScope, environment, overrides, defines, outputMode);
     }
-    renderTemplateNodes(node.body, output, nestedScope, environment, overrides, defines, outputMode);
-    return;
+    return renderTemplateNodes(node.body, output, nestedScope, environment, overrides, defines, outputMode);
   }
   if (node instanceof BlockNode) {
     const context = evaluatePipeline(node.context, scope, environment, overrides, defines);
     const dot = context instanceof NilValue ? scope.dot : context;
     const nestedScope = new RenderScope(scope.root, dot, scope.site, scope.env, scope);
-    renderTemplateNodes(
+    const control = renderTemplateNodes(
       overrides.get(node.name) ?? node.fallback,
       output,
       nestedScope,
@@ -249,7 +273,10 @@ export const renderTemplateNode = (
       defines,
       outputMode,
     );
-    return;
+    if (control !== "normal") {
+      throw createTsumoError("TSUMO_TEMPLATE_CONTROL_FLOW_INVALID", "Template block cannot transfer loop control to its caller");
+    }
+    return "normal";
   }
 
   throw createTsumoError("TSUMO_TEMPLATE_NODE_INVALID", "The parsed template contains an unsupported node kind");

@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { attribute } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "@tsonic/dotnet/Xunit.js";
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
@@ -10,6 +11,8 @@ import {
   fingerprintResource,
   normalizeResourceRelativePath,
   parseImageDimensions,
+  isValidUtf8,
+  readResourceText,
   Resource,
   ResourceData,
   resourceGlobMatches,
@@ -72,6 +75,54 @@ export class ResourcePipelineTests {
     Assert.True(parseImageDimensions(Buffer.from([1, 2, 3])) === undefined);
   }
 
+  utf8_validation_accepts_scalars_and_rejects_malformed_sequences(): void {
+    Assert.True(isValidUtf8(Buffer.from([
+      0x41,
+      0xc2, 0xa2,
+      0xe2, 0x82, 0xac,
+      0xf0, 0x9f, 0x98, 0x80,
+    ])));
+    const malformed = [
+      Buffer.from([0x80]),
+      Buffer.from([0xc0, 0x80]),
+      Buffer.from([0xe0, 0x80, 0x80]),
+      Buffer.from([0xed, 0xa0, 0x80]),
+      Buffer.from([0xf4, 0x90, 0x80, 0x80]),
+      Buffer.from([0xf0, 0x9f, 0x92]),
+    ];
+    for (let index = 0; index < malformed.length; index++) {
+      Assert.True(!isValidUtf8(malformed[index]!));
+    }
+  }
+
+  file_resources_publish_raw_bytes_and_decode_only_for_text_operations(): void {
+    const root = createTestDirectory("resource-bytes");
+    const siteDir = Path.Combine(root, "site");
+    const outputDir = Path.Combine(root, "output");
+    try {
+      const assetsDir = Path.Combine(siteDir, "assets");
+      Directory.CreateDirectory(assetsDir);
+      const sourceBytes = Buffer.from([0x61, 0xa0, 0x62]);
+      writeFileSync(Path.Combine(assetsDir, "legacy.js"), sourceBytes);
+      const manager = new ResourceManager(siteDir, undefined, outputDir);
+      const resource = manager.get("legacy.js");
+      Assert.True(resource !== undefined && resource.text === undefined);
+      if (resource === undefined) throw new Exception("Expected legacy.js resource");
+      manager.ensurePublished(resource);
+      const published = readFileSync(Path.Combine(outputDir, "legacy.js"));
+      Assert.Equal(3, published.length);
+      Assert.Equal(0xa0, published.readUInt8(1));
+      Assert.Equal(
+        "TSUMO_RESOURCE_TEXT_ENCODING_INVALID",
+        captureResourceDiagnostic(() => {
+          readResourceText(resource, "Resource.Content");
+        }),
+      );
+    } finally {
+      deleteTestDirectory(root);
+    }
+  }
+
   transform_identity_and_metadata_are_content_exact(): void {
     const first = createStringResource("style.css", "a {}");
     const second = createStringResource("style.css", "b {}");
@@ -121,10 +172,12 @@ export class ResourcePipelineTests {
       Assert.True(matched[0]!.outputRelPath === "a.txt");
       Assert.True(matched[1]!.outputRelPath === "m.txt");
       Assert.True(matched[2]!.outputRelPath === "z.txt");
-      Assert.True(matched[0]!.text === "site-a");
+      Assert.True(matched[0]!.text === undefined);
+      Assert.Equal("site-a", readResourceText(matched[0]!, "test"));
       Assert.Equal(4, manager.byType("text").length);
       const typescript = manager.get("main.ts");
-      Assert.True(typescript !== undefined && typescript.text === "export const value = 1;");
+      Assert.True(typescript !== undefined && typescript.text === undefined);
+      Assert.True(typescript !== undefined && readResourceText(typescript, "test") === "export const value = 1;");
       Assert.True(typescript !== undefined && typescript.mediaType === "text/typescript");
     } finally {
       deleteTestDirectory(root);
@@ -135,5 +188,7 @@ export class ResourcePipelineTests {
 attribute<ResourcePipelineTests>().method((target) => target.relative_path_policy_rejects_every_escape_form).add(FactAttribute);
 attribute<ResourcePipelineTests>().method((target) => target.glob_matching_is_segment_exact).add(FactAttribute);
 attribute<ResourcePipelineTests>().method((target) => target.image_dimensions_are_read_from_exact_file_signatures).add(FactAttribute);
+attribute<ResourcePipelineTests>().method((target) => target.utf8_validation_accepts_scalars_and_rejects_malformed_sequences).add(FactAttribute);
+attribute<ResourcePipelineTests>().method((target) => target.file_resources_publish_raw_bytes_and_decode_only_for_text_operations).add(FactAttribute);
 attribute<ResourcePipelineTests>().method((target) => target.transform_identity_and_metadata_are_content_exact).add(FactAttribute);
 attribute<ResourcePipelineTests>().method((target) => target.resource_lookup_is_sorted_and_site_assets_override_theme_assets).add(FactAttribute);

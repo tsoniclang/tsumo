@@ -15,6 +15,7 @@ import {
 import { parseStructuredScalar, stripStructuredComment } from "../../utils/structured-scalars.js";
 import { parseInt32 } from "../../utils/int32.js";
 import { substringFrom } from "../../utils/strings.js";
+import { readResourceText } from "../../resources/text.js";
 import {
   AnyArrayValue,
   BoolValue,
@@ -524,7 +525,7 @@ const inputFromValue = (value: TemplateValue): StructuredInput => {
     const resource = value.value;
     const sourcePath = resource.sourcePath;
     const formatHint = sourcePath === undefined ? undefined : extname(sourcePath).toLowerCase();
-    return new StructuredInput(resource.text ?? resource.bytes.toString("utf8"), sourcePath, formatHint);
+    return new StructuredInput(readResourceText(resource, "transform.Unmarshal"), sourcePath, formatHint);
   }
   if (value instanceof StringValue) return new StructuredInput(value.value);
   if (value instanceof HtmlValue) return new StructuredInput(value.value.value);

@@ -10,7 +10,7 @@ export {
   MenuEntryValue, MenuArrayValue, MenusValue,
   OutputFormatsValue, OutputFormatValue, OutputFormatsGetValue,
   TaxonomiesValue, TaxonomyTermsValue, MediaTypeValue,
-  DictValue, ScratchStore, ScratchValue, UrlParts, UrlValue,
+  DictValue, ScratchStore, ScratchValue, UrlParts, UrlQueryValue, UrlValue,
 } from "./values.js";
 
 // Context types

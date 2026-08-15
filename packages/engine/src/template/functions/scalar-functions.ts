@@ -8,14 +8,26 @@ import {
   findRegularExpressionSubmatches,
   replaceRegularExpression,
 } from "../../utils/regular-expressions.js";
-import { compareText, replaceText, substringCount, substringFrom, trimStartChar } from "../../utils/strings.js";
+import {
+  codePointLength,
+  compareText,
+  replaceText,
+  substringCodePoints,
+  substringCount,
+  substringFrom,
+  trimCodePoints,
+  trimEndCodePoints,
+  trimStartCodePoints,
+  trimStartChar,
+  trimUnicodeSpace,
+} from "../../utils/strings.js";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "../../utils/text.js";
 import { parseInt32 } from "../../utils/int32.js";
 import { renderMarkdown } from "../../markdown.js";
 import {
   AnyArrayValue, BoolValue, DateValue, DictValue, DocsMountArrayValue, HtmlValue,
-  NavArrayValue, NumberValue, PageArrayValue, ScratchStore, ScratchValue, SitesArrayValue,
-  StringArrayValue, StringValue, TemplateValue, UrlValue, VersionStringValue,
+  NavArrayValue, NilValue, NumberValue, PageArrayValue, PageValue, ResourceValue, ScratchStore, ScratchValue,
+  SitesArrayValue, StringArrayValue, StringValue, TemplateValue, UrlQueryValue, UrlValue, VersionStringValue,
 } from "../values.js";
 import { HtmlString } from "../../utils/html.js";
 import { createTsumoError } from "../../diagnostics.js";
@@ -24,6 +36,38 @@ import { parseUrl, toJson, trimEndCharacter, trimSlashes, trimStartCharacter } f
 import { isDefaultSet, isTemplateMap, isTemplateSlice, isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
 import { anchorizeText, emojifyText } from "./text-compatibility.js";
+
+const requireSubstringInteger = (value: TemplateValue, name: string): int32 => {
+  const result = parseInt32(toPlainString(value));
+  if (result === undefined) {
+    throw createTsumoError("TSUMO_TEMPLATE_SUBSTRING_ARGUMENT_INVALID", `substr ${name} must be a 32-bit integer`);
+  }
+  return result;
+};
+
+const templateValueTypeName = (value: TemplateValue): string => {
+  if (value instanceof NilValue) return "<nil>";
+  if (value instanceof BoolValue) return "bool";
+  if (value instanceof NumberValue) return "int";
+  if (value instanceof StringValue) return "string";
+  if (value instanceof HtmlValue) return "template.HTML";
+  if (value instanceof DateValue) return "time.Time";
+  if (value instanceof StringArrayValue) return "[]string";
+  if (value instanceof AnyArrayValue || value instanceof PageArrayValue) return "[]interface {}";
+  if (value instanceof DictValue) return "map[string]interface {}";
+  if (value instanceof PageValue) return "*hugolib.pageState";
+  if (value instanceof ResourceValue) return "resource.Resource";
+  if (value instanceof UrlValue) return "*url.URL";
+  if (value instanceof UrlQueryValue) return "url.Values";
+  return "interface {}";
+};
+
+const formatTemplateValue = (value: TemplateValue, verb: string): string => {
+  if (verb === "T") return templateValueTypeName(value);
+  if (verb === "q") return toJson(new StringValue(toPlainString(value)));
+  if (verb === "#v") return toJson(value);
+  return toPlainString(value);
+};
 
 export const callScalarFunction = (
   name: string,
@@ -70,6 +114,19 @@ export const callScalarFunction = (
   }
 
   if (name === "ceil" && args.length >= 1 && args[0] instanceof NumberValue) {
+    return args[0]!;
+  }
+
+  if ((name === "min" || name === "max") && args.length >= 1) {
+    let selected = toNumber(args[0]!);
+    for (let index = 1; index < args.length; index++) {
+      const candidate = toNumber(args[index]!);
+      if (name === "min" ? candidate < selected : candidate > selected) selected = candidate;
+    }
+    return new NumberValue(selected);
+  }
+
+  if (name === "round" && args.length >= 1 && args[0] instanceof NumberValue) {
     return args[0]!;
   }
 
@@ -178,11 +235,39 @@ export const callScalarFunction = (
   if (name === "strings.trim" && args.length >= 2) {
     const value = toPlainString(args[0]!);
     const cutset = toPlainString(args[1]!);
-    let start = 0;
-    let end = value.length;
-    while (start < end && cutset.includes(substringCount(value, start, 1))) start++;
-    while (end > start && cutset.includes(substringCount(value, end - 1, 1))) end--;
-    return new StringValue(substringCount(value, start, end - start));
+    return new StringValue(trimCodePoints(value, cutset));
+  }
+
+  if (name === "strings.trimleft" && args.length >= 2) {
+    return new StringValue(trimStartCodePoints(toPlainString(args[1]!), toPlainString(args[0]!)));
+  }
+
+  if (name === "strings.trimright" && args.length >= 2) {
+    return new StringValue(trimEndCodePoints(toPlainString(args[1]!), toPlainString(args[0]!)));
+  }
+
+  if (name === "strings.trimspace" && args.length >= 1) {
+    return new StringValue(trimUnicodeSpace(toPlainString(args[0]!)));
+  }
+
+  if (name === "substr" && (args.length === 2 || args.length === 3)) {
+    const source = toPlainString(args[0]!);
+    const sourceLength = codePointLength(source);
+    if (sourceLength === 0) return new StringValue("");
+    let start = requireSubstringInteger(args[1]!, "start");
+    if (start < 0) start += sourceLength;
+    if (start < 0) start = 0;
+    if (start >= sourceLength) return new StringValue("");
+
+    let end: int32 = sourceLength;
+    if (args.length === 3) {
+      const length = requireSubstringInteger(args[2]!, "length");
+      if (length === 0) return new StringValue("");
+      end = length < 0 ? sourceLength + length : start + length;
+    }
+    if (start >= end || end < 0) return new StringValue("");
+    if (end > sourceLength) end = sourceLength;
+    return new StringValue(substringCodePoints(source, start, end - start));
   }
 
 
@@ -389,8 +474,8 @@ export const callScalarFunction = (
 
   if (name === "printf" && args.length >= 1) {
     const fmt = toPlainString(args[0]!);
-    const values: string[] = [];
-    for (let argIndex = 1; argIndex < args.length; argIndex++) values.push(toPlainString(args[argIndex]!));
+    const values: TemplateValue[] = [];
+    for (let argumentIndex = 1; argumentIndex < args.length; argumentIndex++) values.push(args[argumentIndex]!);
 
     const sb = new StringBuilder();
     let pos = 0;
@@ -404,16 +489,16 @@ export const callScalarFunction = (
           pos += 2;
           continue;
         }
-        if (next === "s") {
-          if (valueIndex < values.length) sb.Append(values[valueIndex]!);
-          valueIndex++;
-          pos += 2;
-          continue;
+        let verb = next;
+        let width: int32 = 2;
+        if (next === "#" && pos + 2 < fmt.length && substringCount(fmt, pos + 2, 1) === "v") {
+          verb = "#v";
+          width = 3;
         }
-        if (next === "d") {
-          if (valueIndex < values.length) sb.Append(values[valueIndex]!);
+        if (verb === "s" || verb === "d" || verb === "t" || verb === "v" || verb === "q" || verb === "T" || verb === "#v") {
+          if (valueIndex < values.length) sb.Append(formatTemplateValue(values[valueIndex]!, verb));
           valueIndex++;
-          pos += 2;
+          pos += width;
           continue;
         }
       }

@@ -3,7 +3,7 @@ const knownTemplateFunctions = new Set<string>([
   "site.store.setinmap", "site.store.deleteinmap", "return",
   "hugo.ismultilingual", "hugo.ismultihost", "hugo.workingdir", "hugo.version",
   "hugo.isproduction", "hugo.isextended", "hugo.isserver", "hugo.isdevelopment", "hugo.generator", "hugo.environment",
-  "now.year", "now.format", "getenv", "fileexists", "i18n",
+  "now.year", "now.format", "now.unix", "now.unixnano", "getenv", "fileexists", "i18n",
   "resources.get", "resources.getmatch", "resources.match", "resources.bytype",
   "resources.concat", "resources.fromstring", "resources.executeastemplate",
   "resources.minify", "minify", "resources.fingerprint", "fingerprint",
@@ -11,11 +11,12 @@ const knownTemplateFunctions = new Set<string>([
   "partial", "partialcached", "templates.exists", "templates.defer", "errorf", "warnf",
   "safehtml", "safehtmlattr", "safejs", "safeurl", "safecss", "htmlescape",
   "htmlunescape", "time", "time.astime", "time.format", "path.base", "path.ext", "path.join", "title", "unmarshal",
-  "where", "sort", "after", "first", "last", "uniq", "complement", "group", "plainify", "cond",
+  "where", "sort", "after", "first", "last", "uniq", "complement", "reverse", "group", "seq", "plainify", "cond",
   "dict", "slice", "append", "merge", "isset", "index", "delimit", "in", "split",
-  "add", "sub", "mul", "div", "mod", "ceil", "newscratch", "encoding.jsonify", "jsonify",
+  "add", "sub", "mul", "div", "mod", "ceil", "min", "max", "round", "newscratch", "encoding.jsonify", "jsonify",
   "crypto.sha1", "md5", "urls.parse", "urls.joinpath", "strings.contains", "strings.repeat",
-  "strings.hasprefix", "strings.hassuffix", "strings.trimprefix", "strings.trimsuffix", "strings.trim", "urlize",
+  "strings.hasprefix", "strings.hassuffix", "strings.trimprefix", "strings.trimsuffix", "strings.trim",
+  "strings.trimleft", "strings.trimright", "strings.trimspace", "substr", "urlize",
   "anchorize", "emojify", "humanize", "lower", "upper", "trim", "chomp", "replace", "replacere",
   "findre", "findresubmatch", "truncate",
   "markdownify", "relurl", "absurl", "abslangurl", "rellangurl", "urlquery", "querify",
@@ -44,6 +45,8 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "collections.querify") return "querify";
   if (name === "collections.union") return "union";
   if (name === "collections.complement") return "complement";
+  if (name === "collections.reverse") return "reverse";
+  if (name === "collections.seq") return "seq";
   if (name === "compare.default") return "default";
   if (name === "compare.conditional") return "cond";
   if (name === "compare.eq") return "eq";
@@ -58,6 +61,9 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "math.div") return "div";
   if (name === "math.mod") return "mod";
   if (name === "math.ceil") return "ceil";
+  if (name === "math.min") return "min";
+  if (name === "math.max") return "max";
+  if (name === "math.round") return "round";
   if (name === "tocss") return "css.sass";
   if (name === "resources.tocss") return "css.sass";
   if (name === "transform.markdownify") return "markdownify";
@@ -87,8 +93,11 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "strings.replacere") return "replacere";
   if (name === "strings.findre") return "findre";
   if (name === "strings.findresubmatch") return "findresubmatch";
+  if (name === "strings.substr") return "substr";
   if (name === "strings.tolower") return "lower";
   if (name === "strings.toupper") return "upper";
+  if (name === "strings.title") return "title";
+  if (name === "strings.split") return "split";
   if (name === "hasprefix") return "strings.hasprefix";
   return name;
 };

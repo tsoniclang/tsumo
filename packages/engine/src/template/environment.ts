@@ -4,7 +4,7 @@ import type { PageContext } from "../models.js";
 import type { ResourceManager } from "../resources.js";
 import type { TemplateNode } from "./nodes.js";
 import type { Template } from "./template.js";
-import { DeferredTemplateValue, DictValue, TemplateValue } from "./values.js";
+import { DeferredTemplateValue, DictValue, ScratchStore, TemplateValue } from "./values.js";
 import type { RenderState } from "./scope.js";
 import { partialTemplateCandidates } from "./paths.js";
 import type { int32 } from "@tsonic/core/types.js";
@@ -84,6 +84,7 @@ export class TemplateEnvironment {
   deferredPlacements: DeferredTemplatePlacement[];
   deferredPhase: "collecting" | "finalizing" | "finalized";
   siteData: DictValue;
+  globalStore: ScratchStore;
 
   constructor(buildTime?: Date, siteData?: DictValue) {
     this.buildTime = buildTime ?? new Date();
@@ -91,6 +92,7 @@ export class TemplateEnvironment {
     this.deferredPlacements = [];
     this.deferredPhase = "collecting";
     this.siteData = siteData ?? new DictValue(new Map<string, TemplateValue>());
+    this.globalStore = new ScratchStore();
   }
 
   registerDeferredTemplate(
@@ -190,6 +192,10 @@ export class TemplateEnvironment {
 
   getSiteData(): DictValue {
     return this.siteData;
+  }
+
+  getGlobalStore(): ScratchStore {
+    return this.globalStore;
   }
 
   sourceFileExists(_path: string): boolean {

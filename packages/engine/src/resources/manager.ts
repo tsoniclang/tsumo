@@ -52,15 +52,6 @@ const sortResourcesByIdentity = (resources: Resource[]): void => {
   }
 };
 
-const isTextResourceMediaType = (mediaType: string): boolean =>
-  mediaType.startsWith("text/") ||
-  mediaType === "application/javascript" ||
-  mediaType === "application/json" ||
-  mediaType === "application/yaml" ||
-  mediaType === "application/toml" ||
-  mediaType === "application/xml" ||
-  mediaType === "image/svg+xml";
-
 export class ResourceManager {
   siteDir: string;
   themeDir: string | undefined;
@@ -115,7 +106,6 @@ export class ResourceManager {
     const bytes = readBinaryFile(fullPath);
     const extension = (Path.GetExtension(fullPath) ?? "").toLowerCase();
     const mediaType = resourceMediaTypeForExtension(extension);
-    const text = isTextResourceMediaType(mediaType) ? bytes.toString("utf8") : undefined;
     let width: int32 = 0;
     let height: int32 = 0;
     if (isImageResourceExtension(extension)) {
@@ -132,7 +122,7 @@ export class ResourceManager {
       true,
       outputRelPath,
       bytes,
-      text,
+      undefined,
       new ResourceData(""),
       mediaType,
       width,

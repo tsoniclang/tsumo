@@ -116,6 +116,7 @@ function evaluateExpression(expression: Expr, context: TemplateEvaluationContext
       token.startsWith("hugo.Sites.") ||
       token === "hugo.Data" ||
       token.startsWith("hugo.Data.") ||
+      token === "hugo.Store" ||
       token === "resources" ||
       token === "page" ||
       token.startsWith("page.") ||

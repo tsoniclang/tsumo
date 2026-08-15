@@ -21,3 +21,12 @@ export class UrlValue extends TemplateValue {
     this.value = value;
   }
 }
+
+export class UrlQueryValue extends TemplateValue {
+  value: Map<string, string[]>;
+
+  constructor(value: Map<string, string[]>) {
+    super();
+    this.value = value;
+  }
+}

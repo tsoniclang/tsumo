@@ -5,14 +5,13 @@ import { createTsumoError } from "../diagnostics.js";
 import { Resource } from "./models.js";
 import { runExternalProcess } from "./external-process.js";
 import { splitResourceFileName, splitResourcePath } from "./paths.js";
+import { readResourceText } from "./text.js";
 
 export const compileSassResource = (
   resource: Resource,
   loadPaths: string[],
 ): Resource => {
-  if (resource.text === undefined) {
-    throw createTsumoError("TSUMO_SASS_TEXT_REQUIRED", "css.Sass requires a text resource");
-  }
+  const sourceText = readResourceText(resource, "css.Sass");
 
   const configuredExecutable = Environment.GetEnvironmentVariable("TSUMO_SASS");
   const executable = configuredExecutable !== undefined && configuredExecutable.trim() !== ""
@@ -37,7 +36,7 @@ export const compileSassResource = (
   try {
     const inputPath = Path.Combine(workDirectory, "input.scss");
     const outputPath = Path.Combine(workDirectory, "output.css");
-    File.WriteAllText(inputPath, resource.text);
+    File.WriteAllText(inputPath, sourceText);
 
     const argumentsList: string[] = implementation === "dart-sass"
       ? ["--no-source-map", "--style", "expanded"]

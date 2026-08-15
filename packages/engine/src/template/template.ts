@@ -64,10 +64,16 @@ export class Template {
   }
 
   renderInto(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Map<string, TemplateNode[]>): void {
-    renderTemplateNodes(this.nodes, sb, scope, env, overrides, this.defines, "html");
+    const control = renderTemplateNodes(this.nodes, sb, scope, env, overrides, this.defines, "html");
+    if (control !== "normal") {
+      throw createTsumoError("TSUMO_TEMPLATE_CONTROL_FLOW_INVALID", "Template loop control escaped the checked template root");
+    }
   }
 
   renderTextInto(sb: StringBuilder, scope: RenderScope, env: TemplateEnvironment, overrides: Map<string, TemplateNode[]>): void {
-    renderTemplateNodes(this.nodes, sb, scope, env, overrides, this.defines, "text");
+    const control = renderTemplateNodes(this.nodes, sb, scope, env, overrides, this.defines, "text");
+    if (control !== "normal") {
+      throw createTsumoError("TSUMO_TEMPLATE_CONTROL_FLOW_INVALID", "Template loop control escaped the checked template root");
+    }
   }
 }

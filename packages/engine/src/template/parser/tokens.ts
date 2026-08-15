@@ -159,7 +159,25 @@ export const tokenizeTemplateAction = (
       offset = nextOffset;
       continue;
     }
-    if (character === "|" || character === "(" || character === ")" || character === "," || character === "=") {
+    if (character === ")") {
+      const tokenStart = offset;
+      offset = nextOffset;
+      if (offset < source.length && source.characterAt(offset) === ".") {
+        offset++;
+        while (offset < source.length) {
+          const current = source.characterAt(offset);
+          if (
+            current === " " || current === "\t" || current === "\r" || current === "\n" ||
+            current === "|" || current === "(" || current === ")" || current === "," || current === "="
+          ) break;
+          if (current === ":" && offset + 1 < source.length && source.characterAt(offset + 1) === "=") break;
+          offset++;
+        }
+      }
+      tokens.push(source.slice(tokenStart, offset));
+      continue;
+    }
+    if (character === "|" || character === "(" || character === "," || character === "=") {
       tokens.push(character);
       offset = nextOffset;
       continue;

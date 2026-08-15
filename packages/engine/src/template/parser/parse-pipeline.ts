@@ -26,7 +26,7 @@ class PipelineParser {
     const stages: Command[] = [];
     while (this.index < this.tokens.length) {
       const token = this.tokens[this.index]!;
-      if (stopOnRightParen && token === ")") break;
+      if (stopOnRightParen && isRightParenToken(token)) break;
       if (token === "|") {
         throw this.error("TSUMO_TEMPLATE_PIPELINE_EMPTY_STAGE", "Template pipeline contains an empty stage");
       }
@@ -52,7 +52,7 @@ class PipelineParser {
     const args: Expr[] = [];
     while (this.index < this.tokens.length) {
       const token = this.tokens[this.index]!;
-      if (token === "|" || token === ")") break;
+      if (token === "|" || isRightParenToken(token)) break;
       args.push(this.parseExpression());
     }
     return new Command(head, args);
@@ -63,23 +63,25 @@ class PipelineParser {
       throw this.error("TSUMO_TEMPLATE_EXPRESSION_MISSING", "Template command is missing an expression");
     }
     const token = this.tokens[this.index]!;
-    if (token === ")") {
+    if (isRightParenToken(token)) {
       throw this.error("TSUMO_TEMPLATE_PAREN_UNEXPECTED", "Template expression contains an unexpected ')'");
     }
 
     if (token === "(") {
       this.index++;
       const inner = this.parse(true);
-      if (this.index >= this.tokens.length || this.tokens[this.index] !== ")") {
+      if (this.index >= this.tokens.length || !isRightParenToken(this.tokens[this.index]!)) {
         throw this.error("TSUMO_TEMPLATE_PAREN_UNCLOSED", "Template expression opened with '(' but has no closing ')'");
       }
+      const closingToken = this.tokens[this.index]!;
       this.index++;
       let expression: Expr = new PipelineExpr(inner);
-      while (this.index < this.tokens.length) {
-        const next = this.tokens[this.index]!;
-        if (!next.startsWith(".") || next === ".") break;
-        expression = new AccessExpr(expression, substringFrom(next, 1).split("."));
-        this.index++;
+      if (closingToken.length > 1) {
+        const selector = substringFrom(closingToken, 2);
+        if (selector === "") {
+          throw this.error("TSUMO_TEMPLATE_SELECTOR_MISSING", "Parenthesized template expression has an empty selector");
+        }
+        expression = new AccessExpr(expression, selector.split("."));
       }
       return expression;
     }
@@ -88,6 +90,8 @@ class PipelineParser {
     return new TokenExpr(token);
   }
 }
+
+const isRightParenToken = (token: string): boolean => token === ")" || token.startsWith(").");
 
 export const parsePipeline = (
   tokens: string[],

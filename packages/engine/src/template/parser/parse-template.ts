@@ -4,6 +4,8 @@ import { substringFrom } from "../../utils/strings.js";
 import {
   AssignmentNode,
   BlockNode,
+  BreakNode,
+  ContinueNode,
   IfNode,
   OutputNode,
   RangeNode,
@@ -86,6 +88,7 @@ class TemplateParser {
   defines: Map<string, TemplateNode[]>;
   sourcePath: string | undefined;
   sourceText: string;
+  rangeDepth: int32;
 
   constructor(segments: TemplateSegment[], sourceText: string, sourcePath?: string) {
     this.segments = segments;
@@ -93,11 +96,20 @@ class TemplateParser {
     this.defines = new Map<string, TemplateNode[]>();
     this.sourcePath = sourcePath;
     this.sourceText = sourceText;
+    this.rangeDepth = 0;
   }
 
   parseRoot(): Template {
     const result = this.parseNodes(false, false, undefined);
     return new Template(result.nodes, this.defines, this.sourcePath);
+  }
+
+  parseIndependentNodes(opening: TemplateSegment): ParseNodesResult {
+    const previousRangeDepth = this.rangeDepth;
+    this.rangeDepth = 0;
+    const result = this.parseNodes(false, true, opening);
+    this.rangeDepth = previousRangeDepth;
+    return result;
   }
 
   parseIf(control: ParsedControlPipeline, opening: TemplateSegment): IfNode {
@@ -194,6 +206,29 @@ class TemplateParser {
         return new ParseNodesResult(nodes, "else", tokens, segment, sourceSegmentIndex);
       }
 
+      if (head === "break" || head === "continue") {
+        if (tokens.length !== 1) {
+          throw createTsumoError(
+            "TSUMO_TEMPLATE_LOOP_CONTROL_INVALID",
+            `Template ${head} action cannot have arguments`,
+            this.sourcePath,
+            segment.line,
+            segment.column,
+          );
+        }
+        if (this.rangeDepth === 0) {
+          throw createTsumoError(
+            head === "break" ? "TSUMO_TEMPLATE_BREAK_OUTSIDE_RANGE" : "TSUMO_TEMPLATE_CONTINUE_OUTSIDE_RANGE",
+            `Template ${head} action is only valid inside a range body`,
+            this.sourcePath,
+            segment.line,
+            segment.column,
+          );
+        }
+        nodes.push(head === "break" ? new BreakNode() : new ContinueNode());
+        continue;
+      }
+
       if (head === "define") {
         if (tokens.length < 2) {
           throw createTsumoError("TSUMO_TEMPLATE_DEFINE_NAME_MISSING", "Template define action requires a name", this.sourcePath, segment.line, segment.column);
@@ -202,7 +237,7 @@ class TemplateParser {
         if (this.defines.has(name)) {
           throw createTsumoError("TSUMO_TEMPLATE_DEFINE_DUPLICATE", `Template definition '${name}' is declared more than once`, this.sourcePath, segment.line, segment.column);
         }
-        const body = this.parseNodes(false, true, segment);
+        const body = this.parseIndependentNodes(segment);
         this.defines.set(name, body.nodes);
         continue;
       }
@@ -213,7 +248,7 @@ class TemplateParser {
         }
         const name = parseStringLiteral(tokens[1]!) ?? tokens[1]!;
         const contextTokens = tokens.length >= 3 ? sliceTokens(tokens, 2) : ["."];
-        const body = this.parseNodes(false, true, segment);
+        const body = this.parseIndependentNodes(segment);
         nodes.push(new BlockNode(name, parsePipeline(contextTokens, this.sourcePath, segment.line, segment.column), body.nodes));
         continue;
       }
@@ -262,7 +297,9 @@ class TemplateParser {
           expressionTokens = sliceTokens(tokens, 1);
         }
 
+        this.rangeDepth++;
         const body = this.parseNodes(true, true, segment);
+        this.rangeDepth--;
         const elseNodes = body.terminator === "else" ? this.parseAlternative(body, segment) : [];
         nodes.push(new RangeNode(parsePipeline(expressionTokens, this.sourcePath, segment.line, segment.column), keyVariable, valueVariable, body.nodes, elseNodes));
         continue;

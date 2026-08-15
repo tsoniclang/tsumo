@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { createTsumoError } from "../../diagnostics.js";
 import { JavaScriptBuildOptions, Resource, ResourceData } from "../../resources.js";
 import type { ResourceManager } from "../../resources.js";
+import { readResourceText } from "../../resources/text.js";
 import {
   AnyArrayValue, BoolValue, DictValue, ResourceValue, StringValue, TemplateValue,
 } from "../values.js";
@@ -260,7 +261,7 @@ export const callResourceFunction = (
     const src = (piped as ResourceValue).value;
     const targetName = toPlainString(args[0]!);
     const ctx = args[1]!;
-    const templateText = src.text ?? "";
+    const templateText = readResourceText(src, "resources.ExecuteAsTemplate");
     const rendered = env.renderTextTemplateSource(templateText, ctx, scope.site, overrides);
     const bytes = Buffer.from(rendered, "utf8");
     const lang = scope.site.Language.Lang;

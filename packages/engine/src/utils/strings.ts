@@ -62,6 +62,96 @@ export const nextCodePointIndex = (source: string, index: int32): int32 => {
   return (index + (codePoint > 0xffff ? 2 : 1)) as int32;
 };
 
+export const codePointLength = (source: string): int32 => {
+  let count: int32 = 0;
+  let index: int32 = 0;
+  while (index < source.length) {
+    index = nextCodePointIndex(source, index);
+    count++;
+  }
+  return count;
+};
+
+const utf16IndexAtCodePoint = (source: string, codePointIndex: int32): int32 => {
+  if (codePointIndex < 0) substringError();
+  let currentCodePoint: int32 = 0;
+  let utf16Index: int32 = 0;
+  while (currentCodePoint < codePointIndex && utf16Index < source.length) {
+    utf16Index = nextCodePointIndex(source, utf16Index);
+    currentCodePoint++;
+  }
+  if (currentCodePoint !== codePointIndex) substringError();
+  return utf16Index;
+};
+
+export const substringCodePoints = (source: string, startIndex: int32, length: int32): string => {
+  if (startIndex < 0 || length < 0) substringError();
+  const start = utf16IndexAtCodePoint(source, startIndex);
+  const end = utf16IndexAtCodePoint(source, startIndex + length);
+  return substringCount(source, start, end - start);
+};
+
+export const trimStartCodePoints = (source: string, cutset: string): string => {
+  let start: int32 = 0;
+  while (start < source.length) {
+    const next = nextCodePointIndex(source, start);
+    if (!cutset.includes(substringCount(source, start, next - start))) break;
+    start = next;
+  }
+  return substringFrom(source, start);
+};
+
+export const trimEndCodePoints = (source: string, cutset: string): string => {
+  let index: int32 = 0;
+  let end: int32 = 0;
+  while (index < source.length) {
+    const next = nextCodePointIndex(source, index);
+    if (!cutset.includes(substringCount(source, index, next - index))) end = next;
+    index = next;
+  }
+  return substringCount(source, 0, end);
+};
+
+export const trimCodePoints = (source: string, cutset: string): string =>
+  trimEndCodePoints(trimStartCodePoints(source, cutset), cutset);
+
+const isUnicodeSpace = (value: number): boolean =>
+  (value >= 0x09 && value <= 0x0d) ||
+  value === 0x20 ||
+  value === 0x85 ||
+  value === 0xa0 ||
+  value === 0x1680 ||
+  (value >= 0x2000 && value <= 0x200a) ||
+  value === 0x2028 ||
+  value === 0x2029 ||
+  value === 0x202f ||
+  value === 0x205f ||
+  value === 0x3000;
+
+export const trimUnicodeSpace = (source: string): string => {
+  let start: int32 = 0;
+  while (start < source.length) {
+    const codePoint = source.codePointAt(start);
+    if (codePoint === undefined || !isUnicodeSpace(codePoint)) break;
+    start = nextCodePointIndex(source, start);
+  }
+  let index: int32 = start;
+  let end: int32 = start;
+  while (index < source.length) {
+    const codePoint = source.codePointAt(index);
+    const next = nextCodePointIndex(source, index);
+    if (codePoint !== undefined && !isUnicodeSpace(codePoint)) end = next;
+    index = next;
+  }
+  return substringCount(source, start, end - start);
+};
+
+export function zeroPadInteger(value: int32, width: int32): string {
+  let result = `${value}`;
+  while (result.length < width) result = `0${result}`;
+  return result;
+}
+
 export const trimStartChar = (source: string, ch: string): string => {
   let start = 0;
   while (start < source.length && source.substring(start, start + 1) === ch) {
