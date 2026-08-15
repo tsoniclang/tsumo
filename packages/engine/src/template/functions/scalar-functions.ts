@@ -2,23 +2,72 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { Uri } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import { Regex } from "@tsonic/dotnet/System.Text.RegularExpressions.js";
 import type { int32 } from "@tsonic/core/types.js";
-import { compareText, replaceText, substringCount, substringFrom, trimStartChar } from "../../utils/strings.js";
+import {
+  findRegularExpressionMatches,
+  findRegularExpressionSubmatches,
+  replaceRegularExpression,
+} from "../../utils/regular-expressions.js";
+import {
+  codePointLength,
+  compareText,
+  replaceText,
+  substringCodePoints,
+  substringCount,
+  substringFrom,
+  trimCodePoints,
+  trimEndCodePoints,
+  trimStartCodePoints,
+  trimStartChar,
+  trimUnicodeSpace,
+} from "../../utils/strings.js";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "../../utils/text.js";
 import { parseInt32 } from "../../utils/int32.js";
 import { renderMarkdown } from "../../markdown.js";
 import {
-  AnyArrayValue, BoolValue, DictValue, DocsMountArrayValue, HtmlValue,
-  NavArrayValue, NumberValue, PageArrayValue, ScratchStore, ScratchValue, SitesArrayValue,
-  StringArrayValue, StringValue, TemplateValue, UrlValue, VersionStringValue,
+  AnyArrayValue, BoolValue, DateValue, DictValue, DocsMountArrayValue, HtmlValue,
+  NavArrayValue, NilValue, NumberValue, PageArrayValue, PageValue, ResourceValue, ScratchStore, ScratchValue,
+  SitesArrayValue, StringArrayValue, StringValue, TemplateValue, UrlQueryValue, UrlValue, VersionStringValue,
 } from "../values.js";
 import { HtmlString } from "../../utils/html.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { convertGoDateLayoutToDotNet, parseDateTime } from "../evaluation/scalar-semantics.js";
 import { parseUrl, toJson, trimEndCharacter, trimSlashes, trimStartCharacter } from "../evaluation/serialization.js";
-import { isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
+import { isDefaultSet, isTemplateMap, isTemplateSlice, isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
+import { anchorizeText, emojifyText } from "./text-compatibility.js";
+
+const requireSubstringInteger = (value: TemplateValue, name: string): int32 => {
+  const result = parseInt32(toPlainString(value));
+  if (result === undefined) {
+    throw createTsumoError("TSUMO_TEMPLATE_SUBSTRING_ARGUMENT_INVALID", `substr ${name} must be a 32-bit integer`);
+  }
+  return result;
+};
+
+const templateValueTypeName = (value: TemplateValue): string => {
+  if (value instanceof NilValue) return "<nil>";
+  if (value instanceof BoolValue) return "bool";
+  if (value instanceof NumberValue) return "int";
+  if (value instanceof StringValue) return "string";
+  if (value instanceof HtmlValue) return "template.HTML";
+  if (value instanceof DateValue) return "time.Time";
+  if (value instanceof StringArrayValue) return "[]string";
+  if (value instanceof AnyArrayValue || value instanceof PageArrayValue) return "[]interface {}";
+  if (value instanceof DictValue) return "map[string]interface {}";
+  if (value instanceof PageValue) return "*hugolib.pageState";
+  if (value instanceof ResourceValue) return "resource.Resource";
+  if (value instanceof UrlValue) return "*url.URL";
+  if (value instanceof UrlQueryValue) return "url.Values";
+  return "interface {}";
+};
+
+const formatTemplateValue = (value: TemplateValue, verb: string): string => {
+  if (verb === "T") return templateValueTypeName(value);
+  if (verb === "q") return toJson(new StringValue(toPlainString(value)));
+  if (verb === "#v") return toJson(value);
+  return toPlainString(value);
+};
 
 export const callScalarFunction = (
   name: string,
@@ -26,6 +75,8 @@ export const callScalarFunction = (
   context: TemplateFunctionContext,
 ): TemplateValue | undefined => {
   const scope = context.scope;
+  if (name === "reflect.ismap" && args.length >= 1) return new BoolValue(isTemplateMap(args[0]!));
+  if (name === "reflect.isslice" && args.length >= 1) return new BoolValue(isTemplateSlice(args[0]!));
   if (name === "add" && args.length >= 2) {
     let sum: int32 = 0;
     for (let i = 0; i < args.length; i++) {
@@ -60,6 +111,51 @@ export const callScalarFunction = (
     const b = toNumber(args[1]!);
     if (b === 0) throw createTsumoError("TSUMO_TEMPLATE_MODULO_BY_ZERO", "Template modulo by zero is not valid");
     return new NumberValue(a % b);
+  }
+
+  if (name === "ceil" && args.length >= 1 && args[0] instanceof NumberValue) {
+    return args[0]!;
+  }
+
+  if ((name === "min" || name === "max") && args.length >= 1) {
+    let selected = toNumber(args[0]!);
+    for (let index = 1; index < args.length; index++) {
+      const candidate = toNumber(args[index]!);
+      if (name === "min" ? candidate < selected : candidate > selected) selected = candidate;
+    }
+    return new NumberValue(selected);
+  }
+
+  if (name === "round" && args.length >= 1 && args[0] instanceof NumberValue) {
+    return args[0]!;
+  }
+
+  if (name === "int" && args.length === 1) {
+    const value = args[0]!;
+    if (value instanceof NumberValue) return value;
+    const parsed = parseInt32(toPlainString(value));
+    if (parsed === undefined) {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_INTEGER_CONVERSION_INVALID",
+        `Template value '${toPlainString(value)}' is not a 32-bit integer`,
+      );
+    }
+    return new NumberValue(parsed);
+  }
+
+  if (name === "string" && args.length === 1) return new StringValue(toPlainString(args[0]!));
+
+  if ((name === "time" || name === "time.astime") && args.length === 1) {
+    const value = args[0]!;
+    if (value instanceof DateValue) return value;
+    const text = toPlainString(value);
+    if (Number.isNaN(Date.parse(text))) {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_TIME_INVALID",
+        `Template value '${text}' is not a valid date or time`,
+      );
+    }
+    return new DateValue(text);
   }
 
   if (name === "newscratch") {
@@ -104,10 +200,24 @@ export const callScalarFunction = (
     return new BoolValue(s.includes(sub));
   }
 
+  if (name === "strings.repeat" && args.length >= 2) {
+    const count = toNumber(args[0]!);
+    if (count < 0) {
+      throw createTsumoError("TSUMO_TEMPLATE_STRING_REPEAT_INVALID", "strings.Repeat requires a non-negative repetition count");
+    }
+    return new StringValue(toPlainString(args[1]!).repeat(count));
+  }
+
   if (name === "strings.hasprefix" && args.length >= 2) {
     const s = toPlainString(args[0]!);
     const prefix = toPlainString(args[1]!);
     return new BoolValue(s.startsWith(prefix));
+  }
+
+  if (name === "strings.hassuffix" && args.length >= 2) {
+    const s = toPlainString(args[0]!);
+    const suffix = toPlainString(args[1]!);
+    return new BoolValue(s.endsWith(suffix));
   }
 
   if (name === "strings.trimprefix" && args.length >= 2) {
@@ -122,10 +232,56 @@ export const callScalarFunction = (
     return new StringValue(s.endsWith(suffix) ? substringCount(s, 0, s.length - suffix.length) : s);
   }
 
+  if (name === "strings.trim" && args.length >= 2) {
+    const value = toPlainString(args[0]!);
+    const cutset = toPlainString(args[1]!);
+    return new StringValue(trimCodePoints(value, cutset));
+  }
+
+  if (name === "strings.trimleft" && args.length >= 2) {
+    return new StringValue(trimStartCodePoints(toPlainString(args[1]!), toPlainString(args[0]!)));
+  }
+
+  if (name === "strings.trimright" && args.length >= 2) {
+    return new StringValue(trimEndCodePoints(toPlainString(args[1]!), toPlainString(args[0]!)));
+  }
+
+  if (name === "strings.trimspace" && args.length >= 1) {
+    return new StringValue(trimUnicodeSpace(toPlainString(args[0]!)));
+  }
+
+  if (name === "substr" && (args.length === 2 || args.length === 3)) {
+    const source = toPlainString(args[0]!);
+    const sourceLength = codePointLength(source);
+    if (sourceLength === 0) return new StringValue("");
+    let start = requireSubstringInteger(args[1]!, "start");
+    if (start < 0) start += sourceLength;
+    if (start < 0) start = 0;
+    if (start >= sourceLength) return new StringValue("");
+
+    let end: int32 = sourceLength;
+    if (args.length === 3) {
+      const length = requireSubstringInteger(args[2]!, "length");
+      if (length === 0) return new StringValue("");
+      end = length < 0 ? sourceLength + length : start + length;
+    }
+    if (start >= end || end < 0) return new StringValue("");
+    if (end > sourceLength) end = sourceLength;
+    return new StringValue(substringCodePoints(source, start, end - start));
+  }
+
 
   if (name === "urlize" && args.length >= 1) {
     const v = args[0]!;
     return new StringValue(slugify(toPlainString(v)));
+  }
+
+  if (name === "anchorize" && args.length >= 1) {
+    return new StringValue(anchorizeText(toPlainString(args[0]!)));
+  }
+
+  if (name === "emojify" && args.length >= 1) {
+    return new HtmlValue(new HtmlString(emojifyText(toPlainString(args[0]!))));
   }
 
   if (name === "humanize" && args.length >= 1) {
@@ -148,6 +304,14 @@ export const callScalarFunction = (
     return new StringValue(toPlainString(v).trim());
   }
 
+  if (name === "chomp" && args.length >= 1) {
+    let value = toPlainString(args[0]!);
+    while (value.endsWith("\n") || value.endsWith("\r")) {
+      value = substringCount(value, 0, value.length - 1);
+    }
+    return new StringValue(value);
+  }
+
   if (name === "replace" && args.length >= 3) {
     const s = toPlainString(args[0]!);
     const oldStr = toPlainString(args[1]!);
@@ -159,8 +323,27 @@ export const callScalarFunction = (
     const pattern = toPlainString(args[0]!);
     const replacement = toPlainString(args[1]!);
     const s = toPlainString(args[2]!);
-    const regex = new Regex(pattern);
-    return new StringValue(regex.Replace(s, replacement));
+    const limit: int32 = args.length >= 4 ? toNumber(args[3]!) : -1;
+    return new StringValue(replaceRegularExpression(pattern, replacement, s, limit));
+  }
+
+  if (name === "findre" && args.length >= 2) {
+    const pattern = toPlainString(args[0]!);
+    const input = toPlainString(args[1]!);
+    const limit: int32 = args.length >= 3 ? toNumber(args[2]!) : -1;
+    return new StringArrayValue(findRegularExpressionMatches(pattern, input, limit));
+  }
+
+  if (name === "findresubmatch" && args.length >= 2) {
+    const pattern = toPlainString(args[0]!);
+    const input = toPlainString(args[1]!);
+    const limit: int32 = args.length >= 3 ? toNumber(args[2]!) : -1;
+    const matches = findRegularExpressionSubmatches(pattern, input, limit);
+    const result: TemplateValue[] = [];
+    for (let matchIndex = 0; matchIndex < matches.length; matchIndex++) {
+      result.push(new StringArrayValue(matches[matchIndex]!));
+    }
+    return new AnyArrayValue(result);
   }
 
   if (name === "truncate" && args.length >= 2) {
@@ -221,10 +404,18 @@ export const callScalarFunction = (
     return new StringValue(Uri.EscapeDataString(s));
   }
 
-  if (name === "default" && args.length >= 2) {
+  if (name === "querify" && args.length >= 2) {
+    return new StringValue(
+      Uri.EscapeDataString(toPlainString(args[0]!)) + "=" + Uri.EscapeDataString(toPlainString(args[1]!)),
+    );
+  }
+
+  if (name === "default" && args.length === 1) return args[0]!;
+
+  if (name === "default" && args.length === 2) {
     const fallback = args[0]!;
     const v = args[1]!;
-    return isTruthy(v) ? v : fallback;
+    return isDefaultSet(v) ? v : fallback;
   }
 
   if (name === "len" && args.length >= 1) {
@@ -283,8 +474,8 @@ export const callScalarFunction = (
 
   if (name === "printf" && args.length >= 1) {
     const fmt = toPlainString(args[0]!);
-    const values: string[] = [];
-    for (let argIndex = 1; argIndex < args.length; argIndex++) values.push(toPlainString(args[argIndex]!));
+    const values: TemplateValue[] = [];
+    for (let argumentIndex = 1; argumentIndex < args.length; argumentIndex++) values.push(args[argumentIndex]!);
 
     const sb = new StringBuilder();
     let pos = 0;
@@ -298,16 +489,16 @@ export const callScalarFunction = (
           pos += 2;
           continue;
         }
-        if (next === "s") {
-          if (valueIndex < values.length) sb.Append(values[valueIndex]!);
-          valueIndex++;
-          pos += 2;
-          continue;
+        let verb = next;
+        let width: int32 = 2;
+        if (next === "#" && pos + 2 < fmt.length && substringCount(fmt, pos + 2, 1) === "v") {
+          verb = "#v";
+          width = 3;
         }
-        if (next === "d") {
-          if (valueIndex < values.length) sb.Append(values[valueIndex]!);
+        if (verb === "s" || verb === "d" || verb === "t" || verb === "v" || verb === "q" || verb === "T" || verb === "#v") {
+          if (valueIndex < values.length) sb.Append(formatTemplateValue(values[valueIndex]!, verb));
           valueIndex++;
-          pos += 2;
+          pos += width;
           continue;
         }
       }

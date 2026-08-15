@@ -2,7 +2,7 @@ import { createTsumoError } from "../../diagnostics.js";
 import type { TemplateEnvironment } from "../environment.js";
 import type { TemplateNode } from "../nodes.js";
 import type { RenderScope } from "../scope.js";
-import { AccessExpr, Command, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
+import { AccessExpr, Command, CommandExpr, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
 import type { TemplateValue } from "../values.js";
 import { parseStringLiteral } from "../parser/tokens.js";
 import { nil } from "../runtime-helpers.js";
@@ -112,9 +112,18 @@ function evaluateExpression(expression: Expr, context: TemplateEvaluationContext
       token.startsWith(".") ||
       token.startsWith("$") ||
       token.startsWith("site") ||
+      token === "hugo.Sites" ||
+      token.startsWith("hugo.Sites.") ||
+      token === "hugo.Data" ||
+      token.startsWith("hugo.Data.") ||
+      token === "hugo.Store" ||
+      token === "resources" ||
+      token === "page" ||
+      token.startsWith("page.") ||
       parseStringLiteral(token) !== undefined ||
       token === "true" ||
       token === "false" ||
+      token === "nil" ||
       isNumberLiteral(token)
     ) {
       return evalToken(token, context.scope);
@@ -137,6 +146,10 @@ function evaluateExpression(expression: Expr, context: TemplateEvaluationContext
       context.overrides,
       context.defines,
     );
+  }
+
+  if (expression instanceof CommandExpr) {
+    return evaluateCommand(expression.command, context, undefined);
   }
 
   if (expression instanceof AccessExpr) {

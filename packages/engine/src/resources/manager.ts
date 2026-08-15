@@ -19,6 +19,7 @@ import {
 } from "./paths.js";
 import { resourceGlobMatches } from "./glob.js";
 import { compileSassResource } from "./sass-provider.js";
+import { buildJavaScriptResource, JavaScriptBuildOptions } from "./javascript-provider.js";
 import {
   concatenateResources,
   copyResource,
@@ -50,13 +51,6 @@ const sortResourcesByIdentity = (resources: Resource[]): void => {
     }
   }
 };
-
-const isTextResourceMediaType = (mediaType: string): boolean =>
-  mediaType.startsWith("text/") ||
-  mediaType === "application/javascript" ||
-  mediaType === "application/json" ||
-  mediaType === "application/xml" ||
-  mediaType === "image/svg+xml";
 
 export class ResourceManager {
   siteDir: string;
@@ -98,15 +92,20 @@ export class ResourceManager {
     const normalized = normalizeResourceRelativePath(relativePath);
     if (normalized === "") return undefined;
     const identity = `get:${normalized}`;
-    const cached = this.cache.get(identity);
-    if (cached !== undefined) return cached;
-
     const fullPath = this.resolveAssetFullPath(normalized);
     if (fullPath === undefined) return undefined;
+    return this.loadFile(identity, fullPath, normalized);
+  }
+
+  loadFile(identity: string, fullPath: string, outputRelPath: string): Resource {
+    const cached = this.cache.get(identity);
+    if (cached !== undefined) return cached;
+    if (!File.Exists(fullPath)) {
+      throw createTsumoError("TSUMO_RESOURCE_SOURCE_MISSING", `Resource source file does not exist: ${fullPath}`);
+    }
     const bytes = readBinaryFile(fullPath);
     const extension = (Path.GetExtension(fullPath) ?? "").toLowerCase();
     const mediaType = resourceMediaTypeForExtension(extension);
-    const text = isTextResourceMediaType(mediaType) ? bytes.toString("utf8") : undefined;
     let width: int32 = 0;
     let height: int32 = 0;
     if (isImageResourceExtension(extension)) {
@@ -121,9 +120,9 @@ export class ResourceManager {
       identity,
       fullPath,
       true,
-      normalized,
+      outputRelPath,
       bytes,
-      text,
+      undefined,
       new ResourceData(""),
       mediaType,
       width,
@@ -236,10 +235,23 @@ export class ResourceManager {
     const identity = `${resource.id}|sass`;
     const cached = this.cache.get(identity);
     if (cached !== undefined) return cached;
-    const loadPaths: string[] = [this.siteAssetsDir];
+    const loadPaths: string[] = [];
+    const sourcePath = resource.sourcePath;
+    if (sourcePath !== undefined) {
+      const sourceDirectory = Path.GetDirectoryName(sourcePath);
+      if (sourceDirectory !== undefined && sourceDirectory !== "") loadPaths.push(sourceDirectory);
+    }
+    loadPaths.push(this.siteAssetsDir);
     const themeAssetsDir = this.themeAssetsDir;
     if (themeAssetsDir !== undefined) loadPaths.push(themeAssetsDir);
     return this.cacheResource(compileSassResource(resource, loadPaths));
+  }
+
+  javascriptBuild(resource: Resource, options: JavaScriptBuildOptions): Resource {
+    const identity = `${resource.id}|js-build:${options.cacheKey()}`;
+    const cached = this.cache.get(identity);
+    if (cached !== undefined) return cached;
+    return this.cacheResource(buildJavaScriptResource(resource, options));
   }
 
   resize(resource: Resource, specification: string): Resource {

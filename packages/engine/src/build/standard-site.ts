@@ -26,7 +26,7 @@ export const buildStandardSite = (request: BuildRequest, siteDir: string, outDir
   }
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
-  const environment = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts);
+  const environment = new BuildEnvironment(siteDir, themeDir, outDir, config.moduleMounts, request.buildTime);
   const outputPlan = new SiteOutputPlan();
   if (themeDir !== undefined) {
     outputPlan.addDirectory(Path.Combine(themeDir, "static"), "", "theme static files", "theme-static");
@@ -54,6 +54,7 @@ export const buildStandardSite = (request: BuildRequest, siteDir: string, outDir
   );
   outputPlan.addDefaultText("index.xml", renderRss(config, pageGraph.contentPages, request.buildTime), "generated RSS");
   outputPlan.addDefaultText("robots.txt", renderRobotsTxt(config), "generated robots policy");
+  outputPlan.applyDeferredTemplateResults(environment.finalizeDeferredTemplates());
   outputPlan.render(outDir);
   return outputPlan.generatedOutputCount();
 };

@@ -3,7 +3,7 @@ import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../diagnostics.js";
 import { listFilesRecursive } from "../fs.js";
 import { compareText, substringCount, trimEndChar, trimStartChar } from "../utils/strings.js";
-import { combineUrl } from "../build/layout.js";
+import { combineUrlPath } from "../utils/url-path.js";
 import { DocsMountConfig } from "./models.js";
 
 export class DocsAssetRoute {
@@ -173,7 +173,7 @@ export const discoverDocsMountRoutes = (mount: DocsMountConfig): DocsMountRoutes
       joinSegments(directorySegments),
       fileName,
       isIndex,
-      combineUrl(urlParts),
+      combineUrlPath(urlParts),
       outputRelPath,
     ));
   }

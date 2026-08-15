@@ -79,8 +79,29 @@ export class OutputPlanTests {
       deleteTestDirectory(root);
     }
   }
+
+  deferred_replacements_snapshot_outputs_before_mutation(): void {
+    const root = createTestDirectory("output-plan-deferred");
+    const output = Path.Combine(root, "output");
+    try {
+      const plan = new SiteOutputPlan();
+      plan.addText("first.html", "before:<deferred-token>:after", "first page");
+      plan.addText("second.html", "unchanged", "second page");
+      const results = new Map<string, string>();
+      results.set("<deferred-token>", "ready");
+
+      plan.applyDeferredTemplateResults(results);
+      plan.render(output);
+
+      Assert.Equal("before:ready:after", File.ReadAllText(Path.Combine(output, "first.html")));
+      Assert.Equal("unchanged", File.ReadAllText(Path.Combine(output, "second.html")));
+    } finally {
+      deleteTestDirectory(root);
+    }
+  }
 }
 
 attribute<OutputPlanTests>().method((target) => target.paths_and_collisions_fail_before_rendering).add(FactAttribute);
 attribute<OutputPlanTests>().method((target) => target.static_layers_have_one_explicit_precedence_policy).add(FactAttribute);
 attribute<OutputPlanTests>().method((target) => target.bundle_assets_cannot_overwrite_generated_routes).add(FactAttribute);
+attribute<OutputPlanTests>().method((target) => target.deferred_replacements_snapshot_outputs_before_mutation).add(FactAttribute);

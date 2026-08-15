@@ -3,7 +3,7 @@ import { ParamValue } from "../params.js";
 import { HtmlString } from "../utils/html.js";
 import { humanizeSlug, slugify } from "../utils/text.js";
 import { compareText } from "../utils/strings.js";
-import { combineUrl } from "./layout.js";
+import { combineUrlPath } from "../utils/url-path.js";
 import { StandardPageGraph } from "./standard-page-graph.js";
 
 export class StandardTaxonomy {
@@ -45,7 +45,7 @@ const createTaxonomyPage = (
     taxonomy,
     taxonomy,
     taxonomy,
-    combineUrl([taxonomy]),
+    combineUrlPath([taxonomy]),
     "",
     emptyHtml,
     emptyHtml,
@@ -84,7 +84,7 @@ const createTaxonomyPage = (
       taxonomy,
       taxonomy,
       termSlug,
-      combineUrl([taxonomy, termSlug]),
+      combineUrlPath([taxonomy, termSlug]),
       "",
       new HtmlString(""),
       new HtmlString(""),
@@ -106,6 +106,12 @@ const createTaxonomyPage = (
     terms.push(term);
   }
   root.pages = terms;
+  const termPages = new Map<string, PageContext>();
+  for (let index = 0; index < terms.length; index++) {
+    const term = terms[index]!;
+    termPages.set(term.slug, term);
+  }
+  graph.site.taxonomyTermPages.set(taxonomy, termPages);
   return new StandardTaxonomy(taxonomy, root, terms);
 };
 

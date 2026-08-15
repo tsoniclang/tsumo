@@ -1,6 +1,7 @@
 import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
-import { indexOfTextFrom, substringCount, substringFrom } from "../../utils/strings.js";
+import { IndexedSourceText } from "../../utils/indexed-source-text.js";
+import { decodeTemplateStringLiteral } from "./string-literals.js";
 
 export class TemplateSegment {
   isAction: boolean;
@@ -26,30 +27,34 @@ class TemplatePosition {
   }
 }
 
-const positionAt = (source: string, offset: int32): TemplatePosition => {
-  let line: int32 = 1;
-  let column: int32 = 1;
-  for (let index = 0; index < offset && index < source.length; index++) {
-    if (substringCount(source, index, 1) === "\n") {
-      line++;
-      column = 1;
-    } else {
-      column++;
-    }
+const positionAt = (source: IndexedSourceText, lineStarts: int32[], offset: int32): TemplatePosition => {
+  let low: int32 = 0;
+  let high = lineStarts.length as int32;
+  while (low < high) {
+    const middle = (low + Math.floor((high - low) / 2)) as int32;
+    if (lineStarts[middle]! <= offset) low = middle + 1;
+    else high = middle;
   }
-  return new TemplatePosition(line, column);
+  const lineIndex = low - 1;
+  return new TemplatePosition(
+    lineIndex + 1,
+    source.utf16OffsetAt(offset) - source.utf16OffsetAt(lineStarts[lineIndex]!) + 1,
+  );
 };
 
-export const parseStringLiteral = (token: string): string | undefined => {
-  const value = token.trim();
-  if (value.length < 2) return undefined;
-  const first = substringCount(value, 0, 1);
-  const last = substringCount(value, value.length - 1, 1);
-  if ((first === "\"" || first === "'" || first === "`") && last === first) {
-    return substringCount(value, 1, value.length - 2);
+const findDelimiter = (
+  source: IndexedSourceText,
+  first: string,
+  second: string,
+  start: int32,
+): int32 => {
+  for (let index = start; index + 1 < source.length; index++) {
+    if (source.characterAt(index) === first && source.characterAt(index + 1) === second) return index;
   }
-  return undefined;
+  return -1;
 };
+
+export const parseStringLiteral = (token: string): string | undefined => decodeTemplateStringLiteral(token);
 
 export const sliceTokens = (tokens: string[], startIndex: int32): string[] => {
   const result: string[] = [];
@@ -58,28 +63,33 @@ export const sliceTokens = (tokens: string[], startIndex: int32): string[] => {
 };
 
 export const scanTemplateSegments = (template: string, sourcePath?: string): TemplateSegment[] => {
+  const source = new IndexedSourceText(template);
+  const lineStarts: int32[] = [0];
+  for (let index: int32 = 0; index < source.length; index++) {
+    if (source.characterAt(index) === "\n") lineStarts.push(index + 1);
+  }
   const segments: TemplateSegment[] = [];
   let offset: int32 = 0;
   let lastSegment: TemplateSegment | undefined = undefined;
 
-  while (offset < template.length) {
-    const start = indexOfTextFrom(template, "{{", offset);
+  while (offset < source.length) {
+    const start = findDelimiter(source, "{", "{", offset);
     if (start < 0) {
-      const position = positionAt(template, offset);
-      const segment = new TemplateSegment(false, substringFrom(template, offset), position.line, position.column);
+      const position = positionAt(source, lineStarts, offset);
+      const segment = new TemplateSegment(false, source.slice(offset, source.length), position.line, position.column);
       segments.push(segment);
       break;
     }
 
     if (start > offset) {
-      const position = positionAt(template, offset);
-      const segment = new TemplateSegment(false, substringCount(template, offset, start - offset), position.line, position.column);
+      const position = positionAt(source, lineStarts, offset);
+      const segment = new TemplateSegment(false, source.slice(offset, start), position.line, position.column);
       segments.push(segment);
       lastSegment = segment;
     }
 
-    const position = positionAt(template, start);
-    const end = indexOfTextFrom(template, "}}", start + 2);
+    const position = positionAt(source, lineStarts, start);
+    const end = findDelimiter(source, "}", "}", start + 2);
     if (end < 0) {
       throw createTsumoError(
         "TSUMO_TEMPLATE_ACTION_UNCLOSED",
@@ -90,16 +100,16 @@ export const scanTemplateSegments = (template: string, sourcePath?: string): Tem
       );
     }
 
-    let action = substringCount(template, start + 2, end - start - 2);
+    let action = source.slice(start + 2, end);
     let leftTrim = false;
     let rightTrim = false;
     if (action.startsWith("-")) {
       leftTrim = true;
-      action = substringFrom(action, 1);
+      action = action.substring(1);
     }
     if (action.endsWith("-")) {
       rightTrim = true;
-      action = substringCount(action, 0, action.length - 1);
+      action = action.substring(0, action.length - 1);
     }
     action = action.trim();
 
@@ -121,8 +131,8 @@ export const scanTemplateSegments = (template: string, sourcePath?: string): Tem
     offset = end + 2;
 
     if (rightTrim) {
-      while (offset < template.length) {
-        const character = substringCount(template, offset, 1);
+      while (offset < source.length) {
+        const character = source.characterAt(offset);
         if (character !== " " && character !== "\t" && character !== "\r" && character !== "\n") break;
         offset++;
       }
@@ -138,21 +148,41 @@ export const tokenizeTemplateAction = (
   column?: int32,
   sourcePath?: string,
 ): string[] => {
+  const source = new IndexedSourceText(action);
   const tokens: string[] = [];
   let offset: int32 = 0;
 
-  while (offset < action.length) {
-    const character = substringCount(action, offset, 1);
+  while (offset < source.length) {
+    const character = source.characterAt(offset);
+    const nextOffset = offset + 1;
     if (character === " " || character === "\t" || character === "\r" || character === "\n") {
-      offset++;
+      offset = nextOffset;
       continue;
     }
-    if (character === "|" || character === "(" || character === ")" || character === "," || character === "=") {
+    if (character === ")") {
+      const tokenStart = offset;
+      offset = nextOffset;
+      if (offset < source.length && source.characterAt(offset) === ".") {
+        offset++;
+        while (offset < source.length) {
+          const current = source.characterAt(offset);
+          if (
+            current === " " || current === "\t" || current === "\r" || current === "\n" ||
+            current === "|" || current === "(" || current === ")" || current === "," || current === "="
+          ) break;
+          if (current === ":" && offset + 1 < source.length && source.characterAt(offset + 1) === "=") break;
+          offset++;
+        }
+      }
+      tokens.push(source.slice(tokenStart, offset));
+      continue;
+    }
+    if (character === "|" || character === "(" || character === "," || character === "=") {
       tokens.push(character);
-      offset++;
+      offset = nextOffset;
       continue;
     }
-    if (character === ":" && offset + 1 < action.length && substringCount(action, offset + 1, 1) === "=") {
+    if (character === ":" && offset + 1 < source.length && source.characterAt(offset + 1) === "=") {
       tokens.push(":=");
       offset += 2;
       continue;
@@ -160,16 +190,18 @@ export const tokenizeTemplateAction = (
     if (character === "\"" || character === "'" || character === "`") {
       const quote = character;
       const tokenStart = offset;
-      offset++;
+      offset = nextOffset;
       let escaped = false;
-      while (offset < action.length) {
-        const current = substringCount(action, offset, 1);
-        if (!escaped && current === quote) break;
-        escaped = !escaped && current === "\\";
-        if (current !== "\\") escaped = false;
+      while (offset < source.length) {
+        const current = source.characterAt(offset);
+        if ((quote === "`" || !escaped) && current === quote) break;
+        if (quote !== "`") {
+          escaped = !escaped && current === "\\";
+          if (current !== "\\") escaped = false;
+        }
         offset++;
       }
-      if (offset >= action.length) {
+      if (offset >= source.length) {
         throw createTsumoError(
           "TSUMO_TEMPLATE_STRING_UNCLOSED",
           `Template string opened with ${quote} but is not closed`,
@@ -179,21 +211,21 @@ export const tokenizeTemplateAction = (
         );
       }
       offset++;
-      tokens.push(substringCount(action, tokenStart, offset - tokenStart));
+      tokens.push(source.slice(tokenStart, offset));
       continue;
     }
 
     const tokenStart = offset;
-    while (offset < action.length) {
-      const current = substringCount(action, offset, 1);
+    while (offset < source.length) {
+      const current = source.characterAt(offset);
       if (
         current === " " || current === "\t" || current === "\r" || current === "\n" ||
         current === "|" || current === "(" || current === ")" || current === "," || current === "="
       ) break;
-      if (current === ":" && offset + 1 < action.length && substringCount(action, offset + 1, 1) === "=") break;
+      if (current === ":" && offset + 1 < source.length && source.characterAt(offset + 1) === "=") break;
       offset++;
     }
-    tokens.push(substringCount(action, tokenStart, offset - tokenStart));
+    tokens.push(source.slice(tokenStart, offset));
   }
 
   return tokens;

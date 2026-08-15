@@ -90,7 +90,11 @@ const decodeQuoted = (
   const startsQuoted = first === "\"" || first === "'";
   const endsQuoted = last === "\"" || last === "'";
   if (!startsQuoted && !endsQuoted) return undefined;
-  if (!startsQuoted || first !== last || value.length < 2) throw invalid("String has mismatched quotes");
+  if (!startsQuoted) {
+    if (format === "yaml") return undefined;
+    throw invalid("String has mismatched quotes");
+  }
+  if (first !== last || value.length < 2) throw invalid("String has mismatched quotes");
   const inner = substringCount(value, 1, value.length - 2);
   return first === "'" ? decodeSingleQuoted(inner, format, invalid) : decodeDoubleQuoted(inner, invalid);
 };

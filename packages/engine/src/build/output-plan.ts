@@ -124,6 +124,43 @@ export class SiteOutputPlan {
     return count;
   }
 
+  applyDeferredTemplateResults(results: Map<string, string>): void {
+    if (results.size === 0) return;
+    const resolvedPlacements = new Set<string>();
+    const outputPaths = Array.from(this.textByPath.keys());
+    for (let outputIndex = 0; outputIndex < outputPaths.length; outputIndex++) {
+      const key = outputPaths[outputIndex]!;
+      let content = this.textByPath.get(key);
+      if (content === undefined) continue;
+      for (const token of results.keys()) {
+        const replacement = results.get(token);
+        if (replacement === undefined) {
+          throw createTsumoError("TSUMO_TEMPLATE_DEFER_RESULT_INVALID", "A deferred-template replacement disappeared");
+        }
+        const first = content.indexOf(token);
+        if (first >= 0) {
+          if (resolvedPlacements.has(token) || content.indexOf(token, first + token.length) >= 0) {
+            throw createTsumoError(
+              "TSUMO_TEMPLATE_DEFER_PLACEMENT_INVALID",
+              "Each deferred-template placement must occur exactly once in planned output",
+            );
+          }
+          resolvedPlacements.add(token);
+          content = content.replaceAll(token, replacement);
+        }
+      }
+      this.textByPath.set(key, content);
+    }
+    for (const token of results.keys()) {
+      if (!resolvedPlacements.has(token)) {
+        throw createTsumoError(
+          "TSUMO_TEMPLATE_DEFER_PLACEMENT_INVALID",
+          "Each deferred-template placement must occur exactly once in planned output",
+        );
+      }
+    }
+  }
+
   render(outputRoot: string): void {
     const keys = Array.from(this.claimsByPath.keys());
     keys.sort((left: string, right: string) => compareSitePaths(left, right));

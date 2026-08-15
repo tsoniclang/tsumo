@@ -30,22 +30,27 @@ export { SiteContext } from "./models/site-context.js";
 export { FrontMatterMenu } from "./frontmatter/menu.js";
 export { buildMenuHierarchy } from "./menus.js";
 export { ParamValue } from "./params.js";
-export { parseShortcodes } from "./shortcode.js";
+export { collectShortcodeNames, parseShortcodes } from "./shortcode.js";
 export { parseImageDimensions } from "./resources/image-dimensions.js";
 export { resourceGlobMatches } from "./resources/glob.js";
 export { ResourceManager } from "./resources/manager.js";
 export { Resource, ResourceData } from "./resources/models.js";
 export { normalizeResourceRelativePath } from "./resources/paths.js";
+export { isValidUtf8, readResourceText } from "./resources/text.js";
 export { createStringResource, fingerprintResource } from "./resources/transforms.js";
 export { TemplateEnvironment } from "./template/environment.js";
+export { getEmbeddedTemplateSource } from "./template/embedded-templates.js";
 export { TemplateNode } from "./template/nodes.js";
 export { parseTemplate } from "./template/parser/parse-template.js";
-export { RenderScope } from "./template/scope.js";
+export { RenderScope, RenderState } from "./template/scope.js";
 export { Template } from "./template/template.js";
 export { HtmlString } from "./utils/html.js";
 export { contentTypeForPath } from "./utils/mime.js";
 export { listDirectoriesTopDirectory, listFilesRecursive, listFilesTopDirectory } from "./fs.js";
 export { createWatchSnapshot, watchSnapshotsEqual } from "./watch-snapshot.js";
+export { I18nStore } from "./i18n.js";
+export { loadSiteData } from "./template/data-loader.js";
+export { ModuleMount } from "./models/site-config.js";
 export {
   JsonArray,
   JsonBool,
@@ -55,7 +60,12 @@ export {
   parseJson,
 } from "./utils/json.js";
 export {
+  DateValue,
   DictValue,
+  PageArrayValue,
+  PageGroupValue,
+  PageDataValue,
+  PageValue,
   StringValue,
   TemplateValue,
 } from "./template/values.js";

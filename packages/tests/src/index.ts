@@ -5,4 +5,7 @@ import "./content-and-menu.test.js";
 import "./docs-domain.test.js";
 import "./output-plan.test.js";
 import "./resource-pipeline.test.js";
+import "./template-page-context.test.js";
+import "./template-function-semantics.test.js";
 import "./template-runtime.test.js";
+import "./theme-compatibility.test.js";

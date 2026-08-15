@@ -1,10 +1,10 @@
 // Re-export from modularized values
 export {
   TemplateValue, NilValue,
-  StringValue, BoolValue, NumberValue, HtmlValue,
-  PageValue, FileValue, PageArrayValue, PageResourcesValue,
+  StringValue, BoolValue, NumberValue, HtmlValue, DateValue,
+  PageValue, FileValue, PageArrayValue, PageGroupValue, PageDataValue, PageResourcesValue,
   SiteValue, LanguageValue, SitesValue, SitesArrayValue,
-  ResourceDataValue, ResourceValue,
+  ResourceDataValue, ResourceNamespaceValue, ResourceValue,
   StringArrayValue, AnyArrayValue,
   DocsMountValue, DocsMountArrayValue, NavItemValue, NavArrayValue,
   MenuEntryValue, MenuArrayValue, MenusValue,
@@ -13,6 +13,6 @@ export {
   MediaTypeValue,
   DictValue,
   ScratchStore, ScratchValue,
-  UrlParts, UrlValue,
-  VersionStringValue,
+  UrlParts, UrlQueryValue, UrlValue,
+  VersionStringValue, PaginatorValue, DeferredTemplateValue,
 } from "./values/index.js";

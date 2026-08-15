@@ -1,33 +1,34 @@
-import { Uri } from "@tsonic/dotnet/System.js";
 import type { int32 } from "@tsonic/core/types.js";
-import { LanguageContext, MediaType, PageContext, SiteContext } from "../../models.js";
+import { PageContext } from "../../models.js";
 import type { DocsMountContext, NavItem } from "../../docs/models.js";
-import { ParamKind, ParamValue } from "../../params.js";
 import type { ResourceManager } from "../../resources.js";
+import { readResourceText } from "../../resources/text.js";
 import { HtmlString } from "../../utils/html.js";
+import { parseInt32 } from "../../utils/int32.js";
 import { substringCount, substringFrom, trimStartChar } from "../../utils/strings.js";
 import { ensureTrailingSlash } from "../../utils/text.js";
 import { HeadingHookValue, ImageHookValue, LinkHookValue, ShortcodeValue } from "../contexts.js";
 import { nil } from "../runtime-helpers.js";
 import type { RenderScope } from "../scope.js";
 import {
-  AnyArrayValue, BoolValue, DictValue, DocsMountArrayValue, DocsMountValue,
+  BoolValue, DateValue, DictValue, DocsMountArrayValue, DocsMountValue,
   FileValue, HtmlValue, LanguageValue,
   MediaTypeValue, MenuArrayValue, MenuEntryValue, MenusValue,
   NavArrayValue, NavItemValue, NilValue, NumberValue, OutputFormatValue,
-  OutputFormatsGetValue, OutputFormatsValue, PageArrayValue, PageResourcesValue,
-  PageValue, ResourceDataValue, ResourceValue, ScratchStore, ScratchValue,
+  OutputFormatsGetValue, OutputFormatsValue, PageArrayValue, PageDataValue, PageGroupValue, PageResourcesValue, PaginatorValue,
+  PageValue, ResourceDataValue, ResourceValue, ScratchValue,
   SiteValue, SitesArrayValue, SitesValue, StringArrayValue,
-  StringValue, TaxonomiesValue, TaxonomyTermsValue, TemplateValue, UrlParts,
-  UrlValue,
+  StringValue, TaxonomiesValue, TaxonomyTermsValue, TemplateValue,
+  UrlQueryValue, UrlValue,
 } from "../values.js";
 import {
-  copyPageArray, copyStringArray, reversePages, sortPagesByDate,
-  sortPagesByTitle, sortPagesByWeight,
+  copyPageArray, copyStringArray, pageWeight, pagesWithKind, resolvePageCollectionProperty, siteLastModification,
 } from "./page-semantics.js";
-
-const pageStores = new Map<PageContext, ScratchStore>();
-const siteStores = new Map<SiteContext, ScratchStore>();
+import {
+  getPageStore, getSiteStore, taxonomyTermsByCount, wrapLanguages, wrapMediaType, wrapParamDict,
+} from "./property-support.js";
+import { splitUrlParts } from "./url-property-semantics.js";
+import { getUrlQueryValue, parseUrlQuery } from "./url-query-semantics.js";
 
 export const resolvePath = (value: TemplateValue, segments: string[], scope: RenderScope): TemplateValue => {
   let cur: TemplateValue = value;
@@ -41,11 +42,12 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       if (k === "title") cur = new StringValue(page.title);
       else if (k === "content") cur = new HtmlValue(page.content);
       else if (k === "summary") cur = new HtmlValue(page.summary);
-      else if (k === "date") cur = new StringValue(page.date);
-      else if (k === "lastmod") cur = new StringValue(page.lastmod);
+      else if (k === "date" || k === "publishdate") cur = new DateValue(page.date);
+      else if (k === "lastmod") cur = new DateValue(page.lastmod);
       else if (k === "plain") cur = new StringValue(page.plain);
       else if (k === "tableofcontents") cur = new HtmlValue(page.tableOfContents);
       else if (k === "draft") cur = new BoolValue(page.draft);
+      else if (k === "weight") cur = new NumberValue(pageWeight(page));
       else if (k === "kind") cur = new StringValue(page.kind);
       else if (k === "section") cur = new StringValue(page.section);
       else if (k === "type") cur = new StringValue(page.type);
@@ -61,7 +63,7 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       }
       else if (k === "language") cur = new LanguageValue(page.Language);
       else if (k === "translations") cur = new PageArrayValue(page.Translations);
-      else if (k === "store") cur = new ScratchValue(getPageStore(page));
+      else if (k === "store" || k === "scratch") cur = new ScratchValue(getPageStore(page));
       else if (k === "sites") cur = new SitesValue(scope.site);
       else if (k === "page") cur = cur;
       else if (k === "parent") {
@@ -78,6 +80,9 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
         cur = mgr !== undefined ? new PageResourcesValue(page, mgr) : nil;
       }
       else if (k === "pages") cur = new PageArrayValue(page.pages);
+      else if (k === "regularpages") cur = new PageArrayValue(pagesWithKind(page.pages, "page"));
+      else if (k === "sections") cur = new PageArrayValue(pagesWithKind(page.pages, "section"));
+      else if (k === "data") cur = new PageDataValue(page);
       else if (k === "description") cur = new StringValue(page.description);
       else if (k === "tags") cur = new StringArrayValue(page.tags);
       else if (k === "categories") cur = new StringArrayValue(page.categories);
@@ -88,7 +93,23 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "istaxonomy") cur = new BoolValue(page.kind === "taxonomy");
       else if (k === "isterm") cur = new BoolValue(page.kind === "term");
       else if (k === "isnode") cur = new BoolValue(page.kind !== "page");
+      else if (k === "truncated") cur = new BoolValue(
+        page.summary.value !== "" && page.summary.value !== page.content.value,
+      );
+      else if (k === "linktitle") cur = new StringValue(page.title);
       else if (k === "outputformats") cur = new OutputFormatsValue(page.site);
+      else if (k === "paginator") {
+        const selected = scope.getPaginator();
+        if (selected !== undefined) cur = selected;
+        else {
+          cur = scope.selectPaginator(new PaginatorValue(
+            page.pages,
+            scope.site.paginationSize,
+            scope.state.paginationPageNumber,
+            page.relPermalink,
+          ));
+        }
+      }
       else if (k === "previnsection") {
         const parentPage = page.parent;
         if (parentPage !== undefined) {
@@ -137,6 +158,31 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       continue;
     }
 
+    if (cur instanceof DateValue) {
+      const key = seg.toLowerCase();
+      if (key === "iszero") cur = new BoolValue(cur.value.trim() === "" || Number.isNaN(Date.parse(cur.value)));
+      else if (key === "year") {
+        const milliseconds = Date.parse(cur.value);
+        let year: int32 = 0;
+        if (!Number.isNaN(milliseconds)) {
+          year = parseInt32(substringCount(new Date(milliseconds).toISOString(), 0, 4)) ?? 0;
+        }
+        cur = new NumberValue(year);
+      } else cur = nil;
+      continue;
+    }
+
+    if (cur instanceof PageDataValue) {
+      const page = cur.page;
+      const key = seg.toLowerCase();
+      if (key === "pages") cur = new PageArrayValue(page.pages);
+      else if (key === "terms") {
+        const terms = page.site.Taxonomies.get(page.section) ?? page.site.Taxonomies.get(page.section.toLowerCase());
+        cur = terms !== undefined ? new TaxonomyTermsValue(terms, page.site) : nil;
+      } else cur = nil;
+      continue;
+    }
+
     if (cur instanceof SiteValue) {
       const site = cur.value;
       const k = seg.toLowerCase();
@@ -153,9 +199,15 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
         cur = siteHome !== undefined ? new PageValue(siteHome) : nil;
       }
       else if (k === "allpages") cur = new PageArrayValue(site.allPages);
-      else if (k === "store") cur = new ScratchValue(getSiteStore(site));
+      else if (k === "store" || k === "scratch") cur = new ScratchValue(getSiteStore(site));
       else if (k === "params") cur = wrapParamDict(site.Params);
       else if (k === "pages") cur = new PageArrayValue(site.pages);
+      else if (k === "regularpages") {
+        const pages = site.allPages.length > 0 ? site.allPages : site.pages;
+        cur = new PageArrayValue(pagesWithKind(pages, "page"));
+      }
+      else if (k === "lastmod") cur = new DateValue(siteLastModification(site));
+      else if (k === "data") cur = scope.env.getSiteData();
       else if (k === "mounts" || k === "docsmounts") cur = new DocsMountArrayValue(site.docsMounts);
       else if (k === "menus") cur = new MenusValue(site);
       else if (k === "taxonomies") cur = new TaxonomiesValue(site);
@@ -281,6 +333,8 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "title") cur = new StringValue(hook.Title);
       else if (k === "plaintext") cur = new StringValue(hook.PlainText);
       else if (k === "page") cur = new PageValue(hook.Page);
+      else if (k === "pageinner") cur = new PageValue(hook.PageInner);
+      else if (k === "pageouter") cur = new PageValue(hook.PageOuter);
       else cur = nil;
       continue;
     }
@@ -293,6 +347,8 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "title") cur = new StringValue(hook.Title);
       else if (k === "plaintext") cur = new StringValue(hook.PlainText);
       else if (k === "page") cur = new PageValue(hook.Page);
+      else if (k === "pageinner") cur = new PageValue(hook.PageInner);
+      else if (k === "pageouter") cur = new PageValue(hook.PageOuter);
       else cur = nil;
       continue;
     }
@@ -305,6 +361,8 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "plaintext") cur = new StringValue(hook.PlainText);
       else if (k === "anchor") cur = new StringValue(hook.Anchor);
       else if (k === "page") cur = new PageValue(hook.Page);
+      else if (k === "pageinner") cur = new PageValue(hook.PageInner);
+      else if (k === "pageouter") cur = new PageValue(hook.PageOuter);
       else cur = nil;
       continue;
     }
@@ -319,6 +377,10 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
     if (cur instanceof TaxonomyTermsValue) {
       const termsDict = cur.terms;
       const site = cur.site;
+      if (seg.toLowerCase() === "bycount") {
+        cur = taxonomyTermsByCount(termsDict);
+        continue;
+      }
       const pages = termsDict.get(seg) ?? termsDict.get(seg.toLowerCase());
       cur = pages !== undefined ? new PageArrayValue(pages) : nil;
       continue;
@@ -346,14 +408,21 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
         cur = new StringValue(uri.OriginalString);
         continue;
       }
-      if (k === "path" || k === "rawquery" || k === "fragment") {
+      if (k === "path" || k === "rawquery" || k === "fragment" || k === "query") {
         const parts = splitUrlParts(uri);
         if (k === "path") cur = new StringValue(parts.path);
         else if (k === "rawquery") cur = new StringValue(parts.rawQuery);
-        else cur = new StringValue(parts.fragment);
+        else if (k === "fragment") cur = new StringValue(parts.fragment);
+        else cur = parseUrlQuery(parts.rawQuery);
         continue;
       }
       cur = nil;
+      continue;
+    }
+
+    if (cur instanceof UrlQueryValue) {
+      const selected = getUrlQueryValue(cur.value, seg);
+      cur = selected === undefined ? nil : new StringValue(selected);
       continue;
     }
 
@@ -362,7 +431,7 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       const res = rv.value;
       const k = seg.toLowerCase();
       if (k === "content") {
-        cur = new StringValue(res.text ?? "");
+        cur = new StringValue(readResourceText(res, "Resource.Content"));
         continue;
       }
       if (k === "data") {
@@ -460,128 +529,36 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       continue;
     }
 
-    // Handle PageArrayValue zero-arg methods as properties
+    if (cur instanceof PaginatorValue) {
+      const key = seg.toLowerCase();
+      const totalPages = cur.totalPages();
+      if (key === "pages") cur = new PageArrayValue(cur.pages());
+      else if (key === "hasprev") cur = new BoolValue(cur.pageNumber > 1);
+      else if (key === "hasnext") cur = new BoolValue(cur.pageNumber < totalPages);
+      else if (key === "pagenumber") cur = new NumberValue(cur.pageNumber);
+      else if (key === "totalpages") cur = new NumberValue(totalPages);
+      else if (key === "prev") cur = cur.pageNumber > 1 ? cur.withPageNumber(cur.pageNumber - 1) : nil;
+      else if (key === "next") cur = cur.pageNumber < totalPages ? cur.withPageNumber(cur.pageNumber + 1) : nil;
+      else if (key === "url") cur = new StringValue(cur.url());
+      else cur = nil;
+      continue;
+    }
+
+    if (cur instanceof PageGroupValue) {
+      const group = cur as PageGroupValue;
+      const key = seg.toLowerCase();
+      if (key === "key") cur = group.key;
+      else if (key === "pages") cur = new PageArrayValue(group.pages);
+      else cur = resolvePageCollectionProperty(new PageArrayValue(group.pages), seg) ?? nil;
+      continue;
+    }
+
     if (cur instanceof PageArrayValue) {
-      const pageArrVal = cur as PageArrayValue;
-      const pages: PageContext[] = pageArrVal.value;
-      const k = seg.toLowerCase();
-
-      // Sorting methods (return sorted copy)
-      if (k === "bylastmod") {
-        const sorted = sortPagesByDate(pages, "lastmod");
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "bydate") {
-        const sorted = sortPagesByDate(pages, "date");
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "bypublishdate") {
-        const sorted = sortPagesByDate(pages, "publishdate");
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "bytitle") {
-        const sorted = sortPagesByTitle(pages);
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "byweight") {
-        const sorted = sortPagesByWeight();
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-
-      // Reverse (return reversed copy)
-      if (k === "reverse") {
-        const reversed = reversePages(pages);
-        cur = new PageArrayValue(reversed);
-        continue;
-      }
-
-      // Length property
-      if (k === "len") {
-        cur = new NumberValue(pages.length);
-        continue;
-      }
-
-      cur = nil;
+      cur = resolvePageCollectionProperty(cur as PageArrayValue, seg) ?? nil;
       continue;
     }
 
     return nil;
   }
   return cur;
-};
-
-export const wrapStringDict = (dict: Map<string, string>): DictValue => {
-  const mapped = new Map<string, TemplateValue>();
-  for (const key of dict.keys()) {
-    const v = dict.get(key);
-    if (v === undefined) continue;
-    mapped.set(key, new StringValue(v));
-  }
-  return new DictValue(mapped);
-};
-
-export const wrapParamDict = (dict: Map<string, ParamValue>): DictValue => {
-  const mapped = new Map<string, TemplateValue>();
-  for (const key of dict.keys()) {
-    const pv = dict.get(key);
-    if (pv === undefined) continue;
-    const kind = pv.kind;
-    let tv: TemplateValue = new StringValue(pv.stringValue);
-    if (kind === ParamKind.Bool) tv = new BoolValue(pv.boolValue);
-    if (kind === ParamKind.Number) tv = new NumberValue(pv.numberValue);
-    mapped.set(key, tv);
-  }
-  return new DictValue(mapped);
-};
-
-export const wrapLanguages = (languages: LanguageContext[]): AnyArrayValue => {
-  const items: TemplateValue[] = [];
-  for (let i = 0; i < languages.length; i++) items.push(new LanguageValue(languages[i]!));
-  return new AnyArrayValue(items);
-};
-
-export const wrapMediaType = (mt: MediaType): MediaTypeValue => {
-  return new MediaTypeValue(mt);
-};
-
-export const getPageStore = (page: PageContext): ScratchStore => {
-  const existing = pageStores.get(page);
-  if (existing !== undefined) return existing;
-  const store = new ScratchStore();
-  pageStores.set(page, store);
-  return store;
-};
-
-export const getSiteStore = (site: SiteContext): ScratchStore => {
-  const existing = siteStores.get(site);
-  if (existing !== undefined) return existing;
-  const store = new ScratchStore();
-  siteStores.set(site, store);
-  return store;
-};
-
-export const splitUrlParts = (uri: Uri): UrlParts => {
-  let rawQuery = "";
-  let fragment = "";
-  if (uri.IsAbsoluteUri) {
-    rawQuery = uri.Query.startsWith("?") ? substringFrom(uri.Query, 1) : uri.Query;
-    fragment = uri.Fragment.startsWith("#") ? substringFrom(uri.Fragment, 1) : uri.Fragment;
-    return new UrlParts(uri.AbsolutePath, rawQuery, fragment);
-  }
-
-  const raw = uri.OriginalString;
-  const hashIndex = raw.indexOf("#");
-  const beforeHash = hashIndex >= 0 ? substringCount(raw, 0, hashIndex) : raw;
-  fragment = hashIndex >= 0 ? substringFrom(raw, hashIndex + 1) : "";
-
-  const queryIndex = beforeHash.indexOf("?");
-  const path = queryIndex >= 0 ? substringCount(beforeHash, 0, queryIndex) : beforeHash;
-  rawQuery = queryIndex >= 0 ? substringFrom(beforeHash, queryIndex + 1) : "";
-
-  return new UrlParts(path, rawQuery, fragment);
 };

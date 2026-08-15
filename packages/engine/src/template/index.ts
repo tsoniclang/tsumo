@@ -2,15 +2,15 @@
 
 // Value types
 export {
-  TemplateValue, NilValue, StringValue, BoolValue, NumberValue, HtmlValue,
-  PageValue, SiteValue, LanguageValue, FileValue, SitesValue,
+  TemplateValue, NilValue, StringValue, BoolValue, NumberValue, HtmlValue, DateValue,
+  PageValue, PageDataValue, SiteValue, LanguageValue, FileValue, SitesValue,
   ResourceDataValue, ResourceValue, PageResourcesValue,
-  PageArrayValue, StringArrayValue, SitesArrayValue, AnyArrayValue,
+  PageArrayValue, PageGroupValue, StringArrayValue, SitesArrayValue, AnyArrayValue,
   DocsMountValue, DocsMountArrayValue, NavItemValue, NavArrayValue,
   MenuEntryValue, MenuArrayValue, MenusValue,
   OutputFormatsValue, OutputFormatValue, OutputFormatsGetValue,
   TaxonomiesValue, TaxonomyTermsValue, MediaTypeValue,
-  DictValue, ScratchStore, ScratchValue, UrlParts, UrlValue,
+  DictValue, ScratchStore, ScratchValue, UrlParts, UrlQueryValue, UrlValue,
 } from "./values.js";
 
 // Context types
@@ -29,7 +29,7 @@ export { TemplateEnvironment } from "./environment.js";
 
 // Template nodes
 export {
-  TemplateNode, TextNode, OutputNode, AssignmentNode,
+  TemplateNode, TextNode, OutputNode, AssignmentNode, TemplateVariableBinding,
   TemplateInvokeNode, IfNode, RangeNode, WithNode, BlockNode,
 } from "./nodes.js";
 

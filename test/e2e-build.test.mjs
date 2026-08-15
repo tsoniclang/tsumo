@@ -91,7 +91,7 @@ test("renders shortcodes, Markdown hooks, and fingerprinted resources", () => {
   );
   writeFileSync(
     join(site, "layouts/_markup/render-link.html"),
-    "<a data-render-hook=\"link\" href=\"{{ .Destination }}\">{{ .Text }}</a>",
+    "<a data-render-hook=\"link\" data-page-inner=\"{{ .PageInner.Title }}\" data-page-outer=\"{{ .PageOuter.Title }}\" href=\"{{ .Destination }}\">{{ .Text }}</a>",
   );
   writeFileSync(
     join(site, "layouts/posts/single.html"),
@@ -107,7 +107,10 @@ test("renders shortcodes, Markdown hooks, and fingerprinted resources", () => {
   assert.equal(result.status, 0, result.stderr);
 
   const output = readFileSync(join(outDir, "posts/feature-contract/index.html"), "utf8");
-  assert.match(output, /data-render-hook="link" href="https:\/\/example\.invalid\/path"/u);
+  assert.match(
+    output,
+    /data-render-hook="link" data-page-inner="Feature Contract" data-page-outer="Feature Contract" href="https:\/\/example\.invalid\/path"/u,
+  );
   assert.match(output, /data-shortcode="named">named<\/span>/u);
   const resourceMatch = output.match(/href="\/(contract\.[a-f0-9]{16}\.css)" integrity="(sha256-[A-Za-z0-9+/=]+)"/u);
   assert.notEqual(resourceMatch, null, output);

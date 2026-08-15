@@ -468,6 +468,20 @@ export const parseShortcodes = (text: string, sourcePath?: string): ShortcodeCal
   return results;
 };
 
+export const collectShortcodeNames = (text: string, sourcePath?: string): Map<string, boolean> => {
+  const names = new Map<string, boolean>();
+  const pending: string[] = [text];
+  for (let pendingIndex: int32 = 0; pendingIndex < pending.length; pendingIndex++) {
+    const calls = parseShortcodes(pending[pendingIndex]!, sourcePath);
+    for (let callIndex: int32 = 0; callIndex < calls.length; callIndex++) {
+      const call = calls[callIndex]!;
+      names.set(call.name, true);
+      if (call.inner !== "") pending.push(call.inner);
+    }
+  }
+  return names;
+};
+
 export const innerDeindent = (inner: string): string => {
   const lines = inner.split("\n");
   if (lines.length === 0) return inner;

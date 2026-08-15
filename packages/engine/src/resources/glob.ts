@@ -2,6 +2,21 @@ import type { int32 } from "@tsonic/core/types.js";
 import { normalizeResourceRelativePath } from "./paths.js";
 
 const resourceSegmentMatches = (pattern: string, segment: string): boolean => {
+  const braceStart = pattern.indexOf("{");
+  if (braceStart >= 0) {
+    const braceEnd = pattern.indexOf("}", braceStart + 1);
+    if (braceEnd > braceStart + 1) {
+      const alternatives = pattern.substring(braceStart + 1, braceEnd).split(",");
+      if (alternatives.length > 1) {
+        const prefix = pattern.substring(0, braceStart);
+        const suffix = pattern.substring(braceEnd + 1);
+        for (let index = 0; index < alternatives.length; index++) {
+          if (resourceSegmentMatches(prefix + alternatives[index]! + suffix, segment)) return true;
+        }
+        return false;
+      }
+    }
+  }
   if (pattern === "*") return true;
   const star = pattern.indexOf("*");
   if (star < 0) return pattern === segment;
