@@ -2,11 +2,12 @@ import { Uri, UriKind } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { substringCount, substringFrom } from "../../utils/strings.js";
-import { AnyArrayValue, BoolValue, DictValue, HtmlValue, NilValue, NumberValue, StringValue, TemplateValue } from "../values.js";
+import { AnyArrayValue, BoolValue, DateValue, DictValue, HtmlValue, NilValue, NumberValue, StringValue, TemplateValue } from "../values.js";
 
 export const getPathExtension = (path: string): string => {
   const lastDot = path.lastIndexOf(".");
-  if (lastDot < 0) return "";
+  const lastSlash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  if (lastDot < 0 || lastDot <= lastSlash) return "";
   return substringFrom(path, lastDot);
 };
 
@@ -15,6 +16,7 @@ export const toJson = (value: TemplateValue): string => {
   if (value instanceof BoolValue) return value.value ? "true" : "false";
   if (value instanceof NumberValue) return `${value.value}`;
   if (value instanceof StringValue) return toJsonString(value.value);
+  if (value instanceof DateValue) return toJsonString(value.value);
   if (value instanceof HtmlValue) return toJsonString(value.value.value);
   if (value instanceof AnyArrayValue) {
     const items = value.value;

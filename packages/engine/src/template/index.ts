@@ -2,8 +2,8 @@
 
 // Value types
 export {
-  TemplateValue, NilValue, StringValue, BoolValue, NumberValue, HtmlValue,
-  PageValue, SiteValue, LanguageValue, FileValue, SitesValue,
+  TemplateValue, NilValue, StringValue, BoolValue, NumberValue, HtmlValue, DateValue,
+  PageValue, PageDataValue, SiteValue, LanguageValue, FileValue, SitesValue,
   ResourceDataValue, ResourceValue, PageResourcesValue,
   PageArrayValue, StringArrayValue, SitesArrayValue, AnyArrayValue,
   DocsMountValue, DocsMountArrayValue, NavItemValue, NavArrayValue,

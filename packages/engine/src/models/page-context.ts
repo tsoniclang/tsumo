@@ -32,6 +32,7 @@ export class PageContext {
   layout: string | undefined;
   parent: PageContext | undefined;
   ancestors: PageContext[];
+  resourceSourceDir: string | undefined;
 
   constructor(
     title: string,
@@ -87,5 +88,6 @@ export class PageContext {
     this.layout = layout;
     this.parent = parent;
     this.ancestors = ancestors;
+    this.resourceSourceDir = undefined;
   }
 }

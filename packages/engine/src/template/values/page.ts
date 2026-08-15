@@ -29,6 +29,15 @@ export class PageArrayValue extends TemplateValue {
   }
 }
 
+export class PageDataValue extends TemplateValue {
+  page: PageContext;
+
+  constructor(page: PageContext) {
+    super();
+    this.page = page;
+  }
+}
+
 export class PageResourcesValue extends TemplateValue {
   page: PageContext;
   manager: ResourceManager;

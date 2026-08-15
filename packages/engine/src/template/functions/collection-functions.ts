@@ -1,7 +1,8 @@
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import type { int32 } from "@tsonic/core/types.js";
+import { createTsumoError } from "../../diagnostics.js";
 import { PageContext } from "../../models.js";
-import { substringCount, substringFrom } from "../../utils/strings.js";
+import { codePointAtText, nextCodePointIndex, substringCount, substringFrom } from "../../utils/strings.js";
 import {
   AnyArrayValue, BoolValue, DictValue, NumberValue, PageArrayValue, PageValue,
   StringArrayValue, StringValue, TemplateValue,
@@ -105,6 +106,38 @@ export const callCollectionFunction = (
     return nil;
   }
 
+  if (name === "first" && args.length >= 2) {
+    const count = toNumber(args[0]!);
+    const collection = args[1]!;
+    if (count < 0) return nil;
+
+    if (collection instanceof PageArrayValue) {
+      const result: PageContext[] = [];
+      const length = collection.value.length as int32;
+      const limit: int32 = count < length ? count : length;
+      for (let i = 0; i < limit; i++) result.push(collection.value[i]!);
+      return new PageArrayValue(result);
+    }
+
+    if (collection instanceof AnyArrayValue) {
+      const result: TemplateValue[] = [];
+      const length = collection.value.length as int32;
+      const limit: int32 = count < length ? count : length;
+      for (let i = 0; i < limit; i++) result.push(collection.value[i]!);
+      return new AnyArrayValue(result);
+    }
+
+    if (collection instanceof StringArrayValue) {
+      const result: string[] = [];
+      const length = collection.value.length as int32;
+      const limit: int32 = count < length ? count : length;
+      for (let i = 0; i < limit; i++) result.push(collection.value[i]!);
+      return new StringArrayValue(result);
+    }
+
+    return nil;
+  }
+
   if (name === "last" && args.length >= 2) {
     const n = toNumber(args[0]!);
     const collection = args[1]!;
@@ -163,6 +196,30 @@ export const callCollectionFunction = (
     return collection;
   }
 
+  if (name === "union" && args.length >= 2) {
+    const first = args[0]!;
+    const second = args[1]!;
+    if (first instanceof PageArrayValue && second instanceof PageArrayValue) {
+      const result = copyPageArray(first.value);
+      for (let index = 0; index < second.value.length; index++) {
+        const candidate = second.value[index]!;
+        let present = false;
+        for (let resultIndex = 0; resultIndex < result.length; resultIndex++) {
+          if (result[resultIndex] === candidate) {
+            present = true;
+            break;
+          }
+        }
+        if (!present) result.push(candidate);
+      }
+      return new PageArrayValue(result);
+    }
+    throw createTsumoError(
+      "TSUMO_TEMPLATE_UNION_COLLECTIONS_INVALID",
+      "collections.Union requires two page collections",
+    );
+  }
+
   if (name === "group" && args.length >= 2) {
     const key = toPlainString(args[0]!);
     const collection = args[1]!;
@@ -210,8 +267,8 @@ export const callCollectionFunction = (
     // Deterministic markup stripping for Tsumo's plainify subset.
     const sb = new StringBuilder();
     let inTag = false;
-    for (let i = 0; i < s.length; i++) {
-      const ch = substringCount(s, i, 1);
+    for (let i: int32 = 0; i < s.length; i = nextCodePointIndex(s, i)) {
+      const ch = codePointAtText(s, i);
       if (ch === "<") {
         inTag = true;
         continue;

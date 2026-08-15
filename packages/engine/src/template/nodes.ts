@@ -1,3 +1,4 @@
+import type { int32 } from "@tsonic/core/types.js";
 import type { Pipeline } from "./syntax/expressions.js";
 
 export class TemplateNode {}
@@ -86,12 +87,22 @@ export class WithNode extends TemplateNode {
   expr: Pipeline;
   body: TemplateNode[];
   elseBody: TemplateNode[];
+  sourceText: string;
+  sourceSegmentIndex: int32;
 
-  constructor(expr: Pipeline, body: TemplateNode[], elseBody: TemplateNode[]) {
+  constructor(
+    expr: Pipeline,
+    body: TemplateNode[],
+    elseBody: TemplateNode[],
+    sourceText: string,
+    sourceSegmentIndex: int32,
+  ) {
     super();
     this.expr = expr;
     this.body = body;
     this.elseBody = elseBody;
+    this.sourceText = sourceText;
+    this.sourceSegmentIndex = sourceSegmentIndex;
   }
 }
 

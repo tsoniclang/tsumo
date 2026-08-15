@@ -55,6 +55,8 @@ const isTextResourceMediaType = (mediaType: string): boolean =>
   mediaType.startsWith("text/") ||
   mediaType === "application/javascript" ||
   mediaType === "application/json" ||
+  mediaType === "application/yaml" ||
+  mediaType === "application/toml" ||
   mediaType === "application/xml" ||
   mediaType === "image/svg+xml";
 
@@ -98,11 +100,17 @@ export class ResourceManager {
     const normalized = normalizeResourceRelativePath(relativePath);
     if (normalized === "") return undefined;
     const identity = `get:${normalized}`;
-    const cached = this.cache.get(identity);
-    if (cached !== undefined) return cached;
-
     const fullPath = this.resolveAssetFullPath(normalized);
     if (fullPath === undefined) return undefined;
+    return this.loadFile(identity, fullPath, normalized);
+  }
+
+  loadFile(identity: string, fullPath: string, outputRelPath: string): Resource {
+    const cached = this.cache.get(identity);
+    if (cached !== undefined) return cached;
+    if (!File.Exists(fullPath)) {
+      throw createTsumoError("TSUMO_RESOURCE_SOURCE_MISSING", `Resource source file does not exist: ${fullPath}`);
+    }
     const bytes = readBinaryFile(fullPath);
     const extension = (Path.GetExtension(fullPath) ?? "").toLowerCase();
     const mediaType = resourceMediaTypeForExtension(extension);
@@ -121,7 +129,7 @@ export class ResourceManager {
       identity,
       fullPath,
       true,
-      normalized,
+      outputRelPath,
       bytes,
       text,
       new ResourceData(""),

@@ -18,6 +18,15 @@ export class PipelineExpr extends Expr {
   }
 }
 
+export class CommandExpr extends Expr {
+  command: Command;
+
+  constructor(command: Command) {
+    super();
+    this.command = command;
+  }
+}
+
 export class AccessExpr extends Expr {
   base: Expr;
   segments: string[];

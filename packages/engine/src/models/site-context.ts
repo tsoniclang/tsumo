@@ -1,4 +1,5 @@
 import { ParamValue } from "../params.js";
+import type { int32 } from "@tsonic/core/types.js";
 import type { DocsMountContext } from "../docs/models.js";
 import { LanguageConfig, LanguageContext } from "./language.js";
 import { MenuEntry } from "./menu-entry.js";
@@ -19,12 +20,14 @@ export class SiteContext {
   Params: Map<string, ParamValue>;
   Menus: Map<string, MenuEntry[]>;
   Taxonomies: Map<string, Map<string, PageContext[]>>;
+  taxonomyTermPages: Map<string, Map<string, PageContext>>;
   store: ScratchStore | undefined;
   pages: PageContext[];
   allPages: PageContext[];
   home: PageContext | undefined;
   docsMounts: DocsMountContext[];
   Sites: SiteContext[];
+  paginationSize: int32;
 
   constructor(config: SiteConfig, pages: PageContext[], languageRaw: LanguageConfig | undefined, allLanguagesRaw: LanguageContext[] | undefined) {
     this.title = config.title;
@@ -63,6 +66,7 @@ export class SiteContext {
     this.Params = config.Params;
     this.Menus = config.Menus;
     this.Taxonomies = new Map<string, Map<string, PageContext[]>>();
+    this.taxonomyTermPages = new Map<string, Map<string, PageContext>>();
     this.store = undefined;
     this.pages = pages;
     this.allPages = pages;
@@ -71,6 +75,7 @@ export class SiteContext {
     this.docsMounts = empty;
     const emptySites: SiteContext[] = [];
     this.Sites = emptySites;
+    this.paginationSize = 10;
   }
 
   getOutputFormats(): OutputFormat[] {

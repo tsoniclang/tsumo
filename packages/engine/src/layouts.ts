@@ -1,15 +1,18 @@
 import type { char } from "@tsonic/core/types.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import { isAbsolute, join, sep } from "node:path";
+import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { dirExists, fileExists, readTextFile } from "./fs.js";
-import { parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.js";
+import { PageValue, parseTemplate, Template, TemplateEnvironment, TemplateNode } from "./template/index.js";
 import type { ResourceManager } from "./resources.js";
 import { I18nStore } from "./i18n.js";
-import { ModuleMount } from "./models.js";
+import { ModuleMount, PageContext } from "./models.js";
 import type { SiteContext } from "./models.js";
 import { replaceText, trimStartChar } from "./utils/strings.js";
-import { RenderScope } from "./template/scope.js";
+import { RenderScope, RenderState } from "./template/scope.js";
 import type { TemplateValue } from "./template/values.js";
+import { getEmbeddedTemplateSource } from "./template/embedded-templates.js";
+import { normalizeTemplateRelativePath } from "./template/paths.js";
+import { pathContainsOrEquals } from "./utils/paths.js";
 
 export class LayoutEnvironment extends TemplateEnvironment {
   siteLayoutsDir: string;
@@ -20,8 +23,8 @@ export class LayoutEnvironment extends TemplateEnvironment {
   renderHookCache: Map<string, Template>;
   i18nStore: I18nStore;
 
-  constructor(siteDir: string, themeDirRaw: string | undefined, mountsRaw?: ModuleMount[]) {
-    super();
+  constructor(siteDir: string, themeDirRaw: string | undefined, mountsRaw?: ModuleMount[], buildTime?: Date) {
+    super(buildTime);
     const themeDir = themeDirRaw;
     const mounts = mountsRaw;
     this.siteLayoutsDir = join(siteDir, "layouts");
@@ -63,8 +66,9 @@ export class LayoutEnvironment extends TemplateEnvironment {
     context: TemplateValue,
     site: SiteContext,
     overrides: Map<string, TemplateNode[]>,
+    state?: RenderState,
   ): string {
-    return this.renderTemplate(parseTemplate(source), context, site, overrides);
+    return this.renderTemplate(parseTemplate(source), context, site, overrides, state);
   }
 
   renderTemplate(
@@ -72,26 +76,50 @@ export class LayoutEnvironment extends TemplateEnvironment {
     context: TemplateValue,
     site: SiteContext,
     overrides: Map<string, TemplateNode[]>,
+    state?: RenderState,
   ): string {
     const output = new StringBuilder();
-    const scope = new RenderScope(context, context, site, this, undefined);
+    const scope = new RenderScope(context, context, site, this, undefined, state, template.sourcePath);
     template.renderInto(output, scope, this, overrides);
     return output.ToString();
   }
 
+  renderTemplateDefinition(
+    nodes: TemplateNode[],
+    definitions: Map<string, TemplateNode[]>,
+    sourcePath: string | undefined,
+    context: TemplateValue,
+    site: SiteContext,
+    overrides: Map<string, TemplateNode[]>,
+    state?: RenderState,
+  ): string {
+    return this.renderTemplate(new Template(nodes, definitions, sourcePath), context, site, overrides, state);
+  }
+
   getTemplate(relPathRaw: string): Template | undefined {
     const slash = "/";
-    const relPath = trimStartChar(relPathRaw, slash).trim();
-    const withExt = relPath.endsWith(".html") ? relPath : relPath + ".html";
-    const relOs = replaceText(withExt, slash, `${sep}`);
+    const relPath = normalizeTemplateRelativePath(trimStartChar(relPathRaw, slash).trim());
+    const relativePaths: string[] = [];
+    if (extname(relPath) !== "") relativePaths.push(relPath);
+    else {
+      relativePaths.push(relPath + ".html");
+      relativePaths.push(relPath + ".htm");
+    }
 
-    const candidates: string[] = [join(this.siteLayoutsDir, relOs)];
+    const candidates: string[] = [];
+    for (let i = 0; i < relativePaths.length; i++) {
+      candidates.push(join(this.siteLayoutsDir, replaceText(relativePaths[i]!, slash, `${sep}`)));
+    }
     const themeLayoutsDir = this.themeLayoutsDir;
     if (themeLayoutsDir !== undefined) {
-      candidates.push(join(themeLayoutsDir, relOs));
+      for (let i = 0; i < relativePaths.length; i++) {
+        candidates.push(join(themeLayoutsDir, replaceText(relativePaths[i]!, slash, `${sep}`)));
+      }
     }
     for (let i = 0; i < this.mountedLayoutDirs.length; i++) {
-      candidates.push(join(this.mountedLayoutDirs[i]!, relOs));
+      for (let pathIndex = 0; pathIndex < relativePaths.length; pathIndex++) {
+        candidates.push(join(this.mountedLayoutDirs[i]!, replaceText(relativePaths[pathIndex]!, slash, `${sep}`)));
+      }
     }
 
     let resolved: string | undefined = undefined;
@@ -102,7 +130,24 @@ export class LayoutEnvironment extends TemplateEnvironment {
         break;
       }
     }
-    if (resolved === undefined) return undefined;
+    if (resolved === undefined) {
+      let embeddedPath: string | undefined = undefined;
+      let embeddedSource: string | undefined = undefined;
+      for (let i = 0; i < relativePaths.length; i++) {
+        const candidateSource = getEmbeddedTemplateSource(relativePaths[i]!);
+        if (candidateSource === undefined) continue;
+        embeddedPath = relativePaths[i]!;
+        embeddedSource = candidateSource;
+        break;
+      }
+      if (embeddedSource === undefined || embeddedPath === undefined) return undefined;
+      const embeddedKey = `embedded:${embeddedPath.toLowerCase()}`;
+      const embeddedCached = this.cache.get(embeddedKey);
+      if (embeddedCached !== undefined) return embeddedCached;
+      const embedded = parseTemplate(embeddedSource, embeddedKey);
+      this.cache.set(embeddedKey, embedded);
+      return embedded;
+    }
 
     const cached = this.cache.get(resolved);
     if (cached !== undefined) return cached;
@@ -111,6 +156,39 @@ export class LayoutEnvironment extends TemplateEnvironment {
     const tpl = parseTemplate(text, resolved);
     this.cache.set(resolved, tpl);
     return tpl;
+  }
+
+  getTemplateSourceRelativePath(sourcePath: string): string | undefined {
+    const source = resolve(sourcePath);
+    const roots: string[] = [this.siteLayoutsDir];
+    const themeLayoutsDir = this.themeLayoutsDir;
+    if (themeLayoutsDir !== undefined) roots.push(themeLayoutsDir);
+    for (let index = 0; index < this.mountedLayoutDirs.length; index++) {
+      roots.push(this.mountedLayoutDirs[index]!);
+    }
+
+    for (let index = 0; index < roots.length; index++) {
+      const root = resolve(roots[index]!);
+      if (!pathContainsOrEquals(root, source)) continue;
+      return normalizeTemplateRelativePath(replaceText(relative(root, source), "\\", "/"));
+    }
+    return undefined;
+  }
+
+  renderPageView(page: PageContext, viewRaw: string, state: RenderState | undefined): string | undefined {
+    const view = normalizeTemplateRelativePath(viewRaw);
+    if (view === "") return undefined;
+    const candidates: string[] = [];
+    if (page.type.trim() !== "") candidates.push(`${page.type}/${view}`);
+    if (page.section.trim() !== "" && page.section !== page.type) candidates.push(`${page.section}/${view}`);
+    candidates.push(`_default/${view}`);
+    candidates.push(view);
+    const templatePath = selectTemplatePath(this, candidates);
+    if (templatePath === undefined) return undefined;
+    const template = this.getTemplate(templatePath);
+    if (template === undefined) return undefined;
+    const context = new PageValue(page);
+    return this.renderTemplate(template, context, page.site, new Map<string, TemplateNode[]>(), state);
   }
 
   getShortcodeTemplate(name: string): Template | undefined {
@@ -185,3 +263,11 @@ export class LayoutEnvironment extends TemplateEnvironment {
     return this.i18nStore.translate(lang, key);
   }
 }
+
+const selectTemplatePath = (environment: LayoutEnvironment, candidates: string[]): string | undefined => {
+  for (let index = 0; index < candidates.length; index++) {
+    const candidate = candidates[index]!;
+    if (environment.getTemplate(candidate) !== undefined) return candidate;
+  }
+  return undefined;
+};

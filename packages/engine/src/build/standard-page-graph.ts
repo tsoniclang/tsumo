@@ -6,7 +6,7 @@ import { PageContext, SiteConfig, SiteContext, LanguageContext } from "../models
 import { ParamValue } from "../params.js";
 import { HtmlString } from "../utils/html.js";
 import { humanizeSlug } from "../utils/text.js";
-import { combineUrl } from "./layout.js";
+import { combineUrlPath } from "../utils/url-path.js";
 import { compareSitePaths, joinSitePath, splitSitePath } from "./site-routes.js";
 
 export class StandardPageGraph {
@@ -165,7 +165,7 @@ const createListPage = (
     section,
     pageType,
     slug,
-    route === "" ? "/" : combineUrl(routeSegments),
+    route === "" ? "/" : combineUrlPath(routeSegments),
     "",
     emptyHtml,
     emptyHtml,
@@ -278,6 +278,7 @@ export const createStandardPageGraph = (
     if (source !== undefined) {
       rawBodyByPage.set(page, source.rawBody);
       bundleSourceByPage.set(page, source.sourceDir);
+      page.resourceSourceDir = source.sourceDir;
     }
   }
   const home = listPagesByRoute.get("");
@@ -303,6 +304,7 @@ export const createStandardPageGraph = (
     const sourceDirectory = Path.GetDirectoryName(source.sourcePath);
     if (sourceDirectory !== undefined && sourceDirectory !== "") {
       bundleSourceByPage.set(contentPages[index]!, sourceDirectory);
+      contentPages[index]!.resourceSourceDir = sourceDirectory;
     }
   }
 

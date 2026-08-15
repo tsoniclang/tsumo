@@ -1,6 +1,13 @@
 import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
-import { indexOfTextFrom, substringCount, substringFrom } from "../../utils/strings.js";
+import {
+  codePointAtText,
+  indexOfTextFrom,
+  nextCodePointIndex,
+  substringCount,
+  substringFrom,
+} from "../../utils/strings.js";
+import { decodeTemplateStringLiteral } from "./string-literals.js";
 
 export class TemplateSegment {
   isAction: boolean;
@@ -28,28 +35,17 @@ class TemplatePosition {
 
 const positionAt = (source: string, offset: int32): TemplatePosition => {
   let line: int32 = 1;
-  let column: int32 = 1;
-  for (let index = 0; index < offset && index < source.length; index++) {
-    if (substringCount(source, index, 1) === "\n") {
-      line++;
-      column = 1;
-    } else {
-      column++;
-    }
+  let lineStart: int32 = 0;
+  let newline = indexOfTextFrom(source, "\n", 0);
+  while (newline >= 0 && newline < offset) {
+    line++;
+    lineStart = newline + 1;
+    newline = indexOfTextFrom(source, "\n", lineStart);
   }
-  return new TemplatePosition(line, column);
+  return new TemplatePosition(line, offset - lineStart + 1);
 };
 
-export const parseStringLiteral = (token: string): string | undefined => {
-  const value = token.trim();
-  if (value.length < 2) return undefined;
-  const first = substringCount(value, 0, 1);
-  const last = substringCount(value, value.length - 1, 1);
-  if ((first === "\"" || first === "'" || first === "`") && last === first) {
-    return substringCount(value, 1, value.length - 2);
-  }
-  return undefined;
-};
+export const parseStringLiteral = (token: string): string | undefined => decodeTemplateStringLiteral(token);
 
 export const sliceTokens = (tokens: string[], startIndex: int32): string[] => {
   const result: string[] = [];
@@ -122,9 +118,9 @@ export const scanTemplateSegments = (template: string, sourcePath?: string): Tem
 
     if (rightTrim) {
       while (offset < template.length) {
-        const character = substringCount(template, offset, 1);
+        const character = codePointAtText(template, offset);
         if (character !== " " && character !== "\t" && character !== "\r" && character !== "\n") break;
-        offset++;
+        offset = nextCodePointIndex(template, offset);
       }
     }
   }
@@ -142,14 +138,15 @@ export const tokenizeTemplateAction = (
   let offset: int32 = 0;
 
   while (offset < action.length) {
-    const character = substringCount(action, offset, 1);
+    const character = codePointAtText(action, offset);
+    const nextOffset = nextCodePointIndex(action, offset);
     if (character === " " || character === "\t" || character === "\r" || character === "\n") {
-      offset++;
+      offset = nextOffset;
       continue;
     }
     if (character === "|" || character === "(" || character === ")" || character === "," || character === "=") {
       tokens.push(character);
-      offset++;
+      offset = nextOffset;
       continue;
     }
     if (character === ":" && offset + 1 < action.length && substringCount(action, offset + 1, 1) === "=") {
@@ -160,14 +157,16 @@ export const tokenizeTemplateAction = (
     if (character === "\"" || character === "'" || character === "`") {
       const quote = character;
       const tokenStart = offset;
-      offset++;
+      offset = nextOffset;
       let escaped = false;
       while (offset < action.length) {
-        const current = substringCount(action, offset, 1);
-        if (!escaped && current === quote) break;
-        escaped = !escaped && current === "\\";
-        if (current !== "\\") escaped = false;
-        offset++;
+        const current = codePointAtText(action, offset);
+        if ((quote === "`" || !escaped) && current === quote) break;
+        if (quote !== "`") {
+          escaped = !escaped && current === "\\";
+          if (current !== "\\") escaped = false;
+        }
+        offset = nextCodePointIndex(action, offset);
       }
       if (offset >= action.length) {
         throw createTsumoError(
@@ -178,20 +177,20 @@ export const tokenizeTemplateAction = (
           column,
         );
       }
-      offset++;
+      offset = nextCodePointIndex(action, offset);
       tokens.push(substringCount(action, tokenStart, offset - tokenStart));
       continue;
     }
 
     const tokenStart = offset;
     while (offset < action.length) {
-      const current = substringCount(action, offset, 1);
+      const current = codePointAtText(action, offset);
       if (
         current === " " || current === "\t" || current === "\r" || current === "\n" ||
         current === "|" || current === "(" || current === ")" || current === "," || current === "="
       ) break;
       if (current === ":" && offset + 1 < action.length && substringCount(action, offset + 1, 1) === "=") break;
-      offset++;
+      offset = nextCodePointIndex(action, offset);
     }
     tokens.push(substringCount(action, tokenStart, offset - tokenStart));
   }

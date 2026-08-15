@@ -17,6 +17,7 @@ import { RenderScope } from "../scope.js";
 import { isTruthy, stringify } from "../runtime-helpers.js";
 import {
   AnyArrayValue,
+  DeferredTemplateValue,
   DictValue,
   DocsMountArrayValue,
   DocsMountValue,
@@ -141,9 +142,14 @@ export const renderTemplateNode = (
     const dot = context instanceof NilValue ? scope.dot : context;
     const invokedNodes = overrides.get(node.name) ?? defines.get(node.name);
     if (invokedNodes === undefined) {
-      throw createTsumoError("TSUMO_TEMPLATE_DEFINITION_MISSING", `Template definition '${node.name}' was not found`);
+      const invokedTemplate = environment.getTemplate(node.name);
+      if (invokedTemplate === undefined) {
+        throw createTsumoError("TSUMO_TEMPLATE_DEFINITION_MISSING", `Template definition '${node.name}' was not found`);
+      }
+      output.Append(environment.renderTemplate(invokedTemplate.withInheritedDefinitions(defines), dot, scope.site, overrides, scope.state));
+      return;
     }
-    const invokedScope = new RenderScope(dot, dot, scope.site, scope.env, undefined);
+    const invokedScope = new RenderScope(dot, dot, scope.site, scope.env, undefined, scope.state);
     renderTemplateNodes(invokedNodes, output, invokedScope, environment, overrides, defines);
     return;
   }
@@ -180,6 +186,21 @@ export const renderTemplateNode = (
   }
   if (node instanceof WithNode) {
     const value = evaluatePipeline(node.expr, scope, environment, overrides, defines);
+    if (value instanceof DeferredTemplateValue) {
+      const deferred = value as DeferredTemplateValue;
+      output.Append(environment.registerDeferredTemplate(
+        deferred,
+        node.body,
+        defines,
+        scope.templateSourcePath,
+        node.sourceText,
+        node.sourceSegmentIndex,
+        scope.site,
+        overrides,
+        scope.state,
+      ));
+      return;
+    }
     if (!isTruthy(value)) {
       renderTemplateNodes(node.elseBody, output, scope, environment, overrides, defines);
       return;

@@ -1,7 +1,6 @@
 import { Int32 } from "@tsonic/dotnet/System.js";
 import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
-import { PageContext } from "../../models.js";
 import { substringFrom } from "../../utils/strings.js";
 import type { TemplateEnvironment } from "../environment.js";
 import type { TemplateNode } from "../nodes.js";
@@ -9,10 +8,15 @@ import { parseStringLiteral } from "../parser/tokens.js";
 import { nil, toPlainString } from "../runtime-helpers.js";
 import type { RenderScope } from "../scope.js";
 import {
-  AnyArrayValue, BoolValue, NumberValue, PageArrayValue, PageValue,
-  ResourceValue, SiteValue, StringValue, TemplateValue,
+  AnyArrayValue, BoolValue, NumberValue, PageArrayValue, PageResourcesValue, PageValue,
+  ResourceValue, SitesArrayValue, SitesValue, SiteValue, StringValue, TemplateValue,
 } from "../values.js";
-import { copyPageArray, copyStringArray } from "./page-semantics.js";
+import {
+  callPageResourceCollectionMethod,
+  callPageResourcesMethod,
+  PageResourceCollectionValue,
+} from "./page-resource-semantics.js";
+import { callPageCollectionMethod, getPageTerms } from "./page-semantics.js";
 import { globMatch } from "./path-semantics.js";
 import { resolvePath } from "./property-semantics.js";
 import { isNumberLiteral } from "./scalar-semantics.js";
@@ -42,6 +46,21 @@ export const evalToken = (token: string, scope: RenderScope): TemplateValue => {
     }
     return value;
   }
+  if (t === "hugo.Sites") return new SitesArrayValue(scope.site.Sites);
+  if (t.startsWith("hugo.Sites.")) {
+    const segs = substringFrom(t, 11).split(".");
+    return resolvePath(new SitesValue(scope.site), segs, scope);
+  }
+  if (t === "page") {
+    const page = scope.state.currentPage;
+    return page === undefined ? nil : new PageValue(page);
+  }
+  if (t.startsWith("page.")) {
+    const page = scope.state.currentPage;
+    if (page === undefined) return nil;
+    const segs = substringFrom(t, 5).split(".");
+    return resolvePath(new PageValue(page), segs, scope);
+  }
   if (t === "site") return new SiteValue(scope.site);
   if (t.startsWith("site.")) {
     const segs = substringFrom(t, 5).split(".");
@@ -65,6 +84,18 @@ export const callMethod = (
   defines: Map<string, TemplateNode[]>,
 ): TemplateValue => {
   const method = methodName.toLowerCase();
+
+  if (receiver instanceof PageResourcesValue) {
+    const pageResources = receiver as PageResourcesValue;
+    const result = callPageResourcesMethod(pageResources, method, args);
+    if (result !== undefined) return result;
+  }
+
+  if (receiver instanceof PageResourceCollectionValue) {
+    const pageResources = receiver as PageResourceCollectionValue;
+    const result = callPageResourceCollectionMethod(pageResources, method, args);
+    if (result !== undefined) return result;
+  }
 
   // Handle AnyArrayValue methods (resource collections, page collections, etc.)
   if (receiver instanceof AnyArrayValue) {
@@ -105,7 +136,6 @@ export const callMethod = (
       return new AnyArrayValue(matchResult);
     }
 
-    // ByType - filter by media type (using path extension as heuristic)
     if (method === "bytype" && args.length >= 1) {
       const targetType = toPlainString(args[0]!).toLowerCase();
       const byTypeResult: TemplateValue[] = [];
@@ -125,65 +155,16 @@ export const callMethod = (
 
   // Handle PageArrayValue methods
   if (receiver instanceof PageArrayValue) {
-    const pageArr = receiver as PageArrayValue;
-    const pages: PageContext[] = pageArr.value;
-
-    // First - return first N pages
-    if (method === "first" && args.length >= 1) {
-      const n = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
-      const firstResult: PageContext[] = [];
-      for (let i = 0; i < pages.length && i < n; i++) firstResult.push(pages[i]!);
-      return new PageArrayValue(firstResult);
-    }
-
-    // Limit - same as First
-    if (method === "limit" && args.length >= 1) {
-      const n = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
-      const limitResult: PageContext[] = [];
-      for (let i = 0; i < pages.length && i < n; i++) limitResult.push(pages[i]!);
-      return new PageArrayValue(limitResult);
-    }
+    const result = callPageCollectionMethod(receiver as PageArrayValue, method, args);
+    if (result !== undefined) return result;
   }
 
   // Handle PageValue methods
   if (receiver instanceof PageValue) {
     const page = receiver.value;
 
-    // GetTerms - return term pages for a taxonomy
     if (method === "getterms" && args.length >= 1) {
-      const taxonomy = toPlainString(args[0]!).toLowerCase();
-      const site = page.site;
-      const termsResult: PageContext[] = [];
-
-      // Get the term values from the page (e.g., tags, categories)
-      // Currently only supports built-in tags and categories
-      if (taxonomy !== "tags" && taxonomy !== "categories") {
-        // Unsupported taxonomy - return empty result
-        return new PageArrayValue(termsResult);
-      }
-      let termValues: string[];
-      if (taxonomy === "tags") {
-        termValues = copyStringArray(page.tags);
-      } else {
-        termValues = copyStringArray(page.categories);
-      }
-      const allPages = copyPageArray(site.allPages);
-
-      // Find the term pages from site taxonomies
-      for (let i = 0; i < termValues.length; i++) {
-        const termValue = termValues[i]!;
-        // Look for the term page in site.allPages
-        const termSlug = termValue.toLowerCase().replaceAll(" ", "-");
-        for (let j = 0; j < allPages.length; j++) {
-          const p = allPages[j]!;
-          if (p.kind === "term" && p.section === taxonomy && p.slug === termSlug) {
-            termsResult.push(p);
-            break;
-          }
-        }
-      }
-
-      return new PageArrayValue(termsResult);
+      return getPageTerms(page, toPlainString(args[0]!));
     }
   }
 

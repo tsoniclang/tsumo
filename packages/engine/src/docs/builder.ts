@@ -1,7 +1,8 @@
 import { Path } from "@tsonic/dotnet/System.IO.js";
 import type { int32 } from "@tsonic/core/types.js";
 import { Markdown } from "@tsonic/dotnet/Markdig.js";
-import { combineUrl, renderWithBase, resolveThemeDir, selectTemplate } from "../build/layout.js";
+import { renderWithBase, resolveThemeDir, selectTemplate } from "../build/layout.js";
+import { combineUrlPath } from "../utils/url-path.js";
 import { SiteOutputPlan } from "../build/output-plan.js";
 import { loadSiteConfig } from "../config.js";
 import { createTsumoError } from "../diagnostics.js";
@@ -50,7 +51,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
   if (docsConfig.siteName.trim() !== "") config.title = docsConfig.siteName.trim();
 
   const themeDir = resolveThemeDir(siteDir, config, request.themesDir);
-  const env = new BuildEnvironment(siteDir, themeDir, outDir);
+  const env = new BuildEnvironment(siteDir, themeDir, outDir, [], request.buildTime);
   const outputPlan = new SiteOutputPlan();
 
   if (themeDir !== undefined) {
@@ -226,7 +227,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
       const urlParts: string[] = [];
       urlParts.push(mount.urlPrefix);
       for (let j = 0; j < routeSegments.length; j++) urlParts.push(routeSegments[j]!);
-      const relPermalink = combineUrl(urlParts);
+      const relPermalink = combineUrlPath(urlParts);
 
       const idxRoute = indexByDir.get(dirKey);
       if (idxRoute === undefined) {
@@ -429,6 +430,7 @@ export const buildDocsSite = (request: BuildRequest, docsLoaded: LoadedDocsConfi
     }
   }
 
+  outputPlan.applyDeferredTemplateResults(env.finalizeDeferredTemplates());
   outputPlan.render(outDir);
   return outputPlan.generatedOutputCount();
 };

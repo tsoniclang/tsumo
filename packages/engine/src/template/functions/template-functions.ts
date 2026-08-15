@@ -3,15 +3,49 @@ import { WebUtility } from "@tsonic/dotnet/System.Net.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { HtmlString, escapeHtml } from "../../utils/html.js";
 import { replaceText, substringFrom } from "../../utils/strings.js";
+import { PartialTemplateResolution } from "../environment.js";
 import {
-  BoolValue, HtmlValue, StringValue, TemplateValue,
+  BoolValue, DeferredTemplateValue, DictValue, HtmlValue, StringValue, TemplateValue,
 } from "../values.js";
 import { TemplateReturnSignal } from "../evaluation/return-signal.js";
 import { toTitleCase } from "../evaluation/page-semantics.js";
-import { convertGoDateLayoutToDotNet, parseDateTime } from "../evaluation/scalar-semantics.js";
-import { trimEndCharacter } from "../evaluation/serialization.js";
+import { formatDateTime } from "../evaluation/scalar-semantics.js";
+import { getPathExtension, trimEndCharacter } from "../evaluation/serialization.js";
+import { unmarshalTemplateData } from "../evaluation/structured-data.js";
 import { nil, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
+
+const renderPartialResolution = (
+  selected: PartialTemplateResolution,
+  contextValue: TemplateValue,
+  context: TemplateFunctionContext,
+): string => {
+  const environment = context.environment;
+  const scope = context.scope;
+  if (selected.kind === "definition") {
+    const definition = selected.definition;
+    if (definition === undefined) {
+      throw createTsumoError("TSUMO_TEMPLATE_PARTIAL_RESOLUTION_INVALID", "Template partial definition has no body");
+    }
+    return environment.renderTemplateDefinition(
+      definition,
+      context.defines,
+      selected.sourcePath,
+      contextValue,
+      scope.site,
+      context.overrides,
+      scope.state,
+    );
+  }
+  if (selected.kind === "template") {
+    const template = selected.template;
+    if (template === undefined) {
+      throw createTsumoError("TSUMO_TEMPLATE_PARTIAL_RESOLUTION_INVALID", "Template partial file has no template");
+    }
+    return environment.renderTemplate(template, contextValue, scope.site, context.overrides, scope.state);
+  }
+  throw createTsumoError("TSUMO_TEMPLATE_PARTIAL_RESOLUTION_INVALID", "Template partial resolution is invalid");
+};
 
 export const callTemplateFunctionFamily = (
   name: string,
@@ -20,17 +54,34 @@ export const callTemplateFunctionFamily = (
 ): TemplateValue | undefined => {
   const scope = context.scope;
   const env = context.environment;
-  const overrides = context.overrides;
+  if (name === "templates.defer" && args.length === 1 && args[0] instanceof DictValue) {
+    const options = (args[0] as DictValue).value;
+    for (const optionName of options.keys()) {
+      if (optionName !== "key" && optionName !== "data") {
+        throw createTsumoError(
+          "TSUMO_TEMPLATE_DEFER_OPTION_INVALID",
+          `templates.Defer does not support option '${optionName}'`,
+        );
+      }
+    }
+    const keyValue = options.get("key");
+    if (keyValue !== undefined && !(keyValue instanceof StringValue)) {
+      throw createTsumoError("TSUMO_TEMPLATE_DEFER_KEY_INVALID", "templates.Defer key must be a string");
+    }
+    const key = keyValue !== undefined ? (keyValue as StringValue).value : undefined;
+    return new DeferredTemplateValue(key, options.get("data") ?? nil);
+  }
   if (name === "partial" && args.length >= 1) {
     const nameArg = toPlainString(args[0]!);
     const ctx = args.length >= 2 ? args[1]! : scope.dot;
-    const tpl = env.getTemplate(`partials/${nameArg}`) ?? env.getTemplate(`_partials/${nameArg}`);
-    if (tpl === undefined) {
+    const selected = env.resolvePartialTemplate(nameArg, scope.templateSourcePath, context.defines);
+    if (selected === undefined) {
       throw createTsumoError("TSUMO_TEMPLATE_PARTIAL_MISSING", `Template partial '${nameArg}' was not found`);
     }
 
     try {
-      return new HtmlValue(new HtmlString(env.renderTemplate(tpl, ctx, scope.site, overrides)));
+      const rendered = renderPartialResolution(selected, ctx, context);
+      return new HtmlValue(new HtmlString(rendered));
     } catch (e) {
       if (e instanceof TemplateReturnSignal) return e.value;
       throw e;
@@ -40,18 +91,21 @@ export const callTemplateFunctionFamily = (
   if (name === "partialcached" && args.length >= 1) {
     const nameArg = toPlainString(args[0]!);
     const ctx = args.length >= 2 ? args[1]! : scope.dot;
-    const tpl = env.getTemplate(`partials/${nameArg}`) ?? env.getTemplate(`_partials/${nameArg}`);
-    if (tpl === undefined) {
+    const selected = env.resolvePartialTemplate(nameArg, scope.templateSourcePath, context.defines);
+    if (selected === undefined) {
       throw createTsumoError("TSUMO_TEMPLATE_PARTIAL_MISSING", `Template partial '${nameArg}' was not found`);
     }
 
     try {
-      return new HtmlValue(new HtmlString(env.renderTemplate(tpl, ctx, scope.site, overrides)));
+      const rendered = renderPartialResolution(selected, ctx, context);
+      return new HtmlValue(new HtmlString(rendered));
     } catch (e) {
       if (e instanceof TemplateReturnSignal) return e.value;
       throw e;
     }
   }
+
+  if (name === "unmarshal") return unmarshalTemplateData(args);
 
   // templates.Exists - check if a template exists
   if (name === "templates.exists" && args.length >= 1) {
@@ -123,10 +177,7 @@ export const callTemplateFunctionFamily = (
   if (name === "time.format" && args.length >= 2) {
     const layout = toPlainString(args[0]!);
     const input = toPlainString(args[1]!);
-    const parsed = parseDateTime(input);
-    if (parsed === undefined) return new StringValue("");
-    const fmt = convertGoDateLayoutToDotNet(layout);
-    return new StringValue(parsed.ToString(fmt));
+    return new StringValue(formatDateTime(input, layout) ?? "");
   }
 
   if (name === "path.base" && args.length >= 1) {
@@ -135,6 +186,32 @@ export const callTemplateFunctionFamily = (
     if (normalized === "") return new StringValue("");
     const idx = normalized.lastIndexOf("/");
     return idx >= 0 ? new StringValue(substringFrom(normalized, idx + 1)) : new StringValue(normalized);
+  }
+
+  if (name === "path.ext" && args.length >= 1) {
+    return new StringValue(getPathExtension(toPlainString(args[0]!)));
+  }
+
+  if (name === "path.join" && args.length >= 1) {
+    const segments: string[] = [];
+    let rooted = false;
+    for (let argumentIndex = 0; argumentIndex < args.length; argumentIndex++) {
+      const value = replaceText(toPlainString(args[argumentIndex]!), "\\", "/");
+      if (argumentIndex === 0 && value.startsWith("/")) rooted = true;
+      const parts = value.split("/");
+      for (let partIndex = 0; partIndex < parts.length; partIndex++) {
+        const part = parts[partIndex]!;
+        if (part === "" || part === ".") continue;
+        if (part === "..") {
+          if (segments.length > 0 && segments[segments.length - 1] !== "..") segments.pop();
+          else if (!rooted) segments.push(part);
+          continue;
+        }
+        segments.push(part);
+      }
+    }
+    const joined = segments.join("/");
+    return new StringValue(rooted ? "/" + joined : joined === "" ? "." : joined);
   }
 
   if (name === "title" && args.length >= 1) {

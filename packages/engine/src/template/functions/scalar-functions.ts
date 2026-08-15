@@ -17,7 +17,7 @@ import { HtmlString } from "../../utils/html.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { convertGoDateLayoutToDotNet, parseDateTime } from "../evaluation/scalar-semantics.js";
 import { parseUrl, toJson, trimEndCharacter, trimSlashes, trimStartCharacter } from "../evaluation/serialization.js";
-import { isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
+import { isTemplateMap, isTemplateSlice, isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
 
 export const callScalarFunction = (
@@ -26,6 +26,8 @@ export const callScalarFunction = (
   context: TemplateFunctionContext,
 ): TemplateValue | undefined => {
   const scope = context.scope;
+  if (name === "reflect.ismap" && args.length >= 1) return new BoolValue(isTemplateMap(args[0]!));
+  if (name === "reflect.isslice" && args.length >= 1) return new BoolValue(isTemplateSlice(args[0]!));
   if (name === "add" && args.length >= 2) {
     let sum: int32 = 0;
     for (let i = 0; i < args.length; i++) {
@@ -60,6 +62,10 @@ export const callScalarFunction = (
     const b = toNumber(args[1]!);
     if (b === 0) throw createTsumoError("TSUMO_TEMPLATE_MODULO_BY_ZERO", "Template modulo by zero is not valid");
     return new NumberValue(a % b);
+  }
+
+  if (name === "ceil" && args.length >= 1 && args[0] instanceof NumberValue) {
+    return args[0]!;
   }
 
   if (name === "newscratch") {
@@ -104,10 +110,24 @@ export const callScalarFunction = (
     return new BoolValue(s.includes(sub));
   }
 
+  if (name === "strings.repeat" && args.length >= 2) {
+    const count = toNumber(args[0]!);
+    if (count < 0) {
+      throw createTsumoError("TSUMO_TEMPLATE_STRING_REPEAT_INVALID", "strings.Repeat requires a non-negative repetition count");
+    }
+    return new StringValue(toPlainString(args[1]!).repeat(count));
+  }
+
   if (name === "strings.hasprefix" && args.length >= 2) {
     const s = toPlainString(args[0]!);
     const prefix = toPlainString(args[1]!);
     return new BoolValue(s.startsWith(prefix));
+  }
+
+  if (name === "strings.hassuffix" && args.length >= 2) {
+    const s = toPlainString(args[0]!);
+    const suffix = toPlainString(args[1]!);
+    return new BoolValue(s.endsWith(suffix));
   }
 
   if (name === "strings.trimprefix" && args.length >= 2) {
@@ -120,6 +140,16 @@ export const callScalarFunction = (
     const suffix = toPlainString(args[0]!);
     const s = toPlainString(args[1]!);
     return new StringValue(s.endsWith(suffix) ? substringCount(s, 0, s.length - suffix.length) : s);
+  }
+
+  if (name === "strings.trim" && args.length >= 2) {
+    const value = toPlainString(args[0]!);
+    const cutset = toPlainString(args[1]!);
+    let start = 0;
+    let end = value.length;
+    while (start < end && cutset.includes(substringCount(value, start, 1))) start++;
+    while (end > start && cutset.includes(substringCount(value, end - 1, 1))) end--;
+    return new StringValue(substringCount(value, start, end - start));
   }
 
 
@@ -146,6 +176,14 @@ export const callScalarFunction = (
   if (name === "trim" && args.length >= 1) {
     const v = args[0]!;
     return new StringValue(toPlainString(v).trim());
+  }
+
+  if (name === "chomp" && args.length >= 1) {
+    let value = toPlainString(args[0]!);
+    while (value.endsWith("\n") || value.endsWith("\r")) {
+      value = substringCount(value, 0, value.length - 1);
+    }
+    return new StringValue(value);
   }
 
   if (name === "replace" && args.length >= 3) {
@@ -219,6 +257,12 @@ export const callScalarFunction = (
     const v = args[0]!;
     const s = toPlainString(v);
     return new StringValue(Uri.EscapeDataString(s));
+  }
+
+  if (name === "querify" && args.length >= 2) {
+    return new StringValue(
+      Uri.EscapeDataString(toPlainString(args[0]!)) + "=" + Uri.EscapeDataString(toPlainString(args[1]!)),
+    );
   }
 
   if (name === "default" && args.length >= 2) {

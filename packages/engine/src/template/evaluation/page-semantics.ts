@@ -5,7 +5,7 @@ import { compareText, substringCount, substringFrom } from "../../utils/strings.
 import { toPlainString } from "../runtime-helpers.js";
 import { AnyArrayValue, DictValue, NumberValue, PageArrayValue, PageValue, StringArrayValue, StringValue, TemplateValue, VersionStringValue } from "../values.js";
 import type { RenderScope } from "../scope.js";
-import { parseDateTime } from "./scalar-semantics.js";
+import { formatDateTime } from "./scalar-semantics.js";
 import { createTsumoError } from "../../diagnostics.js";
 
 export const toTitleCase = (text: string): string => {
@@ -37,6 +37,30 @@ export const toPages = (value: TemplateValue): PageContext[] => {
   }
   const empty: PageContext[] = [];
   return empty;
+};
+
+export const getPageTerms = (page: PageContext, taxonomyRaw: string): PageArrayValue => {
+  const taxonomy = taxonomyRaw.trim().toLowerCase();
+  const memberships = page.site.Taxonomies.get(taxonomy);
+  const termPages = page.site.taxonomyTermPages.get(taxonomy);
+  const selected: PageContext[] = [];
+  if (memberships === undefined || termPages === undefined) return new PageArrayValue(selected);
+
+  for (const termSlug of termPages.keys()) {
+    const pages = memberships.get(termSlug);
+    if (pages === undefined) continue;
+    let includesPage = false;
+    for (let index = 0; index < pages.length; index++) {
+      if (pages[index] === page) {
+        includesPage = true;
+        break;
+      }
+    }
+    if (!includesPage) continue;
+    const termPage = termPages.get(termSlug);
+    if (termPage !== undefined) selected.push(termPage);
+  }
+  return new PageArrayValue(selected);
 };
 
 /**
@@ -122,6 +146,164 @@ export const copyPageArray = (pages: PageContext[]): PageContext[] => {
   for (let i = 0; i < pages.length; i++) copy.push(pages[i]!);
   return copy;
 };
+
+export const pagesWithKind = (pages: PageContext[], kind: string): PageContext[] => {
+  const selected: PageContext[] = [];
+  for (let index = 0; index < pages.length; index++) {
+    const page = pages[index]!;
+    if (page.kind === kind) selected.push(page);
+  }
+  return selected;
+};
+
+class RelatedPageCandidate {
+  page: PageContext;
+  score: int32;
+
+  constructor(page: PageContext, score: int32) {
+    this.page = page;
+    this.score = score;
+  }
+}
+
+const sharesExactText = (left: string[], right: string[]): boolean => {
+  for (let leftIndex = 0; leftIndex < left.length; leftIndex++) {
+    for (let rightIndex = 0; rightIndex < right.length; rightIndex++) {
+      if (left[leftIndex] === right[rightIndex]) return true;
+    }
+  }
+  return false;
+};
+
+const keywordValue = (page: PageContext): string | undefined => {
+  for (const name of page.Params.keys()) {
+    if (name.toLowerCase() !== "keywords") continue;
+    const value = page.Params.get(name);
+    return value?.stringValue;
+  }
+  return undefined;
+};
+
+const defaultRelatedPages = (pages: PageContext[], source: PageContext): PageArrayValue => {
+  const candidates: RelatedPageCandidate[] = [];
+  const sourceDate = pageDateMilliseconds(source);
+  const sourceKeyword = keywordValue(source);
+  for (let index = 0; index < pages.length; index++) {
+    const candidate = pages[index]!;
+    if (candidate === source) continue;
+    const candidateDate = pageDateMilliseconds(candidate);
+    if (sourceDate > 0 && candidateDate > sourceDate) continue;
+    const sharesTags = sharesExactText(source.tags, candidate.tags);
+    const candidateKeyword = keywordValue(candidate);
+    const sharesKeyword = sourceKeyword !== undefined && candidateKeyword === sourceKeyword;
+    const score: int32 = sharesKeyword ? (sharesTags ? 180 : 100) : sharesTags ? 80 : 0;
+    if (score >= 80) candidates.push(new RelatedPageCandidate(candidate, score));
+  }
+  for (let left = 0; left < candidates.length; left++) {
+    for (let right = left + 1; right < candidates.length; right++) {
+      const leftCandidate = candidates[left]!;
+      const rightCandidate = candidates[right]!;
+      const dateOrder = compareText(leftCandidate.page.date, rightCandidate.page.date);
+      const pathOrder = compareText(leftCandidate.page.relPermalink, rightCandidate.page.relPermalink);
+      if (leftCandidate.score > rightCandidate.score) continue;
+      if (leftCandidate.score === rightCandidate.score && dateOrder > 0) continue;
+      if (leftCandidate.score === rightCandidate.score && dateOrder === 0 && pathOrder <= 0) continue;
+      candidates[left] = rightCandidate;
+      candidates[right] = leftCandidate;
+    }
+  }
+  const result: PageContext[] = [];
+  for (let index = 0; index < candidates.length; index++) result.push(candidates[index]!.page);
+  return new PageArrayValue(result);
+};
+
+export const callPageCollectionMethod = (
+  collection: PageArrayValue,
+  method: string,
+  args: TemplateValue[],
+): TemplateValue | undefined => {
+  if ((method === "first" || method === "limit") && args.length >= 1) {
+    const count = args[0] instanceof NumberValue ? (args[0] as NumberValue).value : 0;
+    const result: PageContext[] = [];
+    for (let index = 0; index < collection.value.length && index < count; index++) result.push(collection.value[index]!);
+    return new PageArrayValue(result);
+  }
+  if (method === "groupbydate" && args.length >= 1) {
+    const order = args.length >= 2 ? toPlainString(args[1]!).trim().toLowerCase() : "desc";
+    if (order !== "asc" && order !== "desc") {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_PAGE_GROUP_ORDER_INVALID",
+        `Page date group order must be 'asc' or 'desc', received '${order}'`,
+      );
+    }
+    return groupPagesByDate(collection.value, toPlainString(args[0]!), order === "asc");
+  }
+  if (method === "related" && args.length === 1) {
+    const source = args[0]!;
+    if (source instanceof PageValue) return defaultRelatedPages(collection.value, (source as PageValue).value);
+    if (source instanceof DictValue) {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_RELATED_OPTIONS_UNSUPPORTED",
+        "Page collection Related options require a configured related-content model",
+      );
+    }
+  }
+  return undefined;
+};
+
+const pageDateMilliseconds = (page: PageContext): number => {
+  const parsed = Date.parse(page.date);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+export const groupPagesByDate = (
+  pages: PageContext[],
+  layout: string,
+  ascending: boolean,
+): AnyArrayValue => {
+  const ordered = copyPageArray(pages);
+  for (let left = 0; left < ordered.length; left++) {
+    for (let right = left + 1; right < ordered.length; right++) {
+      const leftDate = pageDateMilliseconds(ordered[left]!);
+      const rightDate = pageDateMilliseconds(ordered[right]!);
+      const swap = ascending ? leftDate > rightDate : leftDate < rightDate;
+      if (!swap) continue;
+      const temporary = ordered[left]!;
+      ordered[left] = ordered[right]!;
+      ordered[right] = temporary;
+    }
+  }
+
+  const groups = new Map<string, PageContext[]>();
+  const keys: string[] = [];
+  for (let index = 0; index < ordered.length; index++) {
+    const page = ordered[index]!;
+    const key = formatPageDate(page.date, layout);
+    if (key === undefined) continue;
+    let group = groups.get(key);
+    if (group === undefined) {
+      group = [];
+      groups.set(key, group);
+      keys.push(key);
+    }
+    group.push(page);
+  }
+
+  const result: TemplateValue[] = [];
+  for (let index = 0; index < keys.length; index++) {
+    const key = keys[index]!;
+    const group = groups.get(key);
+    if (group === undefined) continue;
+    const value = new Map<string, TemplateValue>();
+    value.set("Key", new StringValue(key));
+    value.set("Pages", new PageArrayValue(group));
+    result.push(new DictValue(value));
+  }
+  return new AnyArrayValue(result);
+};
+
+const formatPageDate = (value: string, layout: string): string | undefined =>
+  formatDateTime(value, layout);
 
 /**
  * Copy a string array to a new array.

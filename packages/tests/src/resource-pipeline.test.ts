@@ -54,6 +54,9 @@ export class ResourcePipelineTests {
   glob_matching_is_segment_exact(): void {
     Assert.True(resourceGlobMatches("images/**/*.png", "images/icons/logo.png"));
     Assert.True(resourceGlobMatches("*.css", "site.css"));
+    Assert.True(resourceGlobMatches("{*cover*,*thumbnail*}", "article-cover.png"));
+    Assert.True(resourceGlobMatches("{*cover*,*thumbnail*}", "article-thumbnail.png"));
+    Assert.True(!resourceGlobMatches("{*cover*,*thumbnail*}", "article-logo.png"));
     Assert.True(!resourceGlobMatches("*.css", "nested/site.css"));
     Assert.True(!resourceGlobMatches("images/*.png", "images/icons/logo.png"));
   }

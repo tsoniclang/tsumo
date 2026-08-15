@@ -1,7 +1,7 @@
 import type { int32 } from "@tsonic/core/types.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { substringFrom } from "../../utils/strings.js";
-import { AccessExpr, Command, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
+import { AccessExpr, Command, CommandExpr, Expr, Pipeline, PipelineExpr, TokenExpr } from "../syntax/expressions.js";
 
 class PipelineParser {
   tokens: string[];
@@ -43,6 +43,12 @@ class PipelineParser {
 
   parseCommand(): Command {
     const head = this.parseExpression();
+    if (head instanceof TokenExpr && head.token.trim().toLowerCase() === "return") {
+      if (this.index >= this.tokens.length || this.tokens[this.index] === "|" || this.tokens[this.index] === ")") {
+        return new Command(head, []);
+      }
+      return new Command(head, [new CommandExpr(this.parseCommand())]);
+    }
     const args: Expr[] = [];
     while (this.index < this.tokens.length) {
       const token = this.tokens[this.index]!;

@@ -1,27 +1,35 @@
-import { Buffer } from "node:buffer";
 import { Environment } from "@tsonic/dotnet/System.js";
-import { File, Path } from "@tsonic/dotnet/System.IO.js";
 import type { int32 } from "@tsonic/core/types.js";
+import { createTsumoError } from "../../diagnostics.js";
 import { HtmlString } from "../../utils/html.js";
-import { listFilesRecursive, readBinaryFile } from "../../fs.js";
-import { replaceText, substringCount, substringFrom } from "../../utils/strings.js";
+import { substringCount, substringFrom } from "../../utils/strings.js";
 import { renderMarkdownWithShortcodes } from "../../markdown.js";
+import { parseInt32 } from "../../utils/int32.js";
 import { ParamKind } from "../../params.js";
-import { Resource, ResourceData } from "../../resources.js";
 import {
-  AnyArrayValue, BoolValue, HtmlValue, MenuEntryValue, NumberValue,
-  OutputFormatValue, OutputFormatsValue, PageResourcesValue, PageValue, ResourceValue,
+  AnyArrayValue, BoolValue, DateValue, HtmlValue, MenuEntryValue, NumberValue,
+  OutputFormatValue, OutputFormatsValue, PageArrayValue, PageResourcesValue, PageValue, PaginatorValue,
   ScratchValue, SiteValue, StringValue, TemplateValue,
   VersionStringValue,
 } from "../values.js";
 import { ShortcodeValue } from "../contexts.js";
 import { TemplateReturnSignal } from "../evaluation/return-signal.js";
 import { evalToken } from "../evaluation/expression-semantics.js";
-import { globMatch, normalizeRelPath, resolvePageRef, tryGetPage } from "../evaluation/path-semantics.js";
-import { getSiteStore } from "../evaluation/property-semantics.js";
-import { trimEndCharacter, trimSlashes } from "../evaluation/serialization.js";
+import {
+  callPageResourceCollectionMethod,
+  callPageResourcesMethod,
+  PageResourceCollectionValue,
+} from "../evaluation/page-resource-semantics.js";
+import { formatDateTime } from "../evaluation/scalar-semantics.js";
+import { callPageCollectionMethod, getPageTerms, toPages } from "../evaluation/page-semantics.js";
+import { resolvePageRef, tryGetPage } from "../evaluation/path-semantics.js";
+import { getSiteStore } from "../evaluation/property-support.js";
+import { findParam, paramToTemplateValue } from "../evaluation/param-semantics.js";
+import { trimEndCharacter } from "../evaluation/serialization.js";
 import { nil, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
+
+const hugoCompatibilityVersion = "0.146.0";
 
 export const callContextFunction = (
   nameRaw: string,
@@ -71,11 +79,12 @@ export const callContextFunction = (
   const startsWithDot = trimmedName.startsWith(".");
   const startsWithDollar = trimmedName.startsWith("$");
   const startsWithSite = lowerName.startsWith("site.");
+  const startsWithPage = lowerName.startsWith("page.");
 
   let receiverToken: string | undefined = undefined;
   let methodName: string | undefined = undefined;
   if (lastDot > 0) {
-    if (startsWithDot || startsWithDollar || startsWithSite) {
+    if (startsWithDot || startsWithDollar || startsWithSite || startsWithPage) {
       receiverToken = substringCount(trimmedName, 0, lastDot);
       methodName = substringFrom(trimmedName, lastDot + 1).trim();
     }
@@ -114,78 +123,30 @@ export const callContextFunction = (
       }
     }
 
+    if (receiverValue instanceof DateValue) {
+      if (method === "format" && args.length >= 1) {
+        return new StringValue(formatDateTime(receiverValue.value, toPlainString(args[0]!)) ?? "");
+      }
+    }
+
     if (receiverValue instanceof PageResourcesValue) {
       const resources = receiverValue as PageResourcesValue;
-      const mgr = resources.manager;
-      const page = resources.page;
+      const result = callPageResourcesMethod(resources, method, args);
+      if (result !== undefined) return result;
+    }
 
-      if (method === "get" && args.length >= 1) {
-        const pageFile = page.File;
-        if (pageFile === undefined) return nil;
-        const raw = toPlainString(args[0]!);
-        const normalized = normalizeRelPath(raw);
-        if (normalized === "") return nil;
-
-        const pageDir = Path.GetDirectoryName(pageFile.Filename);
-        if (pageDir === undefined || pageDir.trim() === "") return nil;
-
-        const pageDirFull = Path.GetFullPath(pageDir);
-        const dirSeparator = `${Path.DirectorySeparatorChar}`;
-        const pagePrefix = pageDirFull.endsWith(dirSeparator) ? pageDirFull : pageDirFull + dirSeparator;
-        const slash = "/";
-        const osRel = replaceText(
-          normalized,
-          slash,
-          dirSeparator
-        );
-        const candidate = Path.GetFullPath(Path.Combine(pageDirFull, osRel));
-        if (!candidate.startsWith(pagePrefix) || !File.Exists(candidate)) return nil;
-
-        const bytes = readBinaryFile(candidate);
-        const ext = (Path.GetExtension(candidate) ?? "").toLowerCase();
-        const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".svg" || ext === ".html" || ext === ".txt";
-        const text = isText ? bytes.toString("utf8") : undefined;
-
-        const base = trimSlashes(page.relPermalink);
-        const outRel = base === "" ? normalized : trimEndCharacter(base, "/") + "/" + normalized;
-        const id = `pageRes:${page.relPermalink}:${normalized}`;
-        const res = new Resource(id, candidate, true, outRel, bytes, text, new ResourceData(""));
-        return new ResourceValue(mgr, res);
-      }
-
-      if (method === "getmatch" && args.length >= 1) {
-        const pageFile = page.File;
-        if (pageFile === undefined) return nil;
-        const pattern = toPlainString(args[0]!).trim();
-        if (pattern === "") return nil;
-
-        const pageDir = Path.GetDirectoryName(pageFile.Filename);
-        if (pageDir === undefined || pageDir.trim() === "") return nil;
-
-        const files = listFilesRecursive(pageDir, "*");
-        for (let i = 0; i < files.length; i++) {
-          const filePath = files[i]!;
-          const rel = filePath.length > 0 ? replaceText(Path.GetRelativePath(pageDir, filePath), "\\", "/") : "";
-          if (rel === "" || !globMatch(pattern, rel)) continue;
-
-          const bytes = readBinaryFile(filePath);
-          const ext = (Path.GetExtension(filePath) ?? "").toLowerCase();
-          const isText = ext === ".js" || ext === ".json" || ext === ".css" || ext === ".svg" || ext === ".html" || ext === ".txt";
-          const text = isText ? bytes.toString("utf8") : undefined;
-
-          const base = trimSlashes(page.relPermalink);
-          const outRel = base === "" ? rel : trimEndCharacter(base, "/") + "/" + rel;
-          const id = `pageRes:${page.relPermalink}:${rel}`;
-          const res = new Resource(id, filePath, true, outRel, bytes, text, new ResourceData(""));
-          return new ResourceValue(mgr, res);
-        }
-
-        return nil;
-      }
+    if (receiverValue instanceof PageResourceCollectionValue) {
+      const resources = receiverValue as PageResourceCollectionValue;
+      const result = callPageResourceCollectionMethod(resources, method, args);
+      if (result !== undefined) return result;
     }
 
     if (receiverValue instanceof SiteValue) {
       const site = (receiverValue as SiteValue).value;
+      if (method === "param" && args.length >= 1) {
+        const selected = findParam(site.Params, toPlainString(args[0]!));
+        return selected !== undefined ? paramToTemplateValue(selected) : nil;
+      }
       if (method === "getpage" && args.length >= 1) {
         const path = toPlainString(args[0]!);
         const p = tryGetPage(site, path);
@@ -196,11 +157,43 @@ export const callContextFunction = (
     if (receiverValue instanceof PageValue) {
       const page = (receiverValue as PageValue).value;
 
+      if (method === "getterms" && args.length >= 1) {
+        return getPageTerms(page, toPlainString(args[0]!));
+      }
+
+      if (method === "param" && args.length >= 1) {
+        const name = toPlainString(args[0]!);
+        const selected = findParam(page.Params, name) ?? findParam(page.site.Params, name);
+        return selected !== undefined ? paramToTemplateValue(selected) : nil;
+      }
+
+      if (method === "paginate" && args.length >= 1) {
+        const paginator = new PaginatorValue(
+          toPages(args[0]!),
+          scope.site.paginationSize,
+          scope.state.paginationPageNumber,
+          page.relPermalink,
+        );
+        return scope.selectPaginator(paginator);
+      }
+
       if (method === "renderstring" && args.length >= 1) {
         const markdown = toPlainString(args[0]!);
         // Use full markdown rendering with shortcodes and render hooks
         const result = renderMarkdownWithShortcodes(markdown, page, scope.site, env);
         return new HtmlValue(new HtmlString(result.html));
+      }
+
+      if (method === "render" && args.length >= 1) {
+        const view = toPlainString(args[0]!);
+        const rendered = env.renderPageView(page, view, scope.state);
+        if (rendered === undefined) {
+          throw createTsumoError(
+            "TSUMO_TEMPLATE_PAGE_RENDER_MISSING",
+            `Page render template '${view}' was not found for type '${page.type}' and section '${page.section}'`,
+          );
+        }
+        return new HtmlValue(new HtmlString(rendered));
       }
 
       if (method === "getpage" && args.length >= 1) {
@@ -293,6 +286,11 @@ export const callContextFunction = (
         }
       }
     }
+
+    if (receiverValue instanceof PageArrayValue) {
+      const result = callPageCollectionMethod(receiverValue as PageArrayValue, method, args);
+      if (result !== undefined) return result;
+    }
   }
 
   if (name === "return") {
@@ -303,9 +301,10 @@ export const callContextFunction = (
   if (name === "hugo.ismultilingual") return new BoolValue(false);
   if (name === "hugo.ismultihost") return new BoolValue(false);
   if (name === "hugo.workingdir") return new StringValue(Environment.CurrentDirectory);
-  // hugo.Version returns a VersionStringValue for semver-like comparison
-  // Report a high version to pass theme version gates (e.g., PaperMod requires >= 0.146.0)
-  if (name === "hugo.version") return new VersionStringValue("0.146.0");
+  if (name === "hugo.version") return new VersionStringValue(hugoCompatibilityVersion);
+  if (name === "hugo.generator") {
+    return new HtmlValue(new HtmlString(`<meta name="generator" content="Hugo ${hugoCompatibilityVersion}">`));
+  }
   // hugo.IsProduction returns true for production builds (default: true)
   if (name === "hugo.isproduction") return new BoolValue(env.isProduction);
   // hugo.IsExtended returns true if extended features (Sass, image processing) are available
@@ -314,6 +313,19 @@ export const callContextFunction = (
   if (name === "hugo.isserver") return new BoolValue(!env.isProduction);
   // hugo.IsDevelopment returns true in development mode
   if (name === "hugo.isdevelopment") return new BoolValue(!env.isProduction);
+  if (name === "hugo.environment") return new StringValue(env.isProduction ? "production" : "development");
+  if (name === "now.year") {
+    const year = parseInt32(substringCount(env.buildTime.toISOString(), 0, 4));
+    return new NumberValue(year ?? 0);
+  }
+  if (name === "now.format" && args.length >= 1) {
+    const rendered = formatDateTime(env.buildTime.toISOString(), toPlainString(args[0]!));
+    return rendered !== undefined ? new StringValue(rendered) : nil;
+  }
+  if (name === "getenv" && args.length >= 1) {
+    const value = env.getEnvironmentVariable(toPlainString(args[0]!));
+    return value !== undefined ? new StringValue(value) : new StringValue("");
+  }
 
   if (name === "i18n" && args.length >= 1) {
     const key = toPlainString(args[0]!);

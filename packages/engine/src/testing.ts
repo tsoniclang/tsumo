@@ -40,7 +40,7 @@ export { createStringResource, fingerprintResource } from "./resources/transform
 export { TemplateEnvironment } from "./template/environment.js";
 export { TemplateNode } from "./template/nodes.js";
 export { parseTemplate } from "./template/parser/parse-template.js";
-export { RenderScope } from "./template/scope.js";
+export { RenderScope, RenderState } from "./template/scope.js";
 export { Template } from "./template/template.js";
 export { HtmlString } from "./utils/html.js";
 export { contentTypeForPath } from "./utils/mime.js";
@@ -55,7 +55,11 @@ export {
   parseJson,
 } from "./utils/json.js";
 export {
+  DateValue,
   DictValue,
+  PageArrayValue,
+  PageDataValue,
+  PageValue,
   StringValue,
   TemplateValue,
 } from "./template/values.js";

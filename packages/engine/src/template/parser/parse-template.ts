@@ -43,17 +43,19 @@ class TemplateParser {
   index: int32;
   defines: Map<string, TemplateNode[]>;
   sourcePath: string | undefined;
+  sourceText: string;
 
-  constructor(segments: TemplateSegment[], sourcePath?: string) {
+  constructor(segments: TemplateSegment[], sourceText: string, sourcePath?: string) {
     this.segments = segments;
     this.index = 0;
     this.defines = new Map<string, TemplateNode[]>();
     this.sourcePath = sourcePath;
+    this.sourceText = sourceText;
   }
 
   parseRoot(): Template {
     const result = this.parseNodes(false, false, undefined);
-    return new Template(result.nodes, this.defines);
+    return new Template(result.nodes, this.defines, this.sourcePath);
   }
 
   parseIf(condition: Pipeline, opening: TemplateSegment): IfNode {
@@ -87,6 +89,7 @@ class TemplateParser {
   ): ParseNodesResult {
     const nodes: TemplateNode[] = [];
     while (this.index < this.segments.length) {
+      const sourceSegmentIndex = this.index;
       const segment = this.segments[this.index]!;
       this.index++;
       if (!segment.isAction) {
@@ -159,7 +162,13 @@ class TemplateParser {
           const elseResult = this.parseNodes(false, true, segment);
           elseNodes = elseResult.nodes;
         }
-        nodes.push(new WithNode(parsePipeline(sliceTokens(tokens, 1), this.sourcePath, segment.line, segment.column), body.nodes, elseNodes));
+        nodes.push(new WithNode(
+          parsePipeline(sliceTokens(tokens, 1), this.sourcePath, segment.line, segment.column),
+          body.nodes,
+          elseNodes,
+          this.sourceText,
+          sourceSegmentIndex,
+        ));
         continue;
       }
 
@@ -240,5 +249,5 @@ class TemplateParser {
 }
 
 export const parseTemplate = (template: string, sourcePath?: string): Template => {
-  return new TemplateParser(scanTemplateSegments(template, sourcePath), sourcePath).parseRoot();
+  return new TemplateParser(scanTemplateSegments(template, sourcePath), template, sourcePath).parseRoot();
 };

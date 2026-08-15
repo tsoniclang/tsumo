@@ -6,7 +6,7 @@ import type { TemplateValue } from "../values.js";
 import { callCollectionFunction } from "./collection-functions.js";
 import { callContextFunction } from "./context-functions.js";
 import { TemplateFunctionContext } from "./function-context.js";
-import { isKnownTemplateFunction } from "./function-registry.js";
+import { canonicalTemplateFunctionName, isKnownTemplateFunction } from "./function-registry.js";
 import { callResourceFunction } from "./resource-functions.js";
 import { callScalarFunction } from "./scalar-functions.js";
 import { callTemplateFunctionFamily } from "./template-functions.js";
@@ -19,7 +19,7 @@ export const callTemplateFunction = (
   overrides: Map<string, TemplateNode[]>,
   defines: Map<string, TemplateNode[]>,
 ): TemplateValue => {
-  const name = nameRaw.trim().toLowerCase();
+  const name = canonicalTemplateFunctionName(nameRaw.trim().toLowerCase());
   const context = new TemplateFunctionContext(scope, environment, overrides, defines);
   let result = callContextFunction(nameRaw, name, args, context);
   if (result !== undefined) return result;

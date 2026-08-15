@@ -2,17 +2,6 @@ import { isAbsolute, join } from "node:path";
 import { dirExists } from "../fs.js";
 import { LayoutEnvironment } from "../layouts.js";
 import { PageContext, SiteConfig } from "../models.js";
-import { trimEndChar, trimStartChar } from "../utils/strings.js";
-
-export const combineUrl = (parts: string[]): string => {
-  const slash = "/";
-  const cleaned = parts
-    .map((part: string) => trimEndChar(trimStartChar(part.trim(), slash), slash))
-    .filter((part: string) => part !== "");
-
-  if (cleaned.length === 0) return "/";
-  return "/" + cleaned.join("/") + "/";
-};
 
 export const resolveThemeDir = (siteDir: string, config: SiteConfig, themesDirRaw: string | undefined): string | undefined => {
   const configTheme = config.theme;

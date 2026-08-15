@@ -1,6 +1,7 @@
 export { TemplateValue, NilValue } from "./base.js";
 export { StringValue, BoolValue, NumberValue, HtmlValue } from "./primitives.js";
-export { PageValue, FileValue, PageArrayValue, PageResourcesValue } from "./page.js";
+export { DateValue } from "./date.js";
+export { PageValue, FileValue, PageArrayValue, PageDataValue, PageResourcesValue } from "./page.js";
 export { SiteValue, LanguageValue, SitesValue, SitesArrayValue } from "./site.js";
 export { ResourceDataValue, ResourceValue } from "./resources.js";
 export { StringArrayValue, AnyArrayValue } from "./arrays.js";
@@ -13,3 +14,5 @@ export { DictValue } from "./dict.js";
 export { ScratchStore, ScratchValue } from "./scratch.js";
 export { UrlParts, UrlValue } from "./url.js";
 export { VersionStringValue } from "./version.js";
+export { PaginatorValue } from "./pagination.js";
+export { DeferredTemplateValue } from "./deferred.js";
