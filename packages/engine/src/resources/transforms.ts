@@ -42,15 +42,18 @@ export const concatenateResources = (targetPath: string, resources: Resource[]):
 
 export const createStringResource = (name: string, content: string): Resource => {
   const normalizedName = normalizeResourceRelativePath(name);
+  const path = splitResourcePath(normalizedName);
+  const file = splitResourceFileName(path.fileName);
   const contentHash = createHash("sha256").update(Buffer.from(content, "utf8")).digest("hex");
   return new Resource(
     `fromString:${normalizedName}:${contentHash}`,
     undefined,
-    false,
-    undefined,
+    true,
+    normalizedName,
     Buffer.from(content, "utf8"),
     content,
     new ResourceData(""),
+    resourceMediaTypeForExtension(file.extension),
   );
 };
 

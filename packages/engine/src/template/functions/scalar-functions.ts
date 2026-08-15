@@ -2,14 +2,18 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { Uri } from "@tsonic/dotnet/System.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
-import { Regex } from "@tsonic/dotnet/System.Text.RegularExpressions.js";
 import type { int32 } from "@tsonic/core/types.js";
+import {
+  findRegularExpressionMatches,
+  findRegularExpressionSubmatches,
+  replaceRegularExpression,
+} from "../../utils/regular-expressions.js";
 import { compareText, replaceText, substringCount, substringFrom, trimStartChar } from "../../utils/strings.js";
 import { ensureTrailingSlash, humanizeSlug, slugify } from "../../utils/text.js";
 import { parseInt32 } from "../../utils/int32.js";
 import { renderMarkdown } from "../../markdown.js";
 import {
-  AnyArrayValue, BoolValue, DictValue, DocsMountArrayValue, HtmlValue,
+  AnyArrayValue, BoolValue, DateValue, DictValue, DocsMountArrayValue, HtmlValue,
   NavArrayValue, NumberValue, PageArrayValue, ScratchStore, ScratchValue, SitesArrayValue,
   StringArrayValue, StringValue, TemplateValue, UrlValue, VersionStringValue,
 } from "../values.js";
@@ -17,8 +21,9 @@ import { HtmlString } from "../../utils/html.js";
 import { createTsumoError } from "../../diagnostics.js";
 import { convertGoDateLayoutToDotNet, parseDateTime } from "../evaluation/scalar-semantics.js";
 import { parseUrl, toJson, trimEndCharacter, trimSlashes, trimStartCharacter } from "../evaluation/serialization.js";
-import { isTemplateMap, isTemplateSlice, isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
+import { isDefaultSet, isTemplateMap, isTemplateSlice, isTruthy, nil, toNumber, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
+import { anchorizeText, emojifyText } from "./text-compatibility.js";
 
 export const callScalarFunction = (
   name: string,
@@ -66,6 +71,34 @@ export const callScalarFunction = (
 
   if (name === "ceil" && args.length >= 1 && args[0] instanceof NumberValue) {
     return args[0]!;
+  }
+
+  if (name === "int" && args.length === 1) {
+    const value = args[0]!;
+    if (value instanceof NumberValue) return value;
+    const parsed = parseInt32(toPlainString(value));
+    if (parsed === undefined) {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_INTEGER_CONVERSION_INVALID",
+        `Template value '${toPlainString(value)}' is not a 32-bit integer`,
+      );
+    }
+    return new NumberValue(parsed);
+  }
+
+  if (name === "string" && args.length === 1) return new StringValue(toPlainString(args[0]!));
+
+  if ((name === "time" || name === "time.astime") && args.length === 1) {
+    const value = args[0]!;
+    if (value instanceof DateValue) return value;
+    const text = toPlainString(value);
+    if (Number.isNaN(Date.parse(text))) {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_TIME_INVALID",
+        `Template value '${text}' is not a valid date or time`,
+      );
+    }
+    return new DateValue(text);
   }
 
   if (name === "newscratch") {
@@ -158,6 +191,14 @@ export const callScalarFunction = (
     return new StringValue(slugify(toPlainString(v)));
   }
 
+  if (name === "anchorize" && args.length >= 1) {
+    return new StringValue(anchorizeText(toPlainString(args[0]!)));
+  }
+
+  if (name === "emojify" && args.length >= 1) {
+    return new HtmlValue(new HtmlString(emojifyText(toPlainString(args[0]!))));
+  }
+
   if (name === "humanize" && args.length >= 1) {
     const v = args[0]!;
     return new StringValue(humanizeSlug(toPlainString(v)));
@@ -197,8 +238,27 @@ export const callScalarFunction = (
     const pattern = toPlainString(args[0]!);
     const replacement = toPlainString(args[1]!);
     const s = toPlainString(args[2]!);
-    const regex = new Regex(pattern);
-    return new StringValue(regex.Replace(s, replacement));
+    const limit: int32 = args.length >= 4 ? toNumber(args[3]!) : -1;
+    return new StringValue(replaceRegularExpression(pattern, replacement, s, limit));
+  }
+
+  if (name === "findre" && args.length >= 2) {
+    const pattern = toPlainString(args[0]!);
+    const input = toPlainString(args[1]!);
+    const limit: int32 = args.length >= 3 ? toNumber(args[2]!) : -1;
+    return new StringArrayValue(findRegularExpressionMatches(pattern, input, limit));
+  }
+
+  if (name === "findresubmatch" && args.length >= 2) {
+    const pattern = toPlainString(args[0]!);
+    const input = toPlainString(args[1]!);
+    const limit: int32 = args.length >= 3 ? toNumber(args[2]!) : -1;
+    const matches = findRegularExpressionSubmatches(pattern, input, limit);
+    const result: TemplateValue[] = [];
+    for (let matchIndex = 0; matchIndex < matches.length; matchIndex++) {
+      result.push(new StringArrayValue(matches[matchIndex]!));
+    }
+    return new AnyArrayValue(result);
   }
 
   if (name === "truncate" && args.length >= 2) {
@@ -265,10 +325,12 @@ export const callScalarFunction = (
     );
   }
 
-  if (name === "default" && args.length >= 2) {
+  if (name === "default" && args.length === 1) return args[0]!;
+
+  if (name === "default" && args.length === 2) {
     const fallback = args[0]!;
     const v = args[1]!;
-    return isTruthy(v) ? v : fallback;
+    return isDefaultSet(v) ? v : fallback;
   }
 
   if (name === "len" && args.length >= 1) {

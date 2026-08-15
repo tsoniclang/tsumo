@@ -1,9 +1,9 @@
 export { TemplateValue, NilValue } from "./base.js";
 export { StringValue, BoolValue, NumberValue, HtmlValue } from "./primitives.js";
 export { DateValue } from "./date.js";
-export { PageValue, FileValue, PageArrayValue, PageDataValue, PageResourcesValue } from "./page.js";
+export { PageValue, FileValue, PageArrayValue, PageGroupValue, PageDataValue, PageResourcesValue } from "./page.js";
 export { SiteValue, LanguageValue, SitesValue, SitesArrayValue } from "./site.js";
-export { ResourceDataValue, ResourceValue } from "./resources.js";
+export { ResourceDataValue, ResourceNamespaceValue, ResourceValue } from "./resources.js";
 export { StringArrayValue, AnyArrayValue } from "./arrays.js";
 export { DocsMountValue, DocsMountArrayValue, NavItemValue, NavArrayValue } from "./docs.js";
 export { MenuEntryValue, MenuArrayValue, MenusValue } from "./menus.js";

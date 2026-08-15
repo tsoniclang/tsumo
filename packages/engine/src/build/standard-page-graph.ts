@@ -8,6 +8,7 @@ import { HtmlString } from "../utils/html.js";
 import { humanizeSlug } from "../utils/text.js";
 import { combineUrlPath } from "../utils/url-path.js";
 import { compareSitePaths, joinSitePath, splitSitePath } from "./site-routes.js";
+import { collectShortcodeNames } from "../shortcode.js";
 
 export class StandardPageGraph {
   site: SiteContext;
@@ -92,6 +93,7 @@ const createContentPages = (
       emptyPages,
       source.layout,
     );
+    page.shortcodeNames = collectShortcodeNames(source.rawBody, source.sourcePath);
     pages.push(page);
     rawBodyByPage.set(page, source.rawBody);
   }
@@ -276,6 +278,7 @@ export const createStandardPageGraph = (
     const page = createListPage(route, source, site, contentPages);
     listPagesByRoute.set(route, page);
     if (source !== undefined) {
+      page.shortcodeNames = collectShortcodeNames(source.rawBody, source.file.Filename);
       rawBodyByPage.set(page, source.rawBody);
       bundleSourceByPage.set(page, source.sourceDir);
       page.resourceSourceDir = source.sourceDir;

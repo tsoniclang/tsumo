@@ -148,7 +148,7 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
       const title = link.Title ?? "";
       const url = link.Url ?? "";
 
-      const ctx = new ImageHookContext(url, alt, title, alt, hookCtx.page);
+      const ctx = new ImageHookContext(url, alt, title, alt, hookCtx.page, hookCtx.page);
       const hookValue = new ImageHookValue(ctx);
       const hookHtml = renderImageHookTemplate(imageHook, hookValue, hookCtx.site, hookCtx.env);
 
@@ -162,7 +162,7 @@ const rewriteInlinesForHooks = (container: ContainerInline, hookCtx: RenderHookC
       const title = link.Title ?? "";
       const url = link.Url ?? "";
 
-      const ctx = new LinkHookContext(url, innerHtml, title, plainText, hookCtx.page);
+      const ctx = new LinkHookContext(url, innerHtml, title, plainText, hookCtx.page, hookCtx.page);
       const hookValue = new LinkHookValue(ctx);
       const hookHtml = renderLinkHookTemplate(linkHook, hookValue, hookCtx.site, hookCtx.env);
 
@@ -223,7 +223,7 @@ const rewriteBlocksForHooks = (containerBlock: ContainerBlock, hookCtx: RenderHo
     const innerHtml = inline != null ? renderInlineChildrenToHtml(inline) : "";
     const plainText = stripHtmlTags(innerHtml);
 
-    const ctx = new HeadingHookContext(heading.Level, innerHtml, plainText, anchor, hookCtx.page);
+    const ctx = new HeadingHookContext(heading.Level, innerHtml, plainText, anchor, hookCtx.page, hookCtx.page);
     const hookValue = new HeadingHookValue(ctx);
     const hookHtml = renderHeadingHookTemplate(headingHookTemplate, hookValue, hookCtx.site, hookCtx.env);
 

@@ -36,7 +36,12 @@ export const callTemplateFunction = (
     throw createTsumoError(
       "TSUMO_TEMPLATE_FUNCTION_ARGUMENTS_INVALID",
       `Template function '${nameRaw}' does not accept the supplied arguments`,
+      context.scope.templateSourcePath,
     );
   }
-  throw createTsumoError("TSUMO_TEMPLATE_UNKNOWN_FUNCTION", `Unknown template function: ${nameRaw}`);
+  throw createTsumoError(
+    "TSUMO_TEMPLATE_UNKNOWN_FUNCTION",
+    `Unknown template function: ${nameRaw}`,
+    context.scope.templateSourcePath,
+  );
 };

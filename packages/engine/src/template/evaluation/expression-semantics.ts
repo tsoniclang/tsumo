@@ -9,14 +9,16 @@ import { nil, toPlainString } from "../runtime-helpers.js";
 import type { RenderScope } from "../scope.js";
 import {
   AnyArrayValue, BoolValue, NumberValue, PageArrayValue, PageResourcesValue, PageValue,
-  ResourceValue, SitesArrayValue, SitesValue, SiteValue, StringValue, TemplateValue,
+  ResourceNamespaceValue, ResourceValue, SitesArrayValue, SitesValue, SiteValue, StringValue, TemplateValue,
 } from "../values.js";
+import { TemplateFunctionContext } from "../functions/function-context.js";
+import { callResourceFunction } from "../functions/resource-functions.js";
 import {
   callPageResourceCollectionMethod,
   callPageResourcesMethod,
   PageResourceCollectionValue,
 } from "./page-resource-semantics.js";
-import { callPageCollectionMethod, getPageTerms } from "./page-semantics.js";
+import { callPageCollectionMethod, getPageTerms, pageHasShortcode } from "./page-semantics.js";
 import { globMatch } from "./path-semantics.js";
 import { resolvePath } from "./property-semantics.js";
 import { isNumberLiteral } from "./scalar-semantics.js";
@@ -51,6 +53,12 @@ export const evalToken = (token: string, scope: RenderScope): TemplateValue => {
     const segs = substringFrom(t, 11).split(".");
     return resolvePath(new SitesValue(scope.site), segs, scope);
   }
+  if (t === "hugo.Data") return scope.env.getSiteData();
+  if (t.startsWith("hugo.Data.")) {
+    const segs = substringFrom(t, "hugo.Data.".length).split(".");
+    return resolvePath(scope.env.getSiteData(), segs, scope);
+  }
+  if (t === "resources") return new ResourceNamespaceValue();
   if (t === "page") {
     const page = scope.state.currentPage;
     return page === undefined ? nil : new PageValue(page);
@@ -70,6 +78,7 @@ export const evalToken = (token: string, scope: RenderScope): TemplateValue => {
   if (lit !== undefined) return new StringValue(lit);
   if (t === "true") return new BoolValue(true);
   if (t === "false") return new BoolValue(false);
+  if (t === "nil") return nil;
   if (isNumberLiteral(t)) return new NumberValue(Int32.Parse(t));
   return new StringValue(t);
 };
@@ -84,6 +93,15 @@ export const callMethod = (
   defines: Map<string, TemplateNode[]>,
 ): TemplateValue => {
   const method = methodName.toLowerCase();
+
+  if (receiver instanceof ResourceNamespaceValue) {
+    const result = callResourceFunction(
+      `resources.${method}`,
+      args,
+      new TemplateFunctionContext(scope, env, overrides, defines),
+    );
+    if (result !== undefined) return result;
+  }
 
   if (receiver instanceof PageResourcesValue) {
     const pageResources = receiver as PageResourcesValue;
@@ -165,6 +183,9 @@ export const callMethod = (
 
     if (method === "getterms" && args.length >= 1) {
       return getPageTerms(page, toPlainString(args[0]!));
+    }
+    if (method === "hasshortcode" && args.length === 1) {
+      return new BoolValue(pageHasShortcode(page, toPlainString(args[0]!)));
     }
   }
 

@@ -5,8 +5,11 @@ import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 
 import {
+  collectShortcodeNames,
   DateValue,
   DictValue,
+  I18nStore,
+  ParamValue,
   PageContext,
   PageValue,
   parseShortcodes,
@@ -26,6 +29,16 @@ export class TemplateRuntimeTests {
   parser_and_evaluator_render_control_flow_and_pipeline(): void {
     const source = "{{ if true }}yes{{ else }}no{{ end }}|{{ \"ab\" | upper }}";
     Assert.Equal("yes|AB", render(source));
+    Assert.Equal(
+      "inner|outer|empty|chosen:chosen|changed|changed",
+      render(
+        "{{ $value := \"outer\" }}" +
+        "{{ if $value := \"inner\" }}{{ $value }}{{ end }}|{{ $value }}|" +
+        "{{ with $selected := \"\" }}invalid{{ else }}{{ if eq $selected \"\" }}empty{{ end }}{{ end }}|" +
+        "{{ with $selected := \"chosen\" }}{{ $selected }}:{{ . }}{{ end }}|" +
+        "{{ if $value = \"changed\" }}{{ $value }}{{ end }}|{{ $value }}",
+      ),
+    );
   }
 
   collection_functions_preserve_exact_split_segments(): void {
@@ -33,10 +46,43 @@ export class TemplateRuntimeTests {
     Assert.Equal("a|b", render("{{ delimit (split \"ab\" \"\") \"|\" }}"));
   }
 
+  collection_union_accepts_slices_and_nil_without_collapsing_distinct_values(): void {
+    Assert.Equal(
+      "a,b,c|a,b|a,b|",
+      render(
+        "{{ delimit (union (slice \"a\" \"b\") (slice \"b\" \"c\")) \",\" }}|" +
+        "{{ delimit (union (slice \"a\" \"b\") nil) \",\" }}|" +
+        "{{ delimit (union nil (slice \"a\" \"b\")) \",\" }}|" +
+        "{{ delimit (union nil nil) \",\" }}",
+      ),
+    );
+    Assert.Equal(
+      "one,three",
+      render("{{ delimit (collections.Complement (slice \"two\") (slice \"one\" \"two\" \"three\")) \",\" }}"),
+    );
+  }
+
+  page_has_shortcode_uses_the_exact_parsed_page_inventory(): void {
+    const site = createSite();
+    const page = createPage(site, "Home", "", "home");
+    page.shortcodeNames = collectShortcodeNames(
+      "{{< outer >}}{{< inner / >}}{{< /outer >}}\n```text\n{{< ignored >}}\n```",
+      "content/home.md",
+    );
+    Assert.Equal(
+      "true|true|false|false",
+      renderWithRoot(
+        "{{ .HasShortcode \"outer\" }}|{{ .HasShortcode \"inner\" }}|" +
+        "{{ .HasShortcode \"ignored\" }}|{{ .HasShortcode \"Outer\" }}",
+        new PageValue(page),
+      ),
+    );
+  }
+
   template_namespaces_expose_exact_string_and_hugo_functions(): void {
     Assert.Equal("=====", render("{{ strings.Repeat 5 \"=\" }}"));
     Assert.Equal(
-      '<meta name="generator" content="Hugo 0.146.0">',
+      '<meta name="generator" content="Hugo 0.146.2">',
       render("{{ hugo.Generator }}"),
     );
     Assert.Equal(
@@ -47,11 +93,16 @@ export class TemplateRuntimeTests {
     );
     Assert.Equal("a,b", render("{{ delimit (collections.First 2 (collections.Slice \"a\" \"b\" \"c\")) \",\" }}"));
     Assert.Equal("fallback", render("{{ compare.Default \"fallback\" \"\" }}"));
+    Assert.Equal("false|only|42", render("{{ default \"fallback\" false }}|{{ default \"only\" }}|{{ default 42 0 }}"));
+    Assert.Equal("nil", render("{{ if nil }}value{{ else }}nil{{ end }}"));
     Assert.Equal("line", render("{{ chomp \"line\\n\" }}"));
     Assert.Equal("2024", render("{{ now.Year }}"));
     Assert.Equal("configured", render("{{ getenv \"TSUMO_TEST_VALUE\" }}"));
     Assert.Equal("", render("{{ getenv \"TSUMO_MISSING_VALUE\" }}"));
+    Assert.Equal("true|false", render("{{ fileExists \"static/existing.css\" }}|{{ fileExists \"static/missing.css\" }}"));
     Assert.Equal("true", render("{{ collections.IsSet (dict \"key\" \"value\") \"key\" }}"));
+    Assert.Equal("translated", render("{{ T \"translated\" }}"));
+    Assert.Equal("2026|42", render("{{ int \"2026\" }}|{{ string 42 }}"));
     Assert.Equal("true|false", render("{{ collections.In (collections.Slice \"first\" \"second\") \"second\" }}|{{ collections.In (collections.Slice \"first\") \"second\" }}"));
     Assert.Equal("first,second", render("{{ delimit (transform.Unmarshal \"- first\\n- second\") \",\" }}"));
     Assert.Equal("value", render("{{ (transform.Unmarshal \"{\\\"key\\\":\\\"value\\\"}\").key }}"));
@@ -131,6 +182,100 @@ export class TemplateRuntimeTests {
       );
       Assert.Equal(
         "/css/main.css|body { color: red; }",
+        environment.renderTemplate(template, new PageValue(page), site, new Map()),
+      );
+      const namespaceTemplate = parseTemplate(
+        "{{ $namespace := resources }}" +
+        "{{ $copy := $namespace.FromString \"css/copy.css\" \"p { color: blue; }\" }}" +
+        "{{ $copy.RelPermalink }}|{{ $copy.Content }}",
+      );
+      Assert.Equal(
+        "/css/copy.css|p { color: blue; }",
+        environment.renderTemplate(namespaceTemplate, new PageValue(page), site, new Map()),
+      );
+    } finally {
+      deleteTestDirectory(root);
+    }
+  }
+
+  i18n_layers_parse_structured_formats_and_render_plural_context(): void {
+    const root = createTestDirectory("template-i18n");
+    const themeDirectory = Path.Combine(root, "theme");
+    const siteDirectory = Path.Combine(root, "site");
+    try {
+      Directory.CreateDirectory(themeDirectory);
+      Directory.CreateDirectory(siteDirectory);
+      File.WriteAllText(
+        Path.Combine(themeDirectory, "en.toml"),
+        "toggleMenu = \"Theme Menu\"\n" +
+        "[footer]\n" +
+        "builtWith = \"Built with {{ .Generator }}\"\n" +
+        "[list.page]\n" +
+        "one = \"{{ .Count }} page\"\n" +
+        "other = \"{{ .Count }} pages\"\n",
+      );
+      File.WriteAllText(
+        Path.Combine(themeDirectory, "fr.json"),
+        "{\"local\":\"Locale française\"}",
+      );
+      File.WriteAllText(
+        Path.Combine(siteDirectory, "en.yaml"),
+        "- id: toggleMenu # site override\n" +
+        "  translation: Site Menu\n" +
+        "- id: legacy\n" +
+        "  translation: Legacy {{ .Name }}\n" +
+        "- id: continued\n" +
+        "  translation:\n" +
+        "    \"Continued scalar\"\n" +
+        "- id: folded\n" +
+        "  translation: >-\n" +
+        "    Folded\n" +
+        "    scalar\n" +
+        "- id: literal\n" +
+        "  translation: |\n" +
+        "    Literal\n" +
+        "    scalar\n" +
+        "- id: escapedQuoted\n" +
+        "  translation:\n" +
+        "    \"Generated with " + "\\" + "\n" +
+        "    exact continuity.\"\n" +
+        "- id: foldedQuoted\n" +
+        "  translation: \"Folded\n" +
+        "  quoted scalar\"\n" +
+        "- id: singleQuoted\n" +
+        "  translation:\n" +
+        "    'Single\n" +
+        "    quoted ''value'''\n" +
+        "- id: plainWithQuotes\n" +
+        "  translation: Tagged '{{ . }}'\n",
+      );
+
+      const store = new I18nStore();
+      store.loadFromDir(themeDirectory);
+      store.loadFromDir(siteDirectory);
+      Assert.Equal("Site Menu", store.translate("en-US", "toggleMenu"));
+      Assert.Equal("{{ .Count }} page", store.translate("en", "list.page", 1));
+      Assert.Equal("{{ .Count }} pages", store.translate("en", "list.page", 2));
+      Assert.Equal("Locale française", store.translate("fr-FR", "local"));
+      Assert.Equal("Folded scalar", store.translate("en", "folded"));
+      Assert.Equal("Literal\nscalar\n", store.translate("en", "literal"));
+      Assert.Equal("Generated with exact continuity.", store.translate("en", "escapedQuoted"));
+      Assert.Equal("Folded quoted scalar", store.translate("en", "foldedQuoted"));
+      Assert.Equal("Single quoted 'value'", store.translate("en", "singleQuoted"));
+      Assert.Equal("Tagged '{{ . }}'", store.translate("en", "plainWithQuotes"));
+
+      const environment = new TestTemplateEnvironment();
+      environment.i18nStore = store;
+      const site = createSite();
+      const page = createPage(site, "Home", "", "home");
+      const template = parseTemplate(
+        "{{ T \"toggleMenu\" }}|" +
+        "{{ T \"footer.builtWith\" (dict \"Generator\" \"<strong>Tsumo</strong>\") | safeHTML }}|" +
+        "{{ T \"list.page\" 1 }}|{{ T \"list.page\" 2 }}|" +
+        "{{ T \"legacy\" (dict \"Name\" \"Ada\") }}|{{ T \"continued\" }}",
+      );
+      Assert.Equal(
+        "Site Menu|Built with <strong>Tsumo</strong>|1 page|2 pages|Legacy Ada|Continued scalar",
         environment.renderTemplate(template, new PageValue(page), site, new Map()),
       );
     } finally {
@@ -213,23 +358,60 @@ export class TemplateRuntimeTests {
     );
   }
 
+  template_text_compatibility_functions_are_deterministic(): void {
+    Assert.Equal("a-b---c", render("{{ anchorize \"a b   c\" }}"));
+    Assert.Equal("-a-b--c-", render("{{ anchorize \"< a, b, & c >\" }}"));
+    Assert.Equal("maingo|hugö", render("{{ anchorize \"main.go\" }}|{{ anchorize \"Hugö\" }}"));
+    Assert.Equal("I ❤️ Tsumo :unknown:", render("{{ emojify \"I :heart: Tsumo :unknown:\" }}"));
+  }
+
+  template_regular_expression_functions_preserve_matches_groups_and_limits(): void {
+    Assert.Equal("ab,ac", render("{{ delimit (findRE `a.` `ab ac ad` 2) `,` }}"));
+    Assert.Equal(
+      "item42|item|42",
+      render("{{ range findRESubmatch `([a-z]+)([0-9]+)` `item42` }}{{ delimit . `|` }}{{ end }}"),
+    );
+    Assert.Equal("x2 item3", render("{{ replaceRE `item` `x` `item2 item3` 1 }}"));
+  }
+
   date_page_data_and_render_methods_use_typed_context(): void {
     Assert.Equal("2024-01-02", renderWithRoot("{{ .Format \"2006-01-02\" }}", new DateValue("2024-01-02T03:04:05Z")));
 
     const site = createSite();
     const older = createPage(site, "Older", "2022-04-01T00:00:00Z", "page");
     const newer = createPage(site, "Newer", "2024-06-01T00:00:00Z", "page");
+    older.Params.set("weight", ParamValue.number(20));
+    newer.Params.set("weight", ParamValue.number(10));
     const root = createPage(site, "Home", "", "home");
     root.pages = [older, newer];
     const section = createPage(site, "Section", "", "section");
     root.pages.push(section);
+    site.pages = root.pages;
+    site.allPages = root.pages;
+    Assert.Equal(
+      "value",
+      renderWithRoot("{{ .Scratch.Set \"key\" \"value\" }}{{ .Scratch.Get \"key\" }}", new PageValue(root)),
+    );
     Assert.Equal(
       "2024:Newer;2022:Older;",
       renderWithRoot("{{ range .Data.Pages.GroupByDate \"2006\" }}{{ .Key }}:{{ range .Pages }}{{ .Title }}{{ end }};{{ end }}", new PageValue(root)),
     );
+    Assert.Equal(
+      "0:Section;10:Newer;20:Older;|20:Older;10:Newer;0:Section;|SectionNewerOlder",
+      renderWithRoot(
+        "{{ range .Data.Pages.GroupBy \"Weight\" }}{{ .Key }}:{{ range .ByTitle }}{{ .Title }}{{ end }};{{ end }}|" +
+        "{{ range .Data.Pages.GroupBy \"Weight\" \"desc\" }}{{ .Key }}:{{ range .Pages }}{{ .Title }}{{ end }};{{ end }}|" +
+        "{{ range .Data.Pages.ByWeight }}{{ .Title }}{{ end }}",
+        new PageValue(root),
+      ),
+    );
     Assert.Equal("3", renderWithRoot("{{ len (union .RegularPages .Sections) }}", new PageValue(root)));
 
     const environment = new TestTemplateEnvironment();
+    Assert.Equal(
+      "2024",
+      environment.renderTemplate(parseTemplate("{{ .Site.Lastmod.Format \"2006\" }}"), new PageValue(root), site, new Map()),
+    );
     environment.templates.set("_partials/templates/_funcs/child", parseTemplate("child={{ . }}", "_partials/templates/_funcs/child.html"));
     const parent = parseTemplate("{{ partial \"_funcs/child\" \"exact\" }}", "_partials/templates/parent.html");
     const parentScope = new RenderScope(new PageValue(root), new PageValue(root), site, environment, undefined, undefined, parent.sourcePath);
@@ -345,6 +527,12 @@ export class TemplateRuntimeTests {
     Assert.Equal("TSUMO_TEMPLATE_ACTION_UNCLOSED", located.code);
     Assert.Equal(1, located.line);
     Assert.Equal(3, located.column);
+
+    const largeTemplateLines: string[] = [];
+    for (let index = 0; index < 2000; index++) {
+      largeTemplateLines.push(`line ${index}: {{ print \"${index}\" }}`);
+    }
+    Assert.True(parseTemplate(largeTemplateLines.join("\n"), "layouts/large.html") !== undefined);
   }
 
   dictionary_range_order_is_deterministic(): void {
@@ -465,14 +653,19 @@ export class TemplateRuntimeTests {
 
 attribute<TemplateRuntimeTests>().method((target) => target.parser_and_evaluator_render_control_flow_and_pipeline).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.collection_functions_preserve_exact_split_segments).add(FactAttribute);
+attribute<TemplateRuntimeTests>().method((target) => target.collection_union_accepts_slices_and_nil_without_collapsing_distinct_values).add(FactAttribute);
+attribute<TemplateRuntimeTests>().method((target) => target.page_has_shortcode_uses_the_exact_parsed_page_inventory).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.template_namespaces_expose_exact_string_and_hugo_functions).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.return_evaluates_its_complete_value_expression).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.hugo_sites_exposes_the_checked_site_graph).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.related_pages_use_exact_default_keyword_and_tag_evidence).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.css_build_applies_its_closed_resource_options).add(FactAttribute);
+attribute<TemplateRuntimeTests>().method((target) => target.i18n_layers_parse_structured_formats_and_render_plural_context).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.deferred_templates_finalize_after_normal_render_and_share_keyed_results).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.deferred_templates_distinguish_authored_occurrences_with_the_same_key).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.template_string_literals_decode_exact_interpreted_and_raw_forms).add(FactAttribute);
+attribute<TemplateRuntimeTests>().method((target) => target.template_text_compatibility_functions_are_deterministic).add(FactAttribute);
+attribute<TemplateRuntimeTests>().method((target) => target.template_regular_expression_functions_preserve_matches_groups_and_limits).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.date_page_data_and_render_methods_use_typed_context).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.page_taxonomy_terms_follow_explicit_graph_relations).add(FactAttribute);
 attribute<TemplateRuntimeTests>().method((target) => target.template_definitions_propagate_across_partial_boundaries).add(FactAttribute);

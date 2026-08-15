@@ -59,6 +59,23 @@ export const isTruthy = (value: TemplateValue): boolean => {
   return true;
 };
 
+export const isDefaultSet = (value: TemplateValue): boolean => {
+  if (value instanceof NilValue) return false;
+  if (value instanceof BoolValue) return true;
+  if (value instanceof NumberValue) return value.value !== 0;
+  if (value instanceof StringValue) return value.value !== "";
+  if (value instanceof HtmlValue) return value.value.value !== "";
+  if (value instanceof DateValue) return value.value.trim() !== "";
+  if (value instanceof DictValue) return value.value.size > 0;
+  if (value instanceof PageArrayValue) return value.value.length > 0;
+  if (value instanceof StringArrayValue) return value.value.length > 0;
+  if (value instanceof SitesArrayValue) return value.value.length > 0;
+  if (value instanceof DocsMountArrayValue) return value.value.length > 0;
+  if (value instanceof NavArrayValue) return value.value.length > 0;
+  if (value instanceof AnyArrayValue) return value.value.length > 0;
+  return true;
+};
+
 export const stringify = (value: TemplateValue, escape: boolean): string => {
   if (value instanceof DeferredTemplateValue) {
     throw createTsumoError("TSUMO_TEMPLATE_DEFER_CONTEXT_INVALID", "templates.Defer can only be evaluated by a with block");

@@ -1,6 +1,7 @@
 import type { int32 } from "@tsonic/core/types.js";
 import { Char } from "@tsonic/dotnet/System.js";
 import { createTsumoError, TsumoError } from "../diagnostics.js";
+import { IndexedSourceText } from "./indexed-source-text.js";
 import { compareText, indexOfText } from "./strings.js";
 
 export class JsonValue {
@@ -101,23 +102,23 @@ export class JsonObject extends JsonValue {
 }
 
 class JsonParser {
-  text: string;
+  source: IndexedSourceText;
   index: int32;
   sourcePath: string | undefined;
   lineStarts: int32[];
   depth: int32;
 
   constructor(text: string, sourcePath?: string) {
-    this.text = text;
+    this.source = new IndexedSourceText(text);
     this.index = 0;
     this.sourcePath = sourcePath;
     this.lineStarts = [0];
     this.depth = 0;
-    for (let position: int32 = 0; position < text.length; position++) {
-      const current = text[position]!;
+    for (let position: int32 = 0; position < this.source.length; position++) {
+      const current = this.source.characterAt(position);
       if (current === "\n") this.lineStarts.push(position + 1);
       else if (current === "\r") {
-        if (position + 1 < text.length && text[position + 1] === "\n") position++;
+        if (position + 1 < this.source.length && this.source.characterAt(position + 1) === "\n") position++;
         this.lineStarts.push(position + 1);
       }
     }
@@ -127,7 +128,7 @@ class JsonParser {
     this.skipWhitespace();
     const value = this.parseValue();
     this.skipWhitespace();
-    if (this.index !== this.text.length) {
+    if (this.index !== this.source.length) {
       throw this.syntaxError("Unexpected trailing JSON content");
     }
     return value;
@@ -232,7 +233,7 @@ class JsonParser {
   parseString(): string {
     this.expect("\"");
     let result = "";
-    while (this.index < this.text.length) {
+    while (this.index < this.source.length) {
       const ch = this.next();
       if (ch === "\"") return result;
       if (ch !== "\\") {
@@ -257,7 +258,7 @@ class JsonParser {
   parseUnicodeEscape(): string {
     const first = this.parseUnicodeCodeUnit();
     if (first >= 0xd800 && first <= 0xdbff) {
-      if (this.index + 6 > this.text.length || this.text[this.index] !== "\\" || this.text[this.index + 1] !== "u") {
+      if (this.index + 6 > this.source.length || this.source.characterAt(this.index) !== "\\" || this.source.characterAt(this.index + 1) !== "u") {
         throw this.syntaxError("A high-surrogate JSON escape must be followed by a low-surrogate escape");
       }
       this.index += 2;
@@ -275,10 +276,10 @@ class JsonParser {
   }
 
   parseUnicodeCodeUnit(): int32 {
-    if (this.index + 4 > this.text.length) throw this.syntaxError("JSON unicode escapes require four hexadecimal digits");
+    if (this.index + 4 > this.source.length) throw this.syntaxError("JSON unicode escapes require four hexadecimal digits");
     let value: int32 = 0;
     for (let offset: int32 = 0; offset < 4; offset++) {
-      const ch = this.text[this.index + offset]!.toLowerCase();
+      const ch = this.source.characterAt(this.index + offset).toLowerCase();
       const digit = indexOfText("0123456789abcdef", ch);
       if (digit < 0) throw this.syntaxError("JSON unicode escapes require hexadecimal digits", this.index + offset);
       value = value * 16 + digit;
@@ -307,7 +308,7 @@ class JsonParser {
       if (sign === "+" || sign === "-") this.index++;
       this.consumeDigits();
     }
-    const raw = this.text.substring(start, this.index);
+    const raw = this.source.slice(start, this.index);
     const value = parseFloat(raw);
     if (!Number.isFinite(value)) throw this.syntaxError("JSON number is outside the supported finite range", start);
     return new JsonNumber(value, line, column);
@@ -320,8 +321,10 @@ class JsonParser {
   }
 
   expectKeyword(keyword: string): void {
-    if (this.text.substring(this.index, this.index + keyword.length) !== keyword) {
-      throw this.syntaxError(`Invalid JSON keyword; expected '${keyword}'`);
+    for (let offset: int32 = 0; offset < keyword.length; offset++) {
+      if (this.source.characterAt(this.index + offset) !== keyword[offset]) {
+        throw this.syntaxError(`Invalid JSON keyword; expected '${keyword}'`);
+      }
     }
     this.index += keyword.length;
   }
@@ -331,15 +334,15 @@ class JsonParser {
   }
 
   next(): string {
-    if (this.index >= this.text.length) throw this.syntaxError("Unexpected end of JSON");
-    const ch = this.text[this.index]!;
+    if (this.index >= this.source.length) throw this.syntaxError("Unexpected end of JSON");
+    const ch = this.source.characterAt(this.index);
     this.index++;
     return ch;
   }
 
   peek(): string {
-    if (this.index >= this.text.length) return "";
-    return this.text[this.index]!;
+    if (this.index >= this.source.length) return "";
+    return this.source.characterAt(this.index);
   }
 
   skipWhitespace(): void {
@@ -378,7 +381,7 @@ class JsonParser {
 
   columnAt(index: int32): int32 {
     const lineIndex = this.lineIndexAt(index);
-    return index - this.lineStarts[lineIndex]! + 1;
+    return this.source.utf16OffsetAt(index) - this.source.utf16OffsetAt(this.lineStarts[lineIndex]!) + 1;
   }
 
   syntaxError(message: string, index?: int32): TsumoError {

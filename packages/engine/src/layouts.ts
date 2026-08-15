@@ -1,4 +1,4 @@
-import type { char } from "@tsonic/core/types.js";
+import type { char, int32 } from "@tsonic/core/types.js";
 import { StringBuilder } from "@tsonic/dotnet/System.Text.js";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { dirExists, fileExists, readTextFile } from "./fs.js";
@@ -9,7 +9,7 @@ import { ModuleMount, PageContext } from "./models.js";
 import type { SiteContext } from "./models.js";
 import { replaceText, trimStartChar } from "./utils/strings.js";
 import { RenderScope, RenderState } from "./template/scope.js";
-import type { TemplateValue } from "./template/values.js";
+import type { DictValue, TemplateValue } from "./template/values.js";
 import { getEmbeddedTemplateSource } from "./template/embedded-templates.js";
 import { normalizeTemplateRelativePath } from "./template/paths.js";
 import { pathContainsOrEquals } from "./utils/paths.js";
@@ -23,8 +23,8 @@ export class LayoutEnvironment extends TemplateEnvironment {
   renderHookCache: Map<string, Template>;
   i18nStore: I18nStore;
 
-  constructor(siteDir: string, themeDirRaw: string | undefined, mountsRaw?: ModuleMount[], buildTime?: Date) {
-    super(buildTime);
+  constructor(siteDir: string, themeDirRaw: string | undefined, mountsRaw?: ModuleMount[], buildTime?: Date, siteData?: DictValue) {
+    super(buildTime, siteData);
     const themeDir = themeDirRaw;
     const mounts = mountsRaw;
     this.siteLayoutsDir = join(siteDir, "layouts");
@@ -34,10 +34,19 @@ export class LayoutEnvironment extends TemplateEnvironment {
     this.shortcodeCache = new Map<string, Template>();
     this.renderHookCache = new Map<string, Template>();
     this.i18nStore = new I18nStore();
-    this.i18nStore.loadFromDir(join(siteDir, "i18n"));
     if (themeDir !== undefined) {
       this.i18nStore.loadFromDir(join(themeDir, "i18n"));
     }
+
+    if (mounts !== undefined) {
+      for (let i = mounts.length - 1; i >= 0; i--) {
+        const mount = mounts[i]!;
+        if (mount.target !== "i18n") continue;
+        const mountPath = isAbsolute(mount.source) ? mount.source : join(siteDir, mount.source);
+        if (dirExists(mountPath)) this.i18nStore.loadFromDir(mountPath);
+      }
+    }
+    this.i18nStore.loadFromDir(join(siteDir, "i18n"));
 
     if (mounts !== undefined) {
       for (let i = 0; i < mounts.length; i++) {
@@ -46,11 +55,6 @@ export class LayoutEnvironment extends TemplateEnvironment {
           const mountPath = isAbsolute(mount.source) ? mount.source : join(siteDir, mount.source);
           if (dirExists(mountPath)) {
             this.mountedLayoutDirs.push(mountPath);
-          }
-        } else if (mount.target === "i18n") {
-          const mountPath = isAbsolute(mount.source) ? mount.source : join(siteDir, mount.source);
-          if (dirExists(mountPath)) {
-            this.i18nStore.loadFromDir(mountPath);
           }
         }
       }
@@ -61,14 +65,14 @@ export class LayoutEnvironment extends TemplateEnvironment {
     return undefined;
   }
 
-  renderTemplateSource(
+  renderTextTemplateSource(
     source: string,
     context: TemplateValue,
     site: SiteContext,
     overrides: Map<string, TemplateNode[]>,
     state?: RenderState,
   ): string {
-    return this.renderTemplate(parseTemplate(source), context, site, overrides, state);
+    return this.renderTextTemplate(parseTemplate(source), context, site, overrides, state);
   }
 
   renderTemplate(
@@ -81,6 +85,19 @@ export class LayoutEnvironment extends TemplateEnvironment {
     const output = new StringBuilder();
     const scope = new RenderScope(context, context, site, this, undefined, state, template.sourcePath);
     template.renderInto(output, scope, this, overrides);
+    return output.ToString();
+  }
+
+  renderTextTemplate(
+    template: Template,
+    context: TemplateValue,
+    site: SiteContext,
+    overrides: Map<string, TemplateNode[]>,
+    state?: RenderState,
+  ): string {
+    const output = new StringBuilder();
+    const scope = new RenderScope(context, context, site, this, undefined, state, template.sourcePath);
+    template.renderTextInto(output, scope, this, overrides);
     return output.ToString();
   }
 
@@ -259,8 +276,8 @@ export class LayoutEnvironment extends TemplateEnvironment {
     return tpl;
   }
 
-  getI18n(lang: string, key: string): string {
-    return this.i18nStore.translate(lang, key);
+  getI18n(lang: string, key: string, count?: int32): string {
+    return this.i18nStore.translate(lang, key, count);
   }
 }
 

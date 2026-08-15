@@ -114,11 +114,15 @@ function evaluateExpression(expression: Expr, context: TemplateEvaluationContext
       token.startsWith("site") ||
       token === "hugo.Sites" ||
       token.startsWith("hugo.Sites.") ||
+      token === "hugo.Data" ||
+      token.startsWith("hugo.Data.") ||
+      token === "resources" ||
       token === "page" ||
       token.startsWith("page.") ||
       parseStringLiteral(token) !== undefined ||
       token === "true" ||
       token === "false" ||
+      token === "nil" ||
       isNumberLiteral(token)
     ) {
       return evalToken(token, context.scope);

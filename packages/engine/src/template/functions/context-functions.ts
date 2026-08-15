@@ -7,21 +7,21 @@ import { renderMarkdownWithShortcodes } from "../../markdown.js";
 import { parseInt32 } from "../../utils/int32.js";
 import { ParamKind } from "../../params.js";
 import {
-  AnyArrayValue, BoolValue, DateValue, HtmlValue, MenuEntryValue, NumberValue,
+  AnyArrayValue, BoolValue, DateValue, DictValue, HtmlValue, MenuEntryValue, NumberValue,
   OutputFormatValue, OutputFormatsValue, PageArrayValue, PageResourcesValue, PageValue, PaginatorValue,
-  ScratchValue, SiteValue, StringValue, TemplateValue,
+  ResourceNamespaceValue, ScratchValue, SiteValue, StringValue, TemplateValue,
   VersionStringValue,
 } from "../values.js";
 import { ShortcodeValue } from "../contexts.js";
 import { TemplateReturnSignal } from "../evaluation/return-signal.js";
-import { evalToken } from "../evaluation/expression-semantics.js";
+import { callMethod, evalToken } from "../evaluation/expression-semantics.js";
 import {
   callPageResourceCollectionMethod,
   callPageResourcesMethod,
   PageResourceCollectionValue,
 } from "../evaluation/page-resource-semantics.js";
 import { formatDateTime } from "../evaluation/scalar-semantics.js";
-import { callPageCollectionMethod, getPageTerms, toPages } from "../evaluation/page-semantics.js";
+import { callPageCollectionMethod, getPageTerms, pageHasShortcode, toPages } from "../evaluation/page-semantics.js";
 import { resolvePageRef, tryGetPage } from "../evaluation/path-semantics.js";
 import { getSiteStore } from "../evaluation/property-support.js";
 import { findParam, paramToTemplateValue } from "../evaluation/param-semantics.js";
@@ -29,7 +29,7 @@ import { trimEndCharacter } from "../evaluation/serialization.js";
 import { nil, toPlainString } from "../runtime-helpers.js";
 import { TemplateFunctionContext } from "./function-context.js";
 
-const hugoCompatibilityVersion = "0.146.0";
+const hugoCompatibilityVersion = "0.146.2";
 
 export const callContextFunction = (
   nameRaw: string,
@@ -97,6 +97,10 @@ export const callContextFunction = (
     const method = methodName.toLowerCase();
     const receiverValue = evalToken(receiverToken, scope);
 
+    if (receiverValue instanceof ResourceNamespaceValue) {
+      return callMethod(receiverValue, methodName, args, scope, env, overrides, context.defines);
+    }
+
     if (receiverValue instanceof ScratchValue) {
       const scratch = receiverValue as ScratchValue;
       const store = scratch.value;
@@ -159,6 +163,10 @@ export const callContextFunction = (
 
       if (method === "getterms" && args.length >= 1) {
         return getPageTerms(page, toPlainString(args[0]!));
+      }
+
+      if (method === "hasshortcode" && args.length === 1) {
+        return new BoolValue(pageHasShortcode(page, toPlainString(args[0]!)));
       }
 
       if (method === "param" && args.length >= 1) {
@@ -326,12 +334,32 @@ export const callContextFunction = (
     const value = env.getEnvironmentVariable(toPlainString(args[0]!));
     return value !== undefined ? new StringValue(value) : new StringValue("");
   }
+  if (name === "fileexists" && args.length >= 1) {
+    return new BoolValue(env.sourceFileExists(toPlainString(args[0]!)));
+  }
 
   if (name === "i18n" && args.length >= 1) {
     const key = toPlainString(args[0]!);
     const lang = scope.site.Language.Lang;
-    const translated = env.getI18n(lang, key);
-    return new StringValue(translated);
+    const argument = args.length >= 2 ? args[1]! : nil;
+    let count: int32 | undefined = undefined;
+    let renderContext = argument;
+    if (argument instanceof NumberValue) {
+      count = argument.value;
+      const fields = new Map<string, TemplateValue>();
+      fields.set("Count", argument);
+      renderContext = new DictValue(fields);
+    } else if (argument instanceof DictValue) {
+      for (const field of argument.value.keys()) {
+        if (field.toLowerCase() !== "count") continue;
+        const value = argument.value.get(field);
+        if (value instanceof NumberValue) count = value.value;
+        break;
+      }
+    }
+    const translated = env.getI18n(lang, key, count);
+    if (translated === key) return new StringValue(key);
+    return new StringValue(env.renderTextTemplateSource(translated, renderContext, scope.site, overrides, scope.state));
   }
   return undefined;
 };

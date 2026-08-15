@@ -2,9 +2,9 @@
 export {
   TemplateValue, NilValue,
   StringValue, BoolValue, NumberValue, HtmlValue, DateValue,
-  PageValue, FileValue, PageArrayValue, PageDataValue, PageResourcesValue,
+  PageValue, FileValue, PageArrayValue, PageGroupValue, PageDataValue, PageResourcesValue,
   SiteValue, LanguageValue, SitesValue, SitesArrayValue,
-  ResourceDataValue, ResourceValue,
+  ResourceDataValue, ResourceNamespaceValue, ResourceValue,
   StringArrayValue, AnyArrayValue,
   DocsMountValue, DocsMountArrayValue, NavItemValue, NavArrayValue,
   MenuEntryValue, MenuArrayValue, MenusValue,

@@ -1,14 +1,15 @@
 import { Buffer } from "node:buffer";
 import { createTsumoError } from "../../diagnostics.js";
-import { Resource, ResourceData } from "../../resources.js";
+import { JavaScriptBuildOptions, Resource, ResourceData } from "../../resources.js";
 import type { ResourceManager } from "../../resources.js";
 import {
-  AnyArrayValue, BoolValue, DictValue, ResourceValue, TemplateValue,
+  AnyArrayValue, BoolValue, DictValue, ResourceValue, StringValue, TemplateValue,
 } from "../values.js";
 import { nil, toPlainString } from "../runtime-helpers.js";
+import { toJson } from "../evaluation/serialization.js";
 import { TemplateFunctionContext } from "./function-context.js";
 
-const cssBuildOption = (options: DictValue, name: string): TemplateValue | undefined => {
+const resourceBuildOption = (options: DictValue, name: string): TemplateValue | undefined => {
   const exact = options.value.get(name);
   if (exact !== undefined) return exact;
   const normalized = name.toLowerCase();
@@ -36,7 +37,7 @@ const buildCssResource = (
   options: DictValue,
 ): ResourceValue => {
   validateCssBuildOptions(options);
-  const sourceMap = cssBuildOption(options, "sourceMap");
+  const sourceMap = resourceBuildOption(options, "sourceMap");
   if (sourceMap !== undefined && toPlainString(sourceMap).trim().toLowerCase() !== "none") {
     throw createTsumoError(
       "TSUMO_TEMPLATE_CSS_BUILD_SOURCE_MAP_UNSUPPORTED",
@@ -45,17 +46,120 @@ const buildCssResource = (
   }
 
   let result = source;
-  const targetPath = cssBuildOption(options, "targetPath");
+  const targetPath = resourceBuildOption(options, "targetPath");
   if (targetPath !== undefined && toPlainString(targetPath).trim() !== "") {
     result = manager.copy(toPlainString(targetPath), result);
   }
-  const minify = cssBuildOption(options, "minify");
+  const minify = resourceBuildOption(options, "minify");
   if (minify instanceof BoolValue) {
     if (minify.value) result = manager.minify(result);
   } else if (minify !== undefined) {
     throw createTsumoError("TSUMO_TEMPLATE_CSS_BUILD_MINIFY_INVALID", "css.Build minify must be a boolean");
   }
   return new ResourceValue(manager, result);
+};
+
+const javascriptOptionIsOneOf = (value: string, accepted: string[]): boolean => {
+  for (let index = 0; index < accepted.length; index++) {
+    if (value === accepted[index]!) return true;
+  }
+  return false;
+};
+
+const serializeJavaScriptBuildParams = (value: TemplateValue): string => {
+  if (value instanceof DictValue) return toJson(value);
+  if (value instanceof AnyArrayValue) return toJson(value);
+  throw createTsumoError(
+    "TSUMO_TEMPLATE_JAVASCRIPT_BUILD_PARAMS_INVALID",
+    "js.Build params must be a dictionary or slice",
+  );
+};
+
+const parseJavaScriptBuildOptionDictionary = (value: DictValue): JavaScriptBuildOptions => {
+  const options = new JavaScriptBuildOptions();
+  for (const key of value.value.keys()) {
+    const normalized = key.toLowerCase();
+    if (
+      normalized === "targetpath" ||
+      normalized === "minify" ||
+      normalized === "format" ||
+      normalized === "target" ||
+      normalized === "platform" ||
+      normalized === "sourcemap" ||
+      normalized === "params" ||
+      normalized === "jsxfactory"
+    ) continue;
+    throw createTsumoError(
+      "TSUMO_TEMPLATE_JAVASCRIPT_BUILD_OPTION_UNKNOWN",
+      `js.Build does not support option '${key}'`,
+    );
+  }
+
+  const targetPath = resourceBuildOption(value, "targetPath");
+  if (targetPath !== undefined) options.targetPath = toPlainString(targetPath);
+
+  const minify = resourceBuildOption(value, "minify");
+  if (minify !== undefined) {
+    if (!(minify instanceof BoolValue)) {
+      throw createTsumoError("TSUMO_TEMPLATE_JAVASCRIPT_BUILD_MINIFY_INVALID", "js.Build minify must be a boolean");
+    }
+    options.minify = minify.value;
+  }
+
+  const format = resourceBuildOption(value, "format");
+  if (format !== undefined) {
+    const selected = toPlainString(format).trim().toLowerCase();
+    if (!javascriptOptionIsOneOf(selected, ["iife", "cjs", "esm"])) {
+      throw createTsumoError("TSUMO_TEMPLATE_JAVASCRIPT_BUILD_FORMAT_INVALID", `js.Build format '${selected}' is invalid`);
+    }
+    options.format = selected;
+  }
+
+  const target = resourceBuildOption(value, "target");
+  if (target !== undefined) {
+    const selected = toPlainString(target).trim().toLowerCase();
+    if (!javascriptOptionIsOneOf(selected, [
+      "es5", "es2015", "es2016", "es2017", "es2018", "es2019", "es2020",
+      "es2021", "es2022", "es2023", "es2024", "esnext",
+    ])) {
+      throw createTsumoError("TSUMO_TEMPLATE_JAVASCRIPT_BUILD_TARGET_INVALID", `js.Build target '${selected}' is invalid`);
+    }
+    options.target = selected;
+  }
+
+  const platform = resourceBuildOption(value, "platform");
+  if (platform !== undefined) {
+    const selected = toPlainString(platform).trim().toLowerCase();
+    if (!javascriptOptionIsOneOf(selected, ["browser", "node", "neutral"])) {
+      throw createTsumoError("TSUMO_TEMPLATE_JAVASCRIPT_BUILD_PLATFORM_INVALID", `js.Build platform '${selected}' is invalid`);
+    }
+    options.platform = selected;
+  }
+
+  const sourceMap = resourceBuildOption(value, "sourceMap");
+  if (sourceMap !== undefined) options.sourceMap = toPlainString(sourceMap).trim().toLowerCase();
+
+  const params = resourceBuildOption(value, "params");
+  if (params !== undefined) options.paramsJson = serializeJavaScriptBuildParams(params);
+
+  const jsxFactory = resourceBuildOption(value, "JSXFactory");
+  if (jsxFactory !== undefined) options.jsxFactory = toPlainString(jsxFactory).trim();
+  return options;
+};
+
+const parseJavaScriptBuildOptions = (value: TemplateValue): JavaScriptBuildOptions => {
+  if (value instanceof StringValue) {
+    const options = new JavaScriptBuildOptions();
+    options.targetPath = value.value;
+    return options;
+  }
+  if (value instanceof DictValue) {
+    return parseJavaScriptBuildOptionDictionary(value as DictValue);
+  }
+  throw createTsumoError(
+    "TSUMO_TEMPLATE_JAVASCRIPT_BUILD_OPTIONS_INVALID",
+    "js.Build options must be a dictionary or target path string",
+  );
 };
 
 export const callResourceFunction = (
@@ -157,7 +261,7 @@ export const callResourceFunction = (
     const targetName = toPlainString(args[0]!);
     const ctx = args[1]!;
     const templateText = src.text ?? "";
-    const rendered = env.renderTemplateSource(templateText, ctx, scope.site, overrides);
+    const rendered = env.renderTextTemplateSource(templateText, ctx, scope.site, overrides);
     const bytes = Buffer.from(rendered, "utf8");
     const lang = scope.site.Language.Lang;
     const id = `${src.id}|executeAsTemplate:${targetName}|lang:${lang}`;
@@ -238,6 +342,22 @@ export const callResourceFunction = (
       );
     }
     throw createTsumoError("TSUMO_TEMPLATE_CSS_BUILD_INPUT_INVALID", "css.Build requires a CSS resource input");
+  }
+  if (name === "js.build" && args.length >= 1) {
+    const manager = env.getResourceManager();
+    if (manager === undefined) return nil;
+    const piped = args[args.length - 1]!;
+    if (!(piped instanceof ResourceValue)) {
+      throw createTsumoError("TSUMO_TEMPLATE_JAVASCRIPT_BUILD_INPUT_INVALID", "js.Build requires a JavaScript resource input");
+    }
+    if (args.length > 2) {
+      throw createTsumoError(
+        "TSUMO_TEMPLATE_JAVASCRIPT_BUILD_OPTIONS_INVALID",
+        "js.Build accepts at most one options argument",
+      );
+    }
+    const options = args.length === 2 ? parseJavaScriptBuildOptions(args[0]!) : new JavaScriptBuildOptions();
+    return new ResourceValue(manager, manager.javascriptBuild(piped.value, options));
   }
   return undefined;
 };

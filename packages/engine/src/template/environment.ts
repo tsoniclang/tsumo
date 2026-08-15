@@ -4,7 +4,7 @@ import type { PageContext } from "../models.js";
 import type { ResourceManager } from "../resources.js";
 import type { TemplateNode } from "./nodes.js";
 import type { Template } from "./template.js";
-import { DeferredTemplateValue, TemplateValue } from "./values.js";
+import { DeferredTemplateValue, DictValue, TemplateValue } from "./values.js";
 import type { RenderState } from "./scope.js";
 import { partialTemplateCandidates } from "./paths.js";
 import type { int32 } from "@tsonic/core/types.js";
@@ -83,12 +83,14 @@ export class TemplateEnvironment {
   deferredRequests: DeferredTemplateRequest[];
   deferredPlacements: DeferredTemplatePlacement[];
   deferredPhase: "collecting" | "finalizing" | "finalized";
+  siteData: DictValue;
 
-  constructor(buildTime?: Date) {
+  constructor(buildTime?: Date, siteData?: DictValue) {
     this.buildTime = buildTime ?? new Date();
     this.deferredRequests = [];
     this.deferredPlacements = [];
     this.deferredPhase = "collecting";
+    this.siteData = siteData ?? new DictValue(new Map<string, TemplateValue>());
   }
 
   registerDeferredTemplate(
@@ -182,6 +184,18 @@ export class TemplateEnvironment {
     return undefined;
   }
 
+  setSiteData(value: DictValue): void {
+    this.siteData = value;
+  }
+
+  getSiteData(): DictValue {
+    return this.siteData;
+  }
+
+  sourceFileExists(_path: string): boolean {
+    return false;
+  }
+
   getTemplate(_relPath: string): Template | undefined {
     throw createTsumoError("TSUMO_TEMPLATE_ENVIRONMENT_OPERATION_UNAVAILABLE", "TemplateEnvironment.getTemplate is not implemented");
   }
@@ -232,14 +246,14 @@ export class TemplateEnvironment {
     return undefined;
   }
 
-  renderTemplateSource(
+  renderTextTemplateSource(
     _source: string,
     _context: TemplateValue,
     _site: SiteContext,
     _overrides: Map<string, TemplateNode[]>,
     _state?: RenderState,
   ): string {
-    throw createTsumoError("TSUMO_TEMPLATE_ENVIRONMENT_OPERATION_UNAVAILABLE", "TemplateEnvironment.renderTemplateSource is not implemented");
+    throw createTsumoError("TSUMO_TEMPLATE_ENVIRONMENT_OPERATION_UNAVAILABLE", "TemplateEnvironment.renderTextTemplateSource is not implemented");
   }
 
   renderTemplate(
@@ -250,6 +264,16 @@ export class TemplateEnvironment {
     _state?: RenderState,
   ): string {
     throw createTsumoError("TSUMO_TEMPLATE_ENVIRONMENT_OPERATION_UNAVAILABLE", "TemplateEnvironment.renderTemplate is not implemented");
+  }
+
+  renderTextTemplate(
+    _template: Template,
+    _context: TemplateValue,
+    _site: SiteContext,
+    _overrides: Map<string, TemplateNode[]>,
+    _state?: RenderState,
+  ): string {
+    throw createTsumoError("TSUMO_TEMPLATE_ENVIRONMENT_OPERATION_UNAVAILABLE", "TemplateEnvironment.renderTextTemplate is not implemented");
   }
 
   renderTemplateDefinition(
@@ -267,7 +291,7 @@ export class TemplateEnvironment {
     );
   }
 
-  getI18n(_lang: string, _key: string): string {
+  getI18n(_lang: string, _key: string, _count?: int32): string {
     return _key;
   }
 }

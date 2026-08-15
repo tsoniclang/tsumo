@@ -19,6 +19,7 @@ import {
 } from "./paths.js";
 import { resourceGlobMatches } from "./glob.js";
 import { compileSassResource } from "./sass-provider.js";
+import { buildJavaScriptResource, JavaScriptBuildOptions } from "./javascript-provider.js";
 import {
   concatenateResources,
   copyResource,
@@ -244,10 +245,23 @@ export class ResourceManager {
     const identity = `${resource.id}|sass`;
     const cached = this.cache.get(identity);
     if (cached !== undefined) return cached;
-    const loadPaths: string[] = [this.siteAssetsDir];
+    const loadPaths: string[] = [];
+    const sourcePath = resource.sourcePath;
+    if (sourcePath !== undefined) {
+      const sourceDirectory = Path.GetDirectoryName(sourcePath);
+      if (sourceDirectory !== undefined && sourceDirectory !== "") loadPaths.push(sourceDirectory);
+    }
+    loadPaths.push(this.siteAssetsDir);
     const themeAssetsDir = this.themeAssetsDir;
     if (themeAssetsDir !== undefined) loadPaths.push(themeAssetsDir);
     return this.cacheResource(compileSassResource(resource, loadPaths));
+  }
+
+  javascriptBuild(resource: Resource, options: JavaScriptBuildOptions): Resource {
+    const identity = `${resource.id}|js-build:${options.cacheKey()}`;
+    const cached = this.cache.get(identity);
+    if (cached !== undefined) return cached;
+    return this.cacheResource(buildJavaScriptResource(resource, options));
   }
 
   resize(resource: Resource, specification: string): Resource {

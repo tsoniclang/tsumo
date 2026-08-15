@@ -14,15 +14,14 @@ import {
   FileValue, HtmlValue, LanguageValue,
   MediaTypeValue, MenuArrayValue, MenuEntryValue, MenusValue,
   NavArrayValue, NavItemValue, NilValue, NumberValue, OutputFormatValue,
-  OutputFormatsGetValue, OutputFormatsValue, PageArrayValue, PageDataValue, PageResourcesValue, PaginatorValue,
+  OutputFormatsGetValue, OutputFormatsValue, PageArrayValue, PageDataValue, PageGroupValue, PageResourcesValue, PaginatorValue,
   PageValue, ResourceDataValue, ResourceValue, ScratchValue,
   SiteValue, SitesArrayValue, SitesValue, StringArrayValue,
   StringValue, TaxonomiesValue, TaxonomyTermsValue, TemplateValue,
   UrlValue,
 } from "../values.js";
 import {
-  copyPageArray, copyStringArray, pagesWithKind, reversePages, sortPagesByDate,
-  sortPagesByTitle, sortPagesByWeight,
+  copyPageArray, copyStringArray, pageWeight, pagesWithKind, resolvePageCollectionProperty, siteLastModification,
 } from "./page-semantics.js";
 import {
   getPageStore, getSiteStore, taxonomyTermsByCount, wrapLanguages, wrapMediaType, wrapParamDict,
@@ -46,6 +45,7 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "plain") cur = new StringValue(page.plain);
       else if (k === "tableofcontents") cur = new HtmlValue(page.tableOfContents);
       else if (k === "draft") cur = new BoolValue(page.draft);
+      else if (k === "weight") cur = new NumberValue(pageWeight(page));
       else if (k === "kind") cur = new StringValue(page.kind);
       else if (k === "section") cur = new StringValue(page.section);
       else if (k === "type") cur = new StringValue(page.type);
@@ -61,7 +61,7 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       }
       else if (k === "language") cur = new LanguageValue(page.Language);
       else if (k === "translations") cur = new PageArrayValue(page.Translations);
-      else if (k === "store") cur = new ScratchValue(getPageStore(page));
+      else if (k === "store" || k === "scratch") cur = new ScratchValue(getPageStore(page));
       else if (k === "sites") cur = new SitesValue(scope.site);
       else if (k === "page") cur = cur;
       else if (k === "parent") {
@@ -197,13 +197,15 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
         cur = siteHome !== undefined ? new PageValue(siteHome) : nil;
       }
       else if (k === "allpages") cur = new PageArrayValue(site.allPages);
-      else if (k === "store") cur = new ScratchValue(getSiteStore(site));
+      else if (k === "store" || k === "scratch") cur = new ScratchValue(getSiteStore(site));
       else if (k === "params") cur = wrapParamDict(site.Params);
       else if (k === "pages") cur = new PageArrayValue(site.pages);
       else if (k === "regularpages") {
         const pages = site.allPages.length > 0 ? site.allPages : site.pages;
         cur = new PageArrayValue(pagesWithKind(pages, "page"));
       }
+      else if (k === "lastmod") cur = new DateValue(siteLastModification(site));
+      else if (k === "data") cur = scope.env.getSiteData();
       else if (k === "mounts" || k === "docsmounts") cur = new DocsMountArrayValue(site.docsMounts);
       else if (k === "menus") cur = new MenusValue(site);
       else if (k === "taxonomies") cur = new TaxonomiesValue(site);
@@ -329,6 +331,8 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "title") cur = new StringValue(hook.Title);
       else if (k === "plaintext") cur = new StringValue(hook.PlainText);
       else if (k === "page") cur = new PageValue(hook.Page);
+      else if (k === "pageinner") cur = new PageValue(hook.PageInner);
+      else if (k === "pageouter") cur = new PageValue(hook.PageOuter);
       else cur = nil;
       continue;
     }
@@ -341,6 +345,8 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "title") cur = new StringValue(hook.Title);
       else if (k === "plaintext") cur = new StringValue(hook.PlainText);
       else if (k === "page") cur = new PageValue(hook.Page);
+      else if (k === "pageinner") cur = new PageValue(hook.PageInner);
+      else if (k === "pageouter") cur = new PageValue(hook.PageOuter);
       else cur = nil;
       continue;
     }
@@ -353,6 +359,8 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       else if (k === "plaintext") cur = new StringValue(hook.PlainText);
       else if (k === "anchor") cur = new StringValue(hook.Anchor);
       else if (k === "page") cur = new PageValue(hook.Page);
+      else if (k === "pageinner") cur = new PageValue(hook.PageInner);
+      else if (k === "pageouter") cur = new PageValue(hook.PageOuter);
       else cur = nil;
       continue;
     }
@@ -527,53 +535,17 @@ export const resolvePath = (value: TemplateValue, segments: string[], scope: Ren
       continue;
     }
 
-    // Handle PageArrayValue zero-arg methods as properties
+    if (cur instanceof PageGroupValue) {
+      const group = cur as PageGroupValue;
+      const key = seg.toLowerCase();
+      if (key === "key") cur = group.key;
+      else if (key === "pages") cur = new PageArrayValue(group.pages);
+      else cur = resolvePageCollectionProperty(new PageArrayValue(group.pages), seg) ?? nil;
+      continue;
+    }
+
     if (cur instanceof PageArrayValue) {
-      const pageArrVal = cur as PageArrayValue;
-      const pages: PageContext[] = pageArrVal.value;
-      const k = seg.toLowerCase();
-
-      // Sorting methods (return sorted copy)
-      if (k === "bylastmod") {
-        const sorted = sortPagesByDate(pages, "lastmod");
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "bydate") {
-        const sorted = sortPagesByDate(pages, "date");
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "bypublishdate") {
-        const sorted = sortPagesByDate(pages, "publishdate");
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "bytitle") {
-        const sorted = sortPagesByTitle(pages);
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-      if (k === "byweight") {
-        const sorted = sortPagesByWeight();
-        cur = new PageArrayValue(sorted);
-        continue;
-      }
-
-      // Reverse (return reversed copy)
-      if (k === "reverse") {
-        const reversed = reversePages(pages);
-        cur = new PageArrayValue(reversed);
-        continue;
-      }
-
-      // Length property
-      if (k === "len") {
-        cur = new NumberValue(pages.length);
-        continue;
-      }
-
-      cur = nil;
+      cur = resolvePageCollectionProperty(cur as PageArrayValue, seg) ?? nil;
       continue;
     }
 

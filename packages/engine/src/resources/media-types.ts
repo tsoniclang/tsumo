@@ -9,6 +9,8 @@ export const resourceMediaTypeForExtension = (extension: string): string => {
   if (value === ".bmp") return "image/bmp";
   if (value === ".tiff" || value === ".tif") return "image/tiff";
   if (value === ".js" || value === ".mjs") return "application/javascript";
+  if (value === ".ts" || value === ".tsx") return "text/typescript";
+  if (value === ".jsx") return "text/jsx";
   if (value === ".json") return "application/json";
   if (value === ".yaml" || value === ".yml") return "application/yaml";
   if (value === ".toml") return "application/toml";

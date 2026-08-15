@@ -4,6 +4,7 @@ import { Exception } from "@tsonic/dotnet/System.js";
 import { Assert, FactAttribute } from "@tsonic/dotnet/Xunit.js";
 
 import {
+  JsonArray,
   JsonObject,
   JsonString,
   TsumoDiagnostic,
@@ -62,6 +63,15 @@ export class InputBoundaryTests {
     Assert.Equal("Café 🚀", title.value);
     Assert.Equal(2, title.line);
     Assert.Equal(12, title.column);
+  }
+
+  json_tree_handles_large_indexed_inputs(): void {
+    const entries: string[] = [];
+    for (let index = 0; index < 27000; index++) entries.push("0");
+    const value = parseJson(`[${entries.join(",")}]`, "large.json");
+    Assert.True(value instanceof JsonArray);
+    if (!(value instanceof JsonArray)) throw new Exception("Expected JSON array");
+    Assert.Equal(27000, value.items.length);
   }
 
   json_tree_rejects_ambiguous_and_malformed_inputs_exactly(): void {
@@ -342,6 +352,7 @@ export class InputBoundaryTests {
 }
 
 attribute<InputBoundaryTests>().method((target) => target.json_tree_preserves_unicode_kinds_and_source_locations).add(FactAttribute);
+attribute<InputBoundaryTests>().method((target) => target.json_tree_handles_large_indexed_inputs).add(FactAttribute);
 attribute<InputBoundaryTests>().method((target) => target.json_tree_rejects_ambiguous_and_malformed_inputs_exactly).add(FactAttribute);
 attribute<InputBoundaryTests>().method((target) => target.all_front_matter_formats_create_one_closed_model).add(FactAttribute);
 attribute<InputBoundaryTests>().method((target) => target.front_matter_rejects_invalid_shapes_with_exact_locations).add(FactAttribute);

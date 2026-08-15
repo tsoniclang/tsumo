@@ -3,22 +3,23 @@ const knownTemplateFunctions = new Set<string>([
   "site.store.setinmap", "site.store.deleteinmap", "return",
   "hugo.ismultilingual", "hugo.ismultihost", "hugo.workingdir", "hugo.version",
   "hugo.isproduction", "hugo.isextended", "hugo.isserver", "hugo.isdevelopment", "hugo.generator", "hugo.environment",
-  "now.year", "now.format", "getenv", "i18n",
+  "now.year", "now.format", "getenv", "fileexists", "i18n",
   "resources.get", "resources.getmatch", "resources.match", "resources.bytype",
   "resources.concat", "resources.fromstring", "resources.executeastemplate",
   "resources.minify", "minify", "resources.fingerprint", "fingerprint",
-  "resources.copy", "images.resize", "resize", "css.sass", "css.build",
+  "resources.copy", "images.resize", "resize", "css.sass", "css.build", "js.build",
   "partial", "partialcached", "templates.exists", "templates.defer", "errorf", "warnf",
   "safehtml", "safehtmlattr", "safejs", "safeurl", "safecss", "htmlescape",
-  "htmlunescape", "time.format", "path.base", "path.ext", "path.join", "title", "unmarshal",
-  "where", "sort", "after", "first", "last", "uniq", "group", "plainify", "cond",
+  "htmlunescape", "time", "time.astime", "time.format", "path.base", "path.ext", "path.join", "title", "unmarshal",
+  "where", "sort", "after", "first", "last", "uniq", "complement", "group", "plainify", "cond",
   "dict", "slice", "append", "merge", "isset", "index", "delimit", "in", "split",
   "add", "sub", "mul", "div", "mod", "ceil", "newscratch", "encoding.jsonify", "jsonify",
   "crypto.sha1", "md5", "urls.parse", "urls.joinpath", "strings.contains", "strings.repeat",
   "strings.hasprefix", "strings.hassuffix", "strings.trimprefix", "strings.trimsuffix", "strings.trim", "urlize",
-  "humanize", "lower", "upper", "trim", "chomp", "replace", "replacere", "truncate",
+  "anchorize", "emojify", "humanize", "lower", "upper", "trim", "chomp", "replace", "replacere",
+  "findre", "findresubmatch", "truncate",
   "markdownify", "relurl", "absurl", "abslangurl", "rellangurl", "urlquery", "querify",
-  "default", "len", "dateformat", "print", "printf", "eq", "ne", "lt", "le",
+  "default", "len", "int", "string", "dateformat", "print", "printf", "eq", "ne", "lt", "le",
   "gt", "ge", "not", "and", "or",
   "reflect.ismap", "reflect.isslice", "union",
 ]);
@@ -42,6 +43,7 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "collections.in") return "in";
   if (name === "collections.querify") return "querify";
   if (name === "collections.union") return "union";
+  if (name === "collections.complement") return "complement";
   if (name === "compare.default") return "default";
   if (name === "compare.conditional") return "cond";
   if (name === "compare.eq") return "eq";
@@ -56,6 +58,8 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "math.div") return "div";
   if (name === "math.mod") return "mod";
   if (name === "math.ceil") return "ceil";
+  if (name === "tocss") return "css.sass";
+  if (name === "resources.tocss") return "css.sass";
   if (name === "transform.markdownify") return "markdownify";
   if (name === "transform.plainify") return "plainify";
   if (name === "transform.unmarshal") return "unmarshal";
@@ -63,6 +67,7 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "partials.include") return "partial";
   if (name === "partials.includecached") return "partialcached";
   if (name === "lang.translate") return "i18n";
+  if (name === "t") return "i18n";
   if (name === "fmt.print") return "print";
   if (name === "fmt.printf") return "printf";
   if (name === "fmt.errorf") return "errorf";
@@ -79,6 +84,9 @@ export const canonicalTemplateFunctionName = (name: string): string => {
   if (name === "safe.css") return "safecss";
   if (name === "strings.chomp") return "chomp";
   if (name === "strings.replace") return "replace";
+  if (name === "strings.replacere") return "replacere";
+  if (name === "strings.findre") return "findre";
+  if (name === "strings.findresubmatch") return "findresubmatch";
   if (name === "strings.tolower") return "lower";
   if (name === "strings.toupper") return "upper";
   if (name === "hasprefix") return "strings.hasprefix";

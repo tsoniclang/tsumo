@@ -67,13 +67,24 @@ export class LinkHookContext {
   Title: string;
   PlainText: string;
   Page: PageContext;
+  PageInner: PageContext;
+  PageOuter: PageContext;
 
-  constructor(destination: string, text: string, title: string, plainText: string, page: PageContext) {
+  constructor(
+    destination: string,
+    text: string,
+    title: string,
+    plainText: string,
+    pageInner: PageContext,
+    pageOuter: PageContext,
+  ) {
     this.Destination = destination;
     this.Text = text;
     this.Title = title;
     this.PlainText = plainText;
-    this.Page = page;
+    this.Page = pageInner;
+    this.PageInner = pageInner;
+    this.PageOuter = pageOuter;
   }
 }
 
@@ -92,13 +103,24 @@ export class ImageHookContext {
   Title: string;
   PlainText: string;
   Page: PageContext;
+  PageInner: PageContext;
+  PageOuter: PageContext;
 
-  constructor(destination: string, text: string, title: string, plainText: string, page: PageContext) {
+  constructor(
+    destination: string,
+    text: string,
+    title: string,
+    plainText: string,
+    pageInner: PageContext,
+    pageOuter: PageContext,
+  ) {
     this.Destination = destination;
     this.Text = text;
     this.Title = title;
     this.PlainText = plainText;
-    this.Page = page;
+    this.Page = pageInner;
+    this.PageInner = pageInner;
+    this.PageOuter = pageOuter;
   }
 }
 
@@ -117,13 +139,24 @@ export class HeadingHookContext {
   PlainText: string;
   Anchor: string;
   Page: PageContext;
+  PageInner: PageContext;
+  PageOuter: PageContext;
 
-  constructor(level: int32, text: string, plainText: string, anchor: string, page: PageContext) {
+  constructor(
+    level: int32,
+    text: string,
+    plainText: string,
+    anchor: string,
+    pageInner: PageContext,
+    pageOuter: PageContext,
+  ) {
     this.Level = level;
     this.Text = text;
     this.PlainText = plainText;
     this.Anchor = anchor;
-    this.Page = page;
+    this.Page = pageInner;
+    this.PageInner = pageInner;
+    this.PageOuter = pageOuter;
   }
 }
 

@@ -10,6 +10,7 @@ export const getEmbeddedTemplateSource = (path: string): string | undefined => {
   if (normalized === "_internal/schema.html") return schemaSource;
   if (normalized === "_internal/pagination.html") return paginationSource;
   if (normalized === "_internal/disqus.html") return "";
+  if (normalized === "_internal/google_analytics.html") return "";
   if (normalized === "partials/opengraph.html" || normalized === "_partials/opengraph.html") return openGraphSource;
   if (normalized === "partials/twitter_cards.html" || normalized === "_partials/twitter_cards.html") return twitterCardsSource;
   if (normalized === "partials/schema.html" || normalized === "_partials/schema.html") return schemaSource;
