@@ -26,4 +26,3 @@ export const printUsage = (): void => {
   logLine("  -D, --buildDrafts          Include drafts");
   logLine("  --themesDir <dir>          Themes directory (like Hugo --themesDir)");
 };
-
