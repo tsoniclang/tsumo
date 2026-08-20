@@ -23,7 +23,7 @@ dotnet build "$REPO_ROOT/packages/markdig/vendor-src/Markdig.Vendored.csproj" -c
 cp "$MARKDIG_BUILD_DIR/Markdig.dll" "$PROVIDER_DIR/Markdig.dll"
 
 dotnet restore "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" --locked-mode --verbosity quiet
-dotnet restore "$REPO_ROOT/packages/cli/Tsumo.Cli.csproj" --locked-mode --verbosity quiet
+dotnet restore "$REPO_ROOT/packages/cli/Tsumo.Cli.csproj" --runtime linux-x64 --locked-mode --verbosity quiet
 dotnet msbuild "$REPO_ROOT/packages/engine/Tsumo.Engine.csproj" \
   -target:PrepareTsonicProviderReferences \
   -property:TsumoProviderReferenceDirectory="$PROVIDER_DIR" \
