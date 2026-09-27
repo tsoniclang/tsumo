@@ -244,8 +244,8 @@ export class ContentAndMenuTests {
   }
 }
 
-attribute<ContentAndMenuTests>().method((target) => target.content_discovery_is_deterministic_and_excludes_drafts_before_claiming_routes).add(FactAttribute);
-attribute<ContentAndMenuTests>().method((target) => target.content_routes_reject_escape_segments_and_duplicate_outputs).add(FactAttribute);
-attribute<ContentAndMenuTests>().method((target) => target.menu_hierarchy_is_deterministic_and_fails_closed).add(FactAttribute);
-attribute<ContentAndMenuTests>().method((target) => target.menu_page_references_use_exact_routes_without_slug_fallback).add(FactAttribute);
-attribute<ContentAndMenuTests>().method((target) => target.page_graph_finalizes_home_ancestry_and_taxonomies_before_rendering).add(FactAttribute);
+attribute<ContentAndMenuTests>().method((target) => target.content_discovery_is_deterministic_and_excludes_drafts_before_claiming_routes).add(() => new FactAttribute());
+attribute<ContentAndMenuTests>().method((target) => target.content_routes_reject_escape_segments_and_duplicate_outputs).add(() => new FactAttribute());
+attribute<ContentAndMenuTests>().method((target) => target.menu_hierarchy_is_deterministic_and_fails_closed).add(() => new FactAttribute());
+attribute<ContentAndMenuTests>().method((target) => target.menu_page_references_use_exact_routes_without_slug_fallback).add(() => new FactAttribute());
+attribute<ContentAndMenuTests>().method((target) => target.page_graph_finalizes_home_ancestry_and_taxonomies_before_rendering).add(() => new FactAttribute());

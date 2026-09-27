@@ -350,13 +350,13 @@ export class InputBoundaryTests {
   }
 }
 
-attribute<InputBoundaryTests>().method((target) => target.json_tree_preserves_unicode_kinds_and_source_locations).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.json_tree_handles_large_indexed_inputs).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.json_tree_rejects_ambiguous_and_malformed_inputs_exactly).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.all_front_matter_formats_create_one_closed_model).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.front_matter_rejects_invalid_shapes_with_exact_locations).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.all_configuration_formats_create_one_closed_model).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.configuration_rejects_unknown_malformed_and_mistyped_fields).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.structured_scalars_decode_strings_and_comments).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.split_configuration_has_one_deterministic_merge_contract).add(FactAttribute);
-attribute<InputBoundaryTests>().method((target) => target.content_types_are_exact_and_fail_to_binary_by_default).add(FactAttribute);
+attribute<InputBoundaryTests>().method((target) => target.json_tree_preserves_unicode_kinds_and_source_locations).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.json_tree_handles_large_indexed_inputs).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.json_tree_rejects_ambiguous_and_malformed_inputs_exactly).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.all_front_matter_formats_create_one_closed_model).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.front_matter_rejects_invalid_shapes_with_exact_locations).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.all_configuration_formats_create_one_closed_model).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.configuration_rejects_unknown_malformed_and_mistyped_fields).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.structured_scalars_decode_strings_and_comments).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.split_configuration_has_one_deterministic_merge_contract).add(() => new FactAttribute());
+attribute<InputBoundaryTests>().method((target) => target.content_types_are_exact_and_fail_to_binary_by_default).add(() => new FactAttribute());

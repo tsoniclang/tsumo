@@ -181,8 +181,8 @@ export class DocsDomainTests {
   }
 }
 
-attribute<DocsDomainTests>().method((target) => target.route_discovery_is_sorted_and_rejects_output_collisions).add(FactAttribute);
-attribute<DocsDomainTests>().method((target) => target.content_inventory_excludes_draft_leaf_routes).add(FactAttribute);
-attribute<DocsDomainTests>().method((target) => target.docs_config_has_one_closed_schema).add(FactAttribute);
-attribute<DocsDomainTests>().method((target) => target.output_and_search_plans_are_exact_and_deterministic).add(FactAttribute);
-attribute<DocsDomainTests>().method((target) => target.strict_markdown_links_fail_closed).add(FactAttribute);
+attribute<DocsDomainTests>().method((target) => target.route_discovery_is_sorted_and_rejects_output_collisions).add(() => new FactAttribute());
+attribute<DocsDomainTests>().method((target) => target.content_inventory_excludes_draft_leaf_routes).add(() => new FactAttribute());
+attribute<DocsDomainTests>().method((target) => target.docs_config_has_one_closed_schema).add(() => new FactAttribute());
+attribute<DocsDomainTests>().method((target) => target.output_and_search_plans_are_exact_and_deterministic).add(() => new FactAttribute());
+attribute<DocsDomainTests>().method((target) => target.strict_markdown_links_fail_closed).add(() => new FactAttribute());

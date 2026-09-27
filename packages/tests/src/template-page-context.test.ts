@@ -247,11 +247,11 @@ export class TemplatePageContextTests {
   }
 }
 
-attribute<TemplatePageContextTests>().method((target) => target.date_page_data_and_render_methods_use_typed_context).add(FactAttribute);
-attribute<TemplatePageContextTests>().method((target) => target.page_taxonomy_terms_follow_explicit_graph_relations).add(FactAttribute);
-attribute<TemplatePageContextTests>().method((target) => target.page_menu_methods_use_the_exact_menu_hierarchy).add(FactAttribute);
-attribute<TemplatePageContextTests>().method((target) => target.template_definitions_propagate_across_partial_boundaries).add(FactAttribute);
-attribute<TemplatePageContextTests>().method((target) => target.page_resources_use_the_published_bundle_inventory).add(FactAttribute);
+attribute<TemplatePageContextTests>().method((target) => target.date_page_data_and_render_methods_use_typed_context).add(() => new FactAttribute());
+attribute<TemplatePageContextTests>().method((target) => target.page_taxonomy_terms_follow_explicit_graph_relations).add(() => new FactAttribute());
+attribute<TemplatePageContextTests>().method((target) => target.page_menu_methods_use_the_exact_menu_hierarchy).add(() => new FactAttribute());
+attribute<TemplatePageContextTests>().method((target) => target.template_definitions_propagate_across_partial_boundaries).add(() => new FactAttribute());
+attribute<TemplatePageContextTests>().method((target) => target.page_resources_use_the_published_bundle_inventory).add(() => new FactAttribute());
 
-attribute<TemplatePageContextTests>().method((target) => target.pagination_uses_exact_integer_ceiling_and_bounded_page_offsets).add(FactAttribute);
-attribute<TemplatePageContextTests>().method((target) => target.page_sorts_preserve_ties_and_do_not_mutate_the_source).add(FactAttribute);
+attribute<TemplatePageContextTests>().method((target) => target.pagination_uses_exact_integer_ceiling_and_bounded_page_offsets).add(() => new FactAttribute());
+attribute<TemplatePageContextTests>().method((target) => target.page_sorts_preserve_ties_and_do_not_mutate_the_source).add(() => new FactAttribute());

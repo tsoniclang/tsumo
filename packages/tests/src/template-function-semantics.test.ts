@@ -100,4 +100,4 @@ export class TemplateFunctionSemanticsTests {
   }
 }
 
-attribute<TemplateFunctionSemanticsTests>().method((target) => target.template_namespaces_expose_exact_string_and_hugo_functions).add(FactAttribute);
+attribute<TemplateFunctionSemanticsTests>().method((target) => target.template_namespaces_expose_exact_string_and_hugo_functions).add(() => new FactAttribute());

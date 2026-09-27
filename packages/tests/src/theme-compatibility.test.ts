@@ -222,10 +222,10 @@ export class ThemeCompatibilityTests {
   }
 }
 
-attribute<ThemeCompatibilityTests>().method((target) => target.chained_alternatives_preserve_the_selected_context).add(FactAttribute);
-attribute<ThemeCompatibilityTests>().method((target) => target.date_methods_and_unicode_substrings_follow_hugo_semantics).add(FactAttribute);
-attribute<ThemeCompatibilityTests>().method((target) => target.integer_sequences_follow_hugo_semantics_and_limits).add(FactAttribute);
-attribute<ThemeCompatibilityTests>().method((target) => target.string_cutset_functions_follow_unicode_semantics).add(FactAttribute);
-attribute<ThemeCompatibilityTests>().method((target) => target.where_filters_structured_slices_and_rejects_unproven_inputs).add(FactAttribute);
-attribute<ThemeCompatibilityTests>().method((target) => target.site_data_layers_are_structured_deterministic_and_conflict_checked).add(FactAttribute);
-attribute<ThemeCompatibilityTests>().method((target) => target.embedded_page_image_partial_selects_published_page_resources).add(FactAttribute);
+attribute<ThemeCompatibilityTests>().method((target) => target.chained_alternatives_preserve_the_selected_context).add(() => new FactAttribute());
+attribute<ThemeCompatibilityTests>().method((target) => target.date_methods_and_unicode_substrings_follow_hugo_semantics).add(() => new FactAttribute());
+attribute<ThemeCompatibilityTests>().method((target) => target.integer_sequences_follow_hugo_semantics_and_limits).add(() => new FactAttribute());
+attribute<ThemeCompatibilityTests>().method((target) => target.string_cutset_functions_follow_unicode_semantics).add(() => new FactAttribute());
+attribute<ThemeCompatibilityTests>().method((target) => target.where_filters_structured_slices_and_rejects_unproven_inputs).add(() => new FactAttribute());
+attribute<ThemeCompatibilityTests>().method((target) => target.site_data_layers_are_structured_deterministic_and_conflict_checked).add(() => new FactAttribute());
+attribute<ThemeCompatibilityTests>().method((target) => target.embedded_page_image_partial_selects_published_page_resources).add(() => new FactAttribute());
