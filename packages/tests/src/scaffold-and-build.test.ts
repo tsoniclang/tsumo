@@ -127,7 +127,7 @@ export class ScaffoldAndBuildTests {
   }
 }
 
-attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_then_build).add(FactAttribute);
-attribute<ScaffoldAndBuildTests>().method((target) => target.drafts_skipped_by_default).add(FactAttribute);
-attribute<ScaffoldAndBuildTests>().method((target) => target.new_content_then_build).add(FactAttribute);
-attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_boundaries_fail_closed_with_exact_diagnostics).add(FactAttribute);
+attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_then_build).add(() => new FactAttribute());
+attribute<ScaffoldAndBuildTests>().method((target) => target.drafts_skipped_by_default).add(() => new FactAttribute());
+attribute<ScaffoldAndBuildTests>().method((target) => target.new_content_then_build).add(() => new FactAttribute());
+attribute<ScaffoldAndBuildTests>().method((target) => target.scaffold_boundaries_fail_closed_with_exact_diagnostics).add(() => new FactAttribute());

@@ -78,6 +78,6 @@ export class TemplateControlFlowTests {
   }
 }
 
-attribute<TemplateControlFlowTests>().method((target) => target.range_break_and_continue_target_the_innermost_active_range).add(FactAttribute);
-attribute<TemplateControlFlowTests>().method((target) => target.range_bindings_preserve_values_keys_order_and_early_exit).add(FactAttribute);
-attribute<TemplateControlFlowTests>().method((target) => target.parser_rejects_loop_control_without_an_active_range).add(FactAttribute);
+attribute<TemplateControlFlowTests>().method((target) => target.range_break_and_continue_target_the_innermost_active_range).add(() => new FactAttribute());
+attribute<TemplateControlFlowTests>().method((target) => target.range_bindings_preserve_values_keys_order_and_early_exit).add(() => new FactAttribute());
+attribute<TemplateControlFlowTests>().method((target) => target.parser_rejects_loop_control_without_an_active_range).add(() => new FactAttribute());

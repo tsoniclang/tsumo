@@ -205,11 +205,11 @@ export class ResourcePipelineTests {
   }
 }
 
-attribute<ResourcePipelineTests>().method((target) => target.relative_path_policy_rejects_every_escape_form).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.missing_external_tool_preserves_the_requested_diagnostic).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.glob_matching_is_segment_exact).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.image_dimensions_are_read_from_exact_file_signatures).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.utf8_validation_accepts_scalars_and_rejects_malformed_sequences).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.file_resources_publish_raw_bytes_and_decode_only_for_text_operations).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.transform_identity_and_metadata_are_content_exact).add(FactAttribute);
-attribute<ResourcePipelineTests>().method((target) => target.resource_lookup_is_sorted_and_site_assets_override_theme_assets).add(FactAttribute);
+attribute<ResourcePipelineTests>().method((target) => target.relative_path_policy_rejects_every_escape_form).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.missing_external_tool_preserves_the_requested_diagnostic).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.glob_matching_is_segment_exact).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.image_dimensions_are_read_from_exact_file_signatures).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.utf8_validation_accepts_scalars_and_rejects_malformed_sequences).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.file_resources_publish_raw_bytes_and_decode_only_for_text_operations).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.transform_identity_and_metadata_are_content_exact).add(() => new FactAttribute());
+attribute<ResourcePipelineTests>().method((target) => target.resource_lookup_is_sorted_and_site_assets_override_theme_assets).add(() => new FactAttribute());

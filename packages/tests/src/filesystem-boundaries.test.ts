@@ -105,6 +105,6 @@ export class FilesystemBoundaryTests {
   }
 }
 
-attribute<FilesystemBoundaryTests>().method((target) => target.recursive_discovery_is_sorted_and_rejects_links).add(FactAttribute);
-attribute<FilesystemBoundaryTests>().method((target) => target.watch_snapshot_sizes_preserve_adjacent_native_integers).add(FactAttribute);
-attribute<FilesystemBoundaryTests>().method((target) => target.watch_snapshots_detect_file_changes_and_use_link_policy).add(FactAttribute);
+attribute<FilesystemBoundaryTests>().method((target) => target.recursive_discovery_is_sorted_and_rejects_links).add(() => new FactAttribute());
+attribute<FilesystemBoundaryTests>().method((target) => target.watch_snapshot_sizes_preserve_adjacent_native_integers).add(() => new FactAttribute());
+attribute<FilesystemBoundaryTests>().method((target) => target.watch_snapshots_detect_file_changes_and_use_link_policy).add(() => new FactAttribute());

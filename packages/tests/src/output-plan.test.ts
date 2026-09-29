@@ -106,7 +106,7 @@ export class OutputPlanTests {
   }
 }
 
-attribute<OutputPlanTests>().method((target) => target.paths_and_collisions_fail_before_rendering).add(FactAttribute);
-attribute<OutputPlanTests>().method((target) => target.static_layers_have_one_explicit_precedence_policy).add(FactAttribute);
-attribute<OutputPlanTests>().method((target) => target.bundle_assets_cannot_overwrite_generated_routes).add(FactAttribute);
-attribute<OutputPlanTests>().method((target) => target.deferred_replacements_snapshot_outputs_before_mutation).add(FactAttribute);
+attribute<OutputPlanTests>().method((target) => target.paths_and_collisions_fail_before_rendering).add(() => new FactAttribute());
+attribute<OutputPlanTests>().method((target) => target.static_layers_have_one_explicit_precedence_policy).add(() => new FactAttribute());
+attribute<OutputPlanTests>().method((target) => target.bundle_assets_cannot_overwrite_generated_routes).add(() => new FactAttribute());
+attribute<OutputPlanTests>().method((target) => target.deferred_replacements_snapshot_outputs_before_mutation).add(() => new FactAttribute());
